@@ -1,5 +1,6 @@
 #include <Arduino_RouterBridge.h>
 #include <Wire.h>
+#include <VL53L0X.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <Adafruit_TCS34725.h>
@@ -11,24 +12,23 @@
 #define ENB 10
 #define IN3 7
 #define IN4 8
-#define ENC_L 2
-#define ENC_R 3
 #define BTN 12
+const uint8_t XSHUT[3] = {A0, A1, A2};   // izq, frente, der
 
 // ---------- Calibracion ----------
-#define USE_ENC 0             // 1 = con encoders en D2/D3
-const long TICKS_CELDA = 360; // ticks por 18 cm
-const long TICKS_90 = 120;    // ticks por giro de 90 grados
-const long MS_CELDA = 600;    // ms por 18 cm, solo si USE_ENC = 0
-const long MS_RAPIDA = 400;   // ms por celda en corridas rapidas (rectas largas)
-const long MS_90 = 250;
+const long MS_CELDA = 600;    // ms por celda de 18 cm
+const long MS_RAPIDA = 400;   // ms por celda en corridas rapidas
+const long MS_90 = 250;       // ms por giro de 90 grados
 const int VEL_EXPLORA = 140;
 const int VEL_RAPIDA = 220;
 const int VEL_GIRO = 130;
 const int VEL_MIN = 80;
-const float KP = 2.0;
-const float OFF_COLOR = 0.3;   // distancia eje->sensor de color, en celdas
-const int AJUSTE_DER = 0;     // sin encoders: suma PWM al motor derecho si se desvia
+const int AJUSTE_DER = 0;     // suma PWM al motor derecho si se desvia
+const int PARED = 120;        // mm: lectura menor = hay pared
+const int D_FRENTE = 55;      // mm al frente con el robot centrado en la celda
+const int D_LADO = 50;        // mm a una pared lateral con el robot centrado
+const float KC = 0.8;         // ganancia de centrado
+const float OFF_COLOR = 0.2;  // distancia eje->sensor de color, en celdas
 const uint32_t T_CTRL = 10;
 const uint32_t T_COLOR = 30;
 
@@ -47,15 +47,14 @@ const float DIST_MAX = 0.02;
 
 Adafruit_SSD1306 oled(128, 64, &Wire, -1);
 Adafruit_TCS34725 tcs(TCS34725_INTEGRATIONTIME_24MS, TCS34725_GAIN_4X);
-
-volatile long ticksL = 0, ticksR = 0;
-void isrL() { ticksL++; }
-void isrR() { ticksR++; }
+VL53L0X tof[3];
+int dist[3] = {9999, 9999, 9999};
+bool tofOk = false;
 
 enum { NADA, AVANZA, GIRA };
 volatile int cmd = NADA;
 volatile int arg = 0;
-volatile int velObj = VEL_EXPLORA;
+volatile int rapido = 0;
 volatile int ocupado = 0;
 volatile int colorPend = 0;
 volatile int arranque = 0;
@@ -63,19 +62,19 @@ volatile int refresca = 1;
 
 int cuenta[NCOL] = {0};
 int estado = 0;
-const char* ESTADOS[] = {"LISTO", "EXPLORA", "REGRESO", "RAPIDO", "META", "ERR CAM"};
+const char* ESTADOS[] = {"LISTO", "EXPLORA", "REGRESO", "RAPIDO", "META", "BORRADO", "SIN CAM"};
 
-bool enMov = false;
+int tipo = NADA;
 int dirL, dirR;
-long meta;
+long dur, unidad;
 uint32_t tIni;
 float vel;
 
 // ---------- RPC desde Python ----------
-int rpcMover(int celdas, int rapido) {
+int rpcMover(int celdas, int r) {
   if (ocupado) return 0;
   arg = celdas;
-  velObj = rapido ? VEL_RAPIDA : VEL_EXPLORA;
+  rapido = r;
   cmd = AVANZA;
   ocupado = 1;
   return 1;
@@ -84,7 +83,6 @@ int rpcMover(int celdas, int rapido) {
 int rpcGirar(int cuartos) {
   if (ocupado) return 0;
   arg = cuartos;
-  velObj = VEL_GIRO;
   cmd = GIRA;
   ocupado = 1;
   return 1;
@@ -104,6 +102,12 @@ int rpcArranque() {
   return a;
 }
 
+// bit0 izq, bit1 frente, bit2 der; -1 si no hay sensores
+int rpcParedes() {
+  if (!tofOk) return -1;
+  return (dist[0] < PARED) | (dist[1] < PARED) << 1 | (dist[2] < PARED) << 2;
+}
+
 int rpcCuenta(int idx, int n) {
   if (idx > 0 && idx < NCOL) cuenta[idx] = n;
   refresca = 1;
@@ -111,7 +115,7 @@ int rpcCuenta(int idx, int n) {
 }
 
 int rpcEstado(int e) {
-  estado = constrain(e, 0, 5);
+  estado = constrain(e, 0, 6);
   refresca = 1;
   return 1;
 }
@@ -134,47 +138,84 @@ void frena() {
   analogWrite(ENA, 0); analogWrite(ENB, 0);
 }
 
-long progreso() {
-#if USE_ENC
-  return (ticksL + ticksR) / 2;
-#else
-  return millis() - tIni;
-#endif
-}
-
 void iniciaMov() {
-  noInterrupts();
-  ticksL = ticksR = 0;
-  interrupts();
   tIni = millis();
   vel = VEL_MIN;
+  tipo = cmd;
   if (cmd == AVANZA) {
     dirL = dirR = 1;
-    meta = arg * (USE_ENC ? TICKS_CELDA : (velObj == VEL_RAPIDA ? MS_RAPIDA : MS_CELDA));
+    unidad = rapido ? MS_RAPIDA : MS_CELDA;
+    dur = arg * unidad;
   } else {
     dirL = arg > 0 ? 1 : -1;
     dirR = -dirL;
-    meta = abs(arg) * (USE_ENC ? TICKS_90 : MS_90);
+    unidad = MS_CELDA;
+    dur = abs(arg) * MS_90;
   }
   cmd = NADA;
-  enMov = true;
+}
+
+void termina() {
+  frena();
+  tipo = NADA;
+  ocupado = 0;
+}
+
+float centrado() {
+  bool L = dist[0] < PARED, R = dist[2] < PARED;
+  int e = 0;
+  if (L && R) e = dist[0] - dist[2];
+  else if (L) e = dist[0] - D_LADO;
+  else if (R) e = D_LADO - dist[2];
+  return constrain(KC * e, -40, 40) + AJUSTE_DER / 2.0f;
 }
 
 void control() {
-  long p = progreso();
-  long falta = meta - p;
-  if (falta <= 0) {
-    frena();
-    enMov = false;
-    ocupado = 0;
+  long t = millis() - tIni;
+  if (tipo == GIRA) {
+    if (t >= dur) termina();
+    else motores(dirL * VEL_GIRO, dirR * VEL_GIRO);
     return;
   }
-  // Rampa: acelera al inicio y baja en el ultimo cuarto de celda
-  long zona = (USE_ENC ? TICKS_CELDA : MS_CELDA) / 4;
-  float tope = falta < zona ? VEL_MIN + (velObj - VEL_MIN) * falta / (float)zona : velObj;
+  // Con pared enfrente se detiene por distancia; si no, por tiempo
+  bool paredF = dist[1] < PARED;
+  if (paredF && dist[1] <= D_FRENTE) { termina(); return; }
+  if (t >= dur && !(paredF && t < dur + unidad / 3)) { termina(); return; }
+  int vmax = rapido ? VEL_RAPIDA : VEL_EXPLORA;
+  long falta = max(dur - t, 0L);
+  long zona = unidad / 4;
+  float tope = falta < zona ? VEL_MIN + (vmax - VEL_MIN) * falta / (float)zona : vmax;
   vel = min(vel + 6.0f, tope);
-  float corr = USE_ENC ? KP * (ticksL - ticksR) : AJUSTE_DER / 2.0f;
-  motores(dirL * (vel - corr), dirR * (vel + corr));
+  float corr = centrado();
+  motores(vel - corr, vel + corr);
+}
+
+// ---------- VL53L0X ----------
+bool tofInit() {
+  for (int i = 0; i < 3; i++) {
+    pinMode(XSHUT[i], OUTPUT);
+    digitalWrite(XSHUT[i], LOW);
+  }
+  delay(10);
+  for (int i = 0; i < 3; i++) {
+    pinMode(XSHUT[i], INPUT);
+    delay(10);
+    tof[i].setTimeout(50);
+    if (!tof[i].init()) return false;
+    tof[i].setAddress(0x30 + i);
+    tof[i].setMeasurementTimingBudget(20000);
+    tof[i].startContinuous();
+  }
+  return true;
+}
+
+void tofLee() {
+  if (!tofOk) return;
+  for (int i = 0; i < 3; i++) {
+    if ((tof[i].readReg(VL53L0X::RESULT_INTERRUPT_STATUS) & 0x07) == 0) continue;
+    int d = tof[i].readRangeContinuousMillimeters();
+    dist[i] = (d == 0 || d > 2000) ? 9999 : d;
+  }
 }
 
 // ---------- Sensor de color ----------
@@ -213,9 +254,8 @@ void leeColor() {
     armado = true;
   } else if (armado) {
     armado = false;
-    long pos = enMov && cmd == NADA && dirL == dirR ? progreso() : 0;
-    float unidad = USE_ENC ? TICKS_CELDA : MS_CELDA;
-    long celda = (long)(pos / unidad + OFF_COLOR + 0.5);
+    long celda = 0;
+    if (tipo == AVANZA) celda = (long)((millis() - tIni) / (float)unidad + OFF_COLOR + 0.5f);
     colorPend = k + 16 * celda;
   }
 }
@@ -246,24 +286,39 @@ void calibracion() {
   while (true) {
     uint16_t r, g, b, c;
     leeRaw(r, g, b, c);
+    uint32_t t0 = millis();
+    while (millis() - t0 < 300) tofLee();
     float s = r + g + b + 1;
     const char* nom = refs[clasifica(r, g, b, c)].nom;
     Monitor.print("r "); Monitor.print(r / s, 2);
     Monitor.print(" g "); Monitor.print(g / s, 2);
     Monitor.print(" b "); Monitor.print(b / s, 2);
     Monitor.print(" c "); Monitor.print(c);
-    Monitor.print(" -> "); Monitor.println(nom);
+    Monitor.print(" -> "); Monitor.print(nom);
+    Monitor.print("  dist ");
+    Monitor.print(dist[0]); Monitor.print(" ");
+    Monitor.print(dist[1]); Monitor.print(" ");
+    Monitor.println(dist[2]);
     oled.clearDisplay();
     oled.setCursor(0, 0);
     oled.println("CALIBRACION");
     oled.print("r "); oled.println(r / s, 2);
     oled.print("g "); oled.println(g / s, 2);
     oled.print("b "); oled.println(b / s, 2);
-    oled.print("c "); oled.println(c);
-    oled.println(nom);
+    oled.print("c "); oled.print(c); oled.print(" "); oled.println(nom);
+    oled.print(dist[0]); oled.print(" ");
+    oled.print(dist[1]); oled.print(" ");
+    oled.println(dist[2]);
     oled.display();
-    delay(300);
   }
+}
+
+void falla(const char* msg) {
+  oled.clearDisplay();
+  oled.setCursor(0, 0);
+  oled.println(msg);
+  oled.display();
+  while (true) delay(100);
 }
 
 void setup() {
@@ -271,23 +326,15 @@ void setup() {
   pinMode(IN3, OUTPUT); pinMode(IN4, OUTPUT);
   pinMode(ENA, OUTPUT); pinMode(ENB, OUTPUT);
   pinMode(BTN, INPUT_PULLUP);
-  pinMode(ENC_L, INPUT_PULLUP);
-  pinMode(ENC_R, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(ENC_L), isrL, RISING);
-  attachInterrupt(digitalPinToInterrupt(ENC_R), isrR, RISING);
   motores(0, 0);
 
   Wire.begin();
   Wire.setClock(400000);
   oled.begin(SSD1306_SWITCHCAPVCC, 0x3C);
   oled.setTextColor(SSD1306_WHITE);
-  if (!tcs.begin()) {
-    oled.clearDisplay();
-    oled.setCursor(0, 0);
-    oled.println("SIN SENSOR COLOR");
-    oled.display();
-    while (true) delay(100);
-  }
+  if (!tcs.begin()) falla("SIN SENSOR COLOR");
+  tofOk = tofInit();
+  if (!tofOk) falla("SIN VL53L0X");
 
   Bridge.begin();
   Monitor.begin();
@@ -296,6 +343,7 @@ void setup() {
   Bridge.provide("ocupado", rpcOcupado);
   Bridge.provide("color", rpcColor);
   Bridge.provide("arranque", rpcArranque);
+  Bridge.provide("paredes", rpcParedes);
   Bridge.provide("set_cuenta", rpcCuenta);
   Bridge.provide("set_estado", rpcEstado);
 
@@ -309,11 +357,13 @@ uint32_t tBtn = 0;
 void loop() {
   uint32_t t = millis();
 
-  if (cmd != NADA && !enMov) iniciaMov();
+  if (cmd != NADA && tipo == NADA) iniciaMov();
+
+  tofLee();
 
   if (t - tCtrl >= T_CTRL) {
     tCtrl = t;
-    if (enMov) control();
+    if (tipo != NADA) control();
   }
 
   if (t - tColor >= T_COLOR) {

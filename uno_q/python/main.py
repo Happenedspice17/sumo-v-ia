@@ -18,25 +18,27 @@ DY = [1, 0, -1, 0]
 BIT = [1, 2, 4, 8]
 
 # ---------- Camara ----------
+# Los VL53L0X leen las paredes de la celda actual. La camara mira la celda
+# siguiente y adelanta sus paredes al mapa como "tentativas".
 CAM_ID = 0
 ANCHO, ALTO = 320, 240
 # Regiones (x0, y0, x1, y1) en fraccion de la imagen; ajustar con /app/cal.jpg
 ROI = {
-    "frente": (0.30, 0.15, 0.70, 0.35),
-    "izq":    (0.00, 0.40, 0.20, 0.90),
-    "der":    (0.80, 0.40, 1.00, 0.90),
+    "frente2": (0.35, 0.05, 0.65, 0.25),   # pared del fondo de la celda siguiente
+    "izq2":    (0.05, 0.25, 0.25, 0.55),   # pared izquierda de la celda siguiente
+    "der2":    (0.75, 0.25, 0.95, 0.55),   # pared derecha de la celda siguiente
 }
 PARED_LO = (0, 0, 170)                   # HSV de la pared (blanca por defecto)
 PARED_HI = (180, 60, 255)
 UMBRAL = 0.35
 
 paredes = [[0] * N for _ in range(N)]
+tentativo = [[0] * N for _ in range(N)]
 visto = [[False] * N for _ in range(N)]
 marcas = {}
 cuenta = [0] * len(COLORES)
 pos = INICIO
 rumbo = RUMBO_INI
-corrida = 0
 cam = None
 
 
@@ -63,11 +65,12 @@ def dentro(x, y):
     return 0 <= x < N and 0 <= y < N
 
 
-def set_pared(x, y, h):
-    paredes[x][y] |= BIT[h]
+def set_pared(x, y, h, grid=None):
+    grid = paredes if grid is None else grid
+    grid[x][y] |= BIT[h]
     nx, ny = x + DX[h], y + DY[h]
     if dentro(nx, ny):
-        paredes[nx][ny] |= BIT[(h + 2) % 4]
+        grid[nx][ny] |= BIT[(h + 2) % 4]
 
 
 def bordes():
@@ -78,7 +81,20 @@ def bordes():
         set_pared(N - 1, i, 1)
 
 
-def flood(objetivos, solo_conocido):
+def bloqueado(x, y, h, solo_conocido, usar_cam=True):
+    if paredes[x][y] & BIT[h]:
+        return True
+    nx, ny = x + DX[h], y + DY[h]
+    if not dentro(nx, ny):
+        return True
+    if solo_conocido:
+        return not (visto[x][y] and visto[nx][ny])
+    if not usar_cam or visto[x][y] or visto[nx][ny]:
+        return False
+    return bool(tentativo[x][y] & BIT[h])
+
+
+def flood(objetivos, solo_conocido, usar_cam=True):
     inf = N * N
     d = [[inf] * N for _ in range(N)]
     q = deque()
@@ -88,12 +104,10 @@ def flood(objetivos, solo_conocido):
     while q:
         x, y = q.popleft()
         for h in range(4):
-            if paredes[x][y] & BIT[h]:
+            if bloqueado(x, y, h, solo_conocido, usar_cam):
                 continue
             nx, ny = x + DX[h], y + DY[h]
-            if not dentro(nx, ny) or d[nx][ny] <= d[x][y] + 1:
-                continue
-            if solo_conocido and not (visto[x][y] and visto[nx][ny]):
+            if d[nx][ny] <= d[x][y] + 1:
                 continue
             d[nx][ny] = d[x][y] + 1
             q.append((nx, ny))
@@ -158,7 +172,9 @@ def abrir_camara():
     cam.set(cv2.CAP_PROP_FRAME_WIDTH, ANCHO)
     cam.set(cv2.CAP_PROP_FRAME_HEIGHT, ALTO)
     cam.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-    return cam.isOpened()
+    if not cam.isOpened():
+        cam = None
+    return cam is not None
 
 
 def foto():
@@ -168,10 +184,11 @@ def foto():
     return img if ok else None
 
 
-def leer_paredes(debug=False):
+def leer_camara(debug=False):
+    if cam is None:
+        return None
     img = foto()
     if img is None:
-        estado(5)
         return None
     h, w = img.shape[:2]
     mask = cv2.inRange(cv2.cvtColor(img, cv2.COLOR_BGR2HSV), PARED_LO, PARED_HI)
@@ -191,13 +208,22 @@ def sensar():
     x, y = pos
     if visto[x][y]:
         return
-    p = leer_paredes()
-    if p is None:
-        return
-    for k, rel in (("frente", 0), ("izq", -1), ("der", 1)):
-        if p[k]:
+    time.sleep(0.06)                     # deja que los VL53L0X den una lectura nueva
+    p = rpc("paredes")
+    for bit, rel in ((1, -1), (2, 0), (4, 1)):
+        if p & bit:
             set_pared(x, y, (rumbo + rel) % 4)
     visto[x][y] = True
+
+    nx, ny = x + DX[rumbo], y + DY[rumbo]
+    if p & 2 or not dentro(nx, ny) or visto[nx][ny]:
+        return
+    c = leer_camara()
+    if c is None:
+        return
+    for k, rel in (("frente2", 0), ("izq2", -1), ("der2", 1)):
+        if c[k]:
+            set_pared(nx, ny, (rumbo + rel) % 4, tentativo)
 
 
 # ---------- Estrategias ----------
@@ -207,6 +233,8 @@ def explorar(objetivos, est):
         sensar()
         d = flood(objetivos, False)
         x, y = pos
+        if d[x][y] >= N * N:
+            d = flood(objetivos, False, usar_cam=False)   # la camara pudo ver paredes falsas
         if d[x][y] >= N * N:
             print("Sin camino")
             return False
@@ -224,60 +252,59 @@ def explorar(objetivos, est):
     return True
 
 
-def ruta_rapida():
+def ruta_conocida():
     d = flood(META, True)
-    x, y = pos
-    if d[x][y] >= N * N:
-        return explorar(META, 1)
+    return d if d[INICIO[0]][INICIO[1]] < N * N else None
+
+
+def ruta_rapida(d):
     estado(3)
     while pos not in META:
         x, y = pos
-        h = next(h for h in range(4) if not paredes[x][y] & BIT[h]
-                 and dentro(x + DX[h], y + DY[h])
+        h = next(h for h in range(4) if not bloqueado(x, y, h, True)
                  and d[x + DX[h]][y + DY[h]] == d[x][y] - 1)
         n = 0
         cx, cy = x, y
-        while (not paredes[cx][cy] & BIT[h] and dentro(cx + DX[h], cy + DY[h])
+        while (not bloqueado(cx, cy, h, True)
                and d[cx + DX[h]][cy + DY[h]] == d[cx][cy] - 1):
             cx, cy = cx + DX[h], cy + DY[h]
             n += 1
         girar_a(h)
         avanzar(n, rapido=True)
-    return True
 
 
 # ---------- Principal ----------
-def iniciar():
-    bordes()
-    cargar()
-    for c in range(1, len(COLORES)):
-        rpc("set_cuenta", c, cuenta[c])
-    if not abrir_camara():
-        estado(5)
-        print("No se pudo abrir la camara")
-        return
-    leer_paredes(debug=True)
-    estado(0)
-
-
 def borrar():
-    global paredes, visto, corrida
+    global paredes, tentativo, visto
     paredes = [[0] * N for _ in range(N)]
+    tentativo = [[0] * N for _ in range(N)]
     visto = [[False] * N for _ in range(N)]
     marcas.clear()
-    corrida = 0
     bordes()
     if os.path.exists(ARCHIVO):
         os.remove(ARCHIVO)
     for c in range(1, len(COLORES)):
         cuenta[c] = 0
         rpc("set_cuenta", c, 0)
-    estado(0)
+    estado(5)
     print("Memoria borrada")
 
 
+def iniciar():
+    bordes()
+    cargar()
+    for c in range(1, len(COLORES)):
+        rpc("set_cuenta", c, cuenta[c])
+    if abrir_camara():
+        leer_camara(debug=True)
+        estado(0)
+    else:
+        print("Sin camara: solo VL53L0X")
+        estado(6)
+
+
 def loop():
-    global pos, rumbo, corrida
+    global pos, rumbo
     a = rpc("arranque")
     if a == 2:
         borrar()
@@ -286,19 +313,17 @@ def loop():
         time.sleep(0.05)
         return
     pos, rumbo = INICIO, RUMBO_INI
-    corrida += 1
     t = time.time()
-    if corrida == 1:
-        explorar(META, 1)
+    d = ruta_conocida()
+    if d:
+        ruta_rapida(d)
         estado(4)
-        explorar({INICIO}, 2)
     else:
-        ruta_rapida()
-        estado(4)
-    guardar()
-    if corrida == 1:
+        explorar(META, 1)
+        explorar({INICIO}, 2)
         estado(0)
-    print(f"Corrida {corrida}: {time.time() - t:.1f} s, marcas {cuenta[1:]}")
+    guardar()
+    print(f"Corrida: {time.time() - t:.1f} s, marcas {cuenta[1:]}")
 
 
 iniciar()
