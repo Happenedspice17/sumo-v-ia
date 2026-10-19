@@ -260,9 +260,29 @@ def iniciar():
     estado(0)
 
 
+def borrar():
+    global paredes, visto, corrida
+    paredes = [[0] * N for _ in range(N)]
+    visto = [[False] * N for _ in range(N)]
+    marcas.clear()
+    corrida = 0
+    bordes()
+    if os.path.exists(ARCHIVO):
+        os.remove(ARCHIVO)
+    for c in range(1, len(COLORES)):
+        cuenta[c] = 0
+        rpc("set_cuenta", c, 0)
+    estado(0)
+    print("Memoria borrada")
+
+
 def loop():
     global pos, rumbo, corrida
-    if not rpc("arranque"):
+    a = rpc("arranque")
+    if a == 2:
+        borrar()
+        return
+    if not a:
         time.sleep(0.05)
         return
     pos, rumbo = INICIO, RUMBO_INI

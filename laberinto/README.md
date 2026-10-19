@@ -55,5 +55,7 @@ No usar el regulador de 5 V del L298N para el UNO Q. Todos los pines del UNO Q s
 
 - Corrida 1: explora con flood‑fill hasta la meta y regresa al inicio explorando más.
 - Corridas 2 y 3: va por la ruta más corta conocida, con rectas largas a velocidad alta.
-- El mapa y las marcas se guardan en `/app/mapa.json`.
+- El mapa y las marcas se guardan en `/app/mapa.json`; sobreviven a apagarlo.
+- Botón corto: siguiente corrida (pon el robot en el inicio, viendo en `RUMBO_INI`).
+- Botón sostenido más de 2 s: borra mapa y conteo (laberinto nuevo).
 - Una marca se cuenta solo si el color se sostiene 3 lecturas seguidas y antes se vio piso. Además, Python guarda la celda donde la vio y no vuelve a contar esa celda en ninguna corrida.

@@ -320,9 +320,9 @@ void loop() {
 
   int btn = digitalRead(BTN);
   if (btn != btnPrev && t - tBtn > 50) {
+    if (btn == HIGH) arranque = (t - tBtn > 2000) ? 2 : 1;
     tBtn = t;
     btnPrev = btn;
-    if (btn == LOW) arranque = 1;
   }
 
   if (refresca) {
