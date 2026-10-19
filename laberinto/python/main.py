@@ -296,6 +296,8 @@ def loop():
         ruta_rapida()
         estado(4)
     guardar()
+    if corrida == 1:
+        estado(0)
     print(f"Corrida {corrida}: {time.time() - t:.1f} s, marcas {cuenta[1:]}")
 
 
