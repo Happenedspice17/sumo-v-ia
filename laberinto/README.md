@@ -46,8 +46,8 @@ No usar el regulador de 5 V del L298N para el UNO Q. Todos los pines del UNO Q s
 ## Calibración (en este orden)
 
 1. **Colores**: enciende con el botón presionado. La OLED y la consola muestran `r g b c`. Pon el sensor sobre el piso y cada marca y copia los valores a `refs[]` en el sketch.
-2. **Avance**: manda `mover 1` y ajusta `TICKS_CELDA` hasta que avance 18 cm. Igual con `TICKS_90` para giros. Si los motores no tienen encoder, pon `USE_ENC 0` y ajusta `MS_CELDA` / `MS_90`.
-3. **Recto**: si se desvía, ajusta `KP`.
+2. **Avance** (sin encoders, `USE_ENC 0`): ajusta `MS_CELDA` hasta que avance 18 cm y `MS_90` para giros de 90°. `MS_RAPIDA` con `mover 4` en modo rápido (debe avanzar 72 cm). Calibra con la batería cargada. Si se desvía, ajusta `AJUSTE_DER`.
+3. **Con encoders** (`USE_ENC 1`): ajusta `TICKS_CELDA`, `TICKS_90` y `KP`.
 4. **Cámara**: al arrancar se guardan `/app/cal.jpg` y `/app/mask.jpg`. Ajusta `ROI`, `PARED_LO/HI` y `UMBRAL` en `main.py` hasta que los rectángulos salgan rojos donde hay pared.
 5. **Laberinto**: ajusta `N`, `INICIO`, `RUMBO_INI` y `META` según las reglas del día.
 

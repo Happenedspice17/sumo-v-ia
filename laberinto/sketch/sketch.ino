@@ -16,17 +16,19 @@
 #define BTN 12
 
 // ---------- Calibracion ----------
-#define USE_ENC 1             // 0 = sin encoders, mueve por tiempo
+#define USE_ENC 0             // 1 = con encoders en D2/D3
 const long TICKS_CELDA = 360; // ticks por 18 cm
 const long TICKS_90 = 120;    // ticks por giro de 90 grados
-const long OFF_COLOR = 60;    // distancia eje->sensor de color, en ticks
-const long MS_CELDA = 600;    // solo si USE_ENC = 0
+const long MS_CELDA = 600;    // ms por 18 cm, solo si USE_ENC = 0
+const long MS_RAPIDA = 400;   // ms por celda en corridas rapidas (rectas largas)
 const long MS_90 = 250;
 const int VEL_EXPLORA = 140;
 const int VEL_RAPIDA = 220;
 const int VEL_GIRO = 130;
 const int VEL_MIN = 80;
 const float KP = 2.0;
+const float OFF_COLOR = 0.3;   // distancia eje->sensor de color, en celdas
+const int AJUSTE_DER = 0;     // sin encoders: suma PWM al motor derecho si se desvia
 const uint32_t T_CTRL = 10;
 const uint32_t T_COLOR = 30;
 
@@ -148,7 +150,7 @@ void iniciaMov() {
   vel = VEL_MIN;
   if (cmd == AVANZA) {
     dirL = dirR = 1;
-    meta = arg * (USE_ENC ? TICKS_CELDA : MS_CELDA);
+    meta = arg * (USE_ENC ? TICKS_CELDA : (velObj == VEL_RAPIDA ? MS_RAPIDA : MS_CELDA));
   } else {
     dirL = arg > 0 ? 1 : -1;
     dirR = -dirL;
@@ -171,7 +173,7 @@ void control() {
   long zona = (USE_ENC ? TICKS_CELDA : MS_CELDA) / 4;
   float tope = falta < zona ? VEL_MIN + (velObj - VEL_MIN) * falta / (float)zona : velObj;
   vel = min(vel + 6.0f, tope);
-  float corr = USE_ENC ? KP * (ticksL - ticksR) : 0;
+  float corr = USE_ENC ? KP * (ticksL - ticksR) : AJUSTE_DER / 2.0f;
   motores(dirL * (vel - corr), dirR * (vel + corr));
 }
 
@@ -212,7 +214,8 @@ void leeColor() {
   } else if (armado) {
     armado = false;
     long pos = enMov && cmd == NADA && dirL == dirR ? progreso() : 0;
-    long celda = USE_ENC ? (pos + OFF_COLOR + TICKS_CELDA / 2) / TICKS_CELDA : 0;
+    float unidad = USE_ENC ? TICKS_CELDA : MS_CELDA;
+    long celda = (long)(pos / unidad + OFF_COLOR + 0.5);
     colorPend = k + 16 * celda;
   }
 }
