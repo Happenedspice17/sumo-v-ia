@@ -4,6 +4,8 @@ Todo corre en el ATmega328P: motores, sensores, OLED y flood‑fill. No lleva c�
 
 ## Conexiones
 
+![Diagrama de conexiones](img/conexiones_uno.png)
+
 | Componente | Pin del módulo | UNO R3 |
 |---|---|---|
 | L298N | ENA (quitar jumper) | D5 |
