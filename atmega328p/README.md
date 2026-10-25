@@ -20,6 +20,8 @@ Todo corre en el ATmega328P: motores, sensores, OLED y flood‑fill. No lleva c�
 | Botón de arranque | a GND | D2 |
 | Batería 2S 18650 (conector T) | + | interruptor → VIN |
 
+5V, GND, SDA y SCL se reparten en la mini protoboard de 170 puntos del piso 3: columnas 1, 4, 7 y 10, cada una con un puente entre sus dos mitades.
+
 El Timer1 genera la base de tiempo de 10 ms por interrupción. Por eso los motores usan el PWM de D5/D6 (Timer0) en lugar de D9/D10.
 
 ## Programación (Arduino IDE)

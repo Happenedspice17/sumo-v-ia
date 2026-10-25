@@ -1,6 +1,6 @@
 // Chasis robot laberinto - 125 x 125 mm
 // Origen: centro del eje de las ruedas, a nivel del piso. X derecha, Y adelante, Z arriba.
-// PIEZA: "ensamble", "piso1", "piso2", "soporte_motor", "soporte_tof", "soporte_color",
+// PIEZA: "ensamble", "piso1", "piso2", "piso3", "soporte_motor", "soporte_tof", "soporte_color",
 //        "patin", "mastil", "camara"
 // VERSION: "unoq" (con mastil y camara) o "328p"
 
@@ -28,10 +28,17 @@ X_MOT_EXT = X_RUEDA_INT - 1.5;           // cara de la caja de engranes
 Z1 = EJE_Z + MOT_H / 2;                  // fondo del piso 1 (toca el motor)
 SEP = 32;                                // largo de separadores M3
 Z2 = Z1 + ESP + SEP;                     // fondo del piso 2
+SEP3 = 25;                               // separadores piso 2 -> piso 3
+Z3 = Z2 + ESP + SEP3;                    // fondo del piso 3
+P3 = [110, 96];                          // piso 3 (X, Y)
+P3_Y = -12;                              // centro del piso 3
+R3 = 15;
 POZO_Y = D_RUEDA / 2 + 4;                // medio largo del hueco de rueda
 POSTES = [[48, 28], [-48, 28], [35, -52], [-35, -52]];
-OLED_XY = [29, 46];
-BOTON_XY = [-29, 46];
+OLED_XY = [25, 18];                      // en el piso 3
+BOTON_XY = [-28, 18];                    // en el piso 3
+PROTO = [47, 35, 9];                     // mini protoboard de 170 puntos
+PROTO_XY = [0, -25];
 
 // Componentes
 BAT = [37, 65, 19];      // 2S 18650 3000 mAh (X, Y, Z)
@@ -89,7 +96,22 @@ module piso2() {
     translate([0, 30, Z2 + ESP / 2]) cube([20, 8, ESP + 2], center = true);
     // base del mastil
     translate([0, MASTIL_Y, Z2 + ESP / 2]) cube([10.4, 6.4, ESP + 2], center = true);
-    translate([BOTON_XY[0], BOTON_XY[1], Z2 - 0.5]) cylinder(d = 7, h = ESP + 1);   // boton
+  }
+}
+
+module piso3() {
+  // protoboard, OLED y boton; los separadores van sobre los del piso 1-2
+  difference() {
+    translate([0, P3_Y, Z3]) linear_extrude(ESP)
+      offset(R3) square([P3[0] - 2 * R3, P3[1] - 2 * R3], center = true);
+    for (p = POSTES) translate([p[0], p[1], Z3 - 0.5]) agujero_m3(ESP);
+    translate([BOTON_XY[0], BOTON_XY[1], Z3 - 0.5]) cylinder(d = 7, h = ESP + 1);
+    for (h = [[-1, -1], [1, -1], [-1, 1], [1, 1]])
+      translate([OLED_XY[0] + h[0] * 10.5, OLED_XY[1] + h[1] * 10.5, Z3 - 0.5]) cylinder(d = 2.2, h = ESP + 1);
+    // ranuras para los cables de los headers del Arduino
+    for (s = [-1, 1]) translate([s * 33, -18, Z3 + ESP / 2]) cube([6, 44, ESP + 2], center = true);
+    // paso del mastil
+    translate([0, MASTIL_Y, Z3 + ESP / 2]) cube([14, 10, ESP + 2], center = true);
   }
 }
 
@@ -185,8 +207,11 @@ module ensamble() {
       rotate([0, 0, -s * 90]) soporte_tof();
     color("green") translate([s * (TOF_LADO_X + 0.5), 0, Z2 + ESP + 12]) cube([1.6, TOF[0], TOF[1]], center = true);
   }
-  color("white") translate([OLED_XY[0], OLED_XY[1], Z2 + ESP + 3]) cube([OLED, OLED, 4], center = true);
-  color("black") translate([BOTON_XY[0], BOTON_XY[1], Z2 + ESP + 3]) cylinder(d = 12, h = 6, center = true);
+  for (p = POSTES) color("silver") translate([p[0], p[1], Z2 + ESP]) cylinder(d = 5, h = SEP3);
+  color("lightsteelblue", 0.9) piso3();
+  color("crimson") translate([PROTO_XY[0], PROTO_XY[1], Z3 + ESP + PROTO[2] / 2]) cube(PROTO, center = true);
+  color("white") translate([OLED_XY[0], OLED_XY[1], Z3 + ESP + 3]) cube([OLED, OLED, 4], center = true);
+  color("black") translate([BOTON_XY[0], BOTON_XY[1], Z3 + ESP + 3]) cylinder(d = 12, h = 6, center = true);
   if (VERSION == "unoq") {
     color("orange") translate([0, MASTIL_Y, Z2]) mastil();
     translate([0, MASTIL_Y + 8, Z2 + MASTIL_H + 5]) rotate([-CAM_INCL, 0, 0]) camara();
@@ -196,6 +221,7 @@ module ensamble() {
 if (PIEZA == "ensamble") ensamble();
 else if (PIEZA == "piso1") translate([0, 0, -Z1]) piso1();
 else if (PIEZA == "piso2") translate([0, 0, -Z2]) piso2();
+else if (PIEZA == "piso3") translate([0, 0, -Z3]) piso3();
 else if (PIEZA == "soporte_motor") rotate([180, 0, 0]) soporte_motor();
 else if (PIEZA == "soporte_tof") soporte_tof();
 else if (PIEZA == "soporte_color") soporte_color();

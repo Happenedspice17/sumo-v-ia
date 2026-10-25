@@ -19,6 +19,8 @@ El STM32 mueve los motores, lee los sensores y maneja la OLED (`sketch/`). Linux
 | Batería 2S 18650 (conector T) | + | interruptor → VIN |
 | Cámara USB | | hub USB‑C |
 
+5V, GND, SDA y SCL se reparten en la mini protoboard de 170 puntos del piso 3: columnas 1, 4, 7 y 10, cada una con un puente entre sus dos mitades.
+
 GND común entre todo. No alimentes el UNO Q con el regulador de 5 V del L298N. La posición física de cada pieza está en `../chasis/chasis.pdf`.
 
 ## Programación (Arduino App Lab)

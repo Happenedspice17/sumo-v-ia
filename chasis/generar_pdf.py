@@ -25,8 +25,14 @@ SEP = 32
 Z2 = Z1 + ESP + SEP
 POZO_Y = D_RUEDA / 2 + 4
 POSTES = [(48, 28), (-48, 28), (35, -52), (-35, -52)]
-OLED_XY = (29, 46)
-BOTON_XY = (-29, 46)
+OLED_XY = (25, 18)
+BOTON_XY = (-28, 18)
+SEP3 = 25
+P3 = (110, 96)
+P3_Y = -12
+R3 = 15
+PROTO = (47, 35, 9)
+PROTO_XY = (0, -25)
 BAT = (37, 65, 19)
 BAT_Y = 28
 L298 = (43, 43, 27)
@@ -125,6 +131,7 @@ def pdf():
         vistas_3d(pp)
         planta_piso1(pp)
         planta_piso2(pp)
+        planta_piso3(pp)
         alzados(pp)
         en_laberinto(pp)
         conexiones(pp)
@@ -145,7 +152,7 @@ def portada(pp):
         ("Motores", "2 × N20 sin encoder + L298N", "2 × N20 sin encoder + L298N"),
         ("Memoria del mapa", "EEPROM interna", "Archivo /app/mapa.json"),
         ("Mástil de cámara", "No", "Sí, ajustable 150–200 mm"),
-        ("Altura total aprox.", f"{Z2 + ESP + 5 + 15:.0f} mm", f"≈ {Z2 + ESP + MASTIL_H + 25:.0f} mm"),
+        ("Altura total aprox.", f"{Z2 + 2 * ESP + SEP3 + PROTO[2]:.0f} mm", f"≈ {Z2 + ESP + MASTIL_H + 25:.0f} mm"),
     ]
     ax = fig.add_axes([0.04, 0.38, 0.92, 0.5])
     ax.axis("off")
@@ -256,7 +263,7 @@ def planta_piso1(pp):
 
 def planta_piso2(pp):
     fig = pagina("Piso 2 · planta (vista superior)",
-                 f"Placa de {ESP} mm a {Z2:.0f} mm del suelo. Arduino, sensores de distancia, OLED, botón y mástil.")
+                 f"Placa de {ESP} mm a {Z2:.0f} mm del suelo. Arduino, sensores de distancia y base del mástil.")
     ax = ejes(fig, [0.03, 0.06, 0.6, 0.84], ((-100, 100), (-90, 100)))
     placa_redonda(ax)
     for s in (-1, 1):
@@ -279,9 +286,6 @@ def planta_piso2(pp):
                     arrowprops=dict(arrowstyle="->", color=C["tof"], lw=1.5))
     ax.annotate("", (0, TOF_FRENTE_Y + 30), (0, TOF_FRENTE_Y),
                 arrowprops=dict(arrowstyle="->", color=C["tof"], lw=1.5))
-    caja(ax, *OLED_XY, OLED, OLED, C["oled"], "OLED\n0.96\"", z=4)
-    ax.add_patch(Circle(BOTON_XY, 6, fc="#333", ec="k", zorder=4))
-    ax.text(BOTON_XY[0], BOTON_XY[1] + 9, "botón", ha="center", fontsize=7)
     caja(ax, 0, MASTIL_Y, 22, 13, C["imp"], "mástil (B)", fs=6, ls="--", z=4)
     cota(ax, (0, 0), (TOF_LADO_X, 0), f"{TOF_LADO_X}", off=-50)
     cota(ax, (0, 0), (0, TOF_FRENTE_Y), f"{TOF_FRENTE_Y}", off=-52, horiz=False)
@@ -304,11 +308,65 @@ def planta_piso2(pp):
         "Placa\n"
         "• UNO R3 y UNO Q tienen la misma huella y agujeros:\n"
         "  el mismo piso 2 sirve para las dos iteraciones.\n"
-        "• Separadores de 5 mm bajo la placa.\n\n"
+        "• Separadores de 5 mm bajo la placa.\n"
+        f"• Sobre los 4 separadores van otros de M3 × {SEP3} mm\n"
+        "  que sostienen el piso 3.\n\n"
         "Iteración B\n"
         "• El mástil entra en la ranura trasera (10 × 6 mm).\n"
         "• El hub USB-C de la cámara va en el piso 1, en la\n"
         "  zona central entre la batería y el L298N."
+    )
+    tx.text(0, 1, txt, va="top", fontsize=9.5, linespacing=1.45)
+    pp.savefig(fig)
+    plt.close(fig)
+
+
+def planta_piso3(pp):
+    Z3 = Z2 + ESP + SEP3
+    fig = pagina("Piso 3 · planta (vista superior)",
+                 f"Placa de {ESP} mm a {Z3:.0f} mm del suelo, sobre separadores M3 × {SEP3}. Protoboard, OLED y botón.")
+    ax = ejes(fig, [0.03, 0.06, 0.6, 0.84], ((-100, 100), (-90, 100)))
+    placa_redonda(ax, col="none", z=1)
+    ax.add_patch(FancyBboxPatch((-P3[0] / 2 + R3, P3_Y - P3[1] / 2 + R3), P3[0] - 2 * R3, P3[1] - 2 * R3,
+                                boxstyle=f"round,pad={R3}", fc=C["piso"], ec=C["borde"], lw=1.2, zorder=2))
+    caja(ax, 0, PLACA_Y, PLACA[0], PLACA[1], "none", ls=":", z=3)
+    ax.text(0, PLACA_Y + PLACA[1] / 2 - 4, "Arduino (debajo)", ha="center", fontsize=6.5, color="#555")
+    for x, y in POSTES:
+        ax.add_patch(Circle((x, y), 2.5, fc="#999", ec=C["borde"], zorder=4))
+    caja(ax, *PROTO_XY, PROTO[0], PROTO[1], "#e74c3c", "mini protoboard\n170 puntos\n47 × 35", tc="white", z=5)
+    caja(ax, *OLED_XY, OLED, OLED, C["oled"], "OLED\n0.96\"", z=5)
+    ax.add_patch(Circle(BOTON_XY, 6, fc="#333", ec="k", zorder=5))
+    ax.text(BOTON_XY[0], BOTON_XY[1] + 9, "botón", ha="center", fontsize=7)
+    for sx in (-1, 1):
+        caja(ax, sx * 33, -18, 6, 44, "white", z=4)
+    ax.text(-33, -44, "ranuras\ncables", ha="center", fontsize=6.5)
+    caja(ax, 0, MASTIL_Y, 14, 10, "white", z=4)
+    ax.text(0, MASTIL_Y - 9, "paso del mástil (B)", ha="center", fontsize=6.5)
+    cota(ax, (-P3[0] / 2, P3_Y + P3[1] / 2), (P3[0] / 2, P3_Y + P3[1] / 2), f"{P3[0]}", off=10)
+    cota(ax, (P3[0] / 2, P3_Y - P3[1] / 2), (P3[0] / 2, P3_Y + P3[1] / 2), f"{P3[1]}", off=12, horiz=False)
+    ax.annotate("FRENTE", (-80, 72), (-80, 86), ha="center", fontsize=9, weight="bold",
+                arrowprops=dict(arrowstyle="<-", lw=1.2))
+
+    tx = fig.add_axes([0.64, 0.1, 0.34, 0.78])
+    tx.axis("off")
+    txt = (
+        "Mini protoboard (170 puntos, sin rieles)\n"
+        "• Va pegada con su adhesivo; reparte 5V, GND,\n"
+        "  SDA y SCL a los 5 módulos I2C.\n"
+        "• Cada línea usa las dos mitades de una columna\n"
+        "  unidas con un puente que cruza el canal:\n"
+        "    col. 1 → 5V     col. 4 → GND\n"
+        "    col. 7 → SDA    col. 10 → SCL\n"
+        "• Deja columnas vacías entre líneas.\n\n"
+        "Cables\n"
+        "• Arduino → protoboard: macho-macho, por las\n"
+        "  ranuras laterales (quedan sobre los headers).\n"
+        "• Protoboard → módulos: macho-hembra.\n"
+        "• XSHUT, botón y L298N van directo al Arduino.\n\n"
+        "Ventajas\n"
+        "• OLED y botón quedan arriba, fáciles de ver y\n"
+        "  de presionar en la competencia.\n"
+        "• El piso 2 queda libre alrededor del Arduino."
     )
     tx.text(0, 1, txt, va="top", fontsize=9.5, linespacing=1.45)
     pp.savefig(fig)
@@ -322,6 +380,13 @@ def alzados(pp):
     ax.text(120, -9, "suelo", fontsize=7)
     caja(ax, 0, Z1 + ESP / 2, L, ESP, C["piso"])
     caja(ax, 0, Z2 + ESP / 2, L, ESP, C["piso"])
+    Z3 = Z2 + ESP + SEP3
+    caja(ax, P3_Y, Z3 + ESP / 2, P3[1], ESP, C["piso"])
+    caja(ax, PROTO_XY[1], Z3 + ESP + PROTO[2] / 2, PROTO[1], PROTO[2], "#e74c3c", "proto", tc="white", fs=6)
+    caja(ax, OLED_XY[1], Z3 + ESP + 2, OLED, 4, C["oled"])
+    for y in (28, -52):
+        caja(ax, y, Z2 + ESP + SEP3 / 2, 5, SEP3, "#aaa")
+    cota(ax, (-L / 2, 0), (-L / 2, Z3), f"{Z3:.0f}", off=-50, horiz=False)
     for y in (28, -52):
         caja(ax, y, Z1 + ESP + SEP / 2, 5, SEP, "#aaa")
     ax.add_patch(Circle((0, EJE_Z), D_RUEDA / 2, fc=C["rueda"], ec="k", zorder=3))
@@ -364,6 +429,11 @@ def alzados(pp):
     ax2.plot([-100, 100], [0, 0], color="k", lw=1)
     caja(ax2, 0, Z1 + ESP / 2, L - 2 * A_RUEDA - 2, ESP, C["piso"])
     caja(ax2, 0, Z2 + ESP / 2, L, ESP, C["piso"])
+    Z3 = Z2 + ESP + SEP3
+    caja(ax2, 0, Z3 + ESP / 2, P3[0], ESP, C["piso"])
+    caja(ax2, PROTO_XY[0], Z3 + ESP + PROTO[2] / 2, PROTO[0], PROTO[2], "#e74c3c", "proto", tc="white", fs=6)
+    for x in (-48, 48):
+        caja(ax2, x, Z2 + ESP + SEP3 / 2, 5, SEP3, "#aaa")
     for s in (-1, 1):
         caja(ax2, s * (X_RUEDA_INT + A_RUEDA / 2), EJE_Z, A_RUEDA, D_RUEDA, C["rueda"], z=3)
         caja(ax2, s * (X_MOT_EXT - MOT_L / 2), EJE_Z, MOT_L, MOT_H, C["motor"], z=3)
@@ -509,6 +579,7 @@ def piezas(pp):
         ["Pieza (PIEZA= en chasis.scad)", "Cant.", "Notas"],
         ["piso1", "1", "PLA/PETG, 3 mm, 30% relleno"],
         ["piso2", "1", "Igual"],
+        ["piso3", "1", "Igual"],
         ["soporte_motor", "2", "Imprimir boca abajo"],
         ["soporte_color", "1", "Negro mate (tapa la luz)"],
         ["patin", "2", "Lijar la punta; ajustar altura"],
@@ -529,7 +600,8 @@ def piezas(pp):
         ["Batería 2S 18650 7.4 V 3000 mAh (conector T)", "1", "✔", "✔"],
         ["Cargador balanceador 2S (JST-XH 3 pines)", "1", "✔", "✔"],
         ["Cámara USB + hub USB-C", "1", "", "✔"],
-        ["Separador M3 × 32 / tornillos M3", "4 / 20", "✔", "✔"],
+        ["Mini protoboard 170 puntos", "1", "✔", "✔"],
+        ["Separador M3 × 32 y × 25 / tornillos M3", "4+4 / 24", "✔", "✔"],
     ]
     tabla(fig, [0.04, 0.3, 0.42, 0.58], "Piezas impresas", imp, [0.5, 0.1, 0.45])
     tabla(fig, [0.52, 0.2, 0.45, 0.68], "Lista de material", bom, [0.62, 0.12, 0.1, 0.1])
