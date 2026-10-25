@@ -442,9 +442,21 @@ void rapida() {
 }
 
 // ---------- Calibracion: encender con el boton presionado ----------
+// Muestra color y distancias. Boton corto: avanza 1 celda. Boton largo: gira 90 grados a la derecha.
 void calibracion() {
   oled.clear();
+  while (digitalRead(BTN) == LOW);
+  delay(50);
   while (true) {
+    if (digitalRead(BTN) == LOW) {
+      uint16_t t0 = ahora();
+      delay(30);
+      while (digitalRead(BTN) == LOW);
+      delay(500);
+      if (ahora() - t0 > 100) girar(1);
+      else avanzar(1, false);
+      oled.clear();
+    }
     uint16_t c, r, g, b;
     tcsLee(c, r, g, b);
     tofLee();
@@ -460,7 +472,8 @@ void calibracion() {
     oled.print(dist[0]); oled.print(' ');
     oled.print(dist[1]); oled.print(' ');
     oled.print(dist[2]); oled.clearToEOL();
-    delay(200);
+    uint16_t t1 = ahora();
+    while (ahora() - t1 < 20 && digitalRead(BTN) == HIGH) tofLee();
   }
 }
 

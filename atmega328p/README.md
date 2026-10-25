@@ -34,6 +34,9 @@ Uso de memoria: 18.9 KB de flash (58%) y 1.47 KB de RAM (72%).
 
 ## Calibración
 
+El procedimiento completo está en `docs/manual_uso.pdf`. En modo calibración, un toque corto del botón avanza una celda y uno de más de 1 s gira 90°.
+
+
 Igual que en la iteración B: enciende con el botón presionado para ver color y distancias en la OLED. Copia los valores a `refs[]`, `D_LADO` y `D_FRENTE`. Ajusta `T_CELDA`, `T_RAPIDA` y `T_90` (en ticks de 10 ms) y `AJUSTE_DER`.
 
 ## Funcionamiento

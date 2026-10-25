@@ -1,13 +1,12 @@
 # Robot de laberinto – Microcontroladores 2
 
-Robot de 125 × 125 mm que resuelve un laberinto y cuenta marcas de color. Hay dos iteraciones sobre el mismo chasis:
+Robot de 125 × 125 mm con Arduino UNO R3 (ATmega328P) que resuelve un laberinto con flood-fill y cuenta marcas de color.
 
-| Carpeta | Iteración | Qué hace |
-|---|---|---|
-| [`atmega328p/`](atmega328p/) | A · Arduino UNO R3 | Todo en el ATmega328P, sin cámara |
-| [`uno_q/`](uno_q/) | B · Arduino UNO Q | STM32 + Linux con cámara |
-| [`chasis/`](chasis/) | Ambas | Modelo OpenSCAD y planos en PDF |
+| Carpeta | Qué hay |
+|---|---|
+| [`atmega328p/`](atmega328p/) | Código del robot y diagrama de conexiones |
+| [`chasis/`](chasis/) | Modelo OpenSCAD, STL listos para imprimir y planos (`chasis.pdf`) |
+| [`docs/`](docs/) | `manual_ensamble.pdf`, `manual_uso.pdf` y `bom.csv` |
+| [`uno_q/`](uno_q/) | Versión anterior con Arduino UNO Q (descartada, sin mantenimiento) |
 
-Ambas usan 2 N20 sin encoder, L298N, 3 VL53L0X, TCS34725, OLED SSD1306, botón y LiPo 2S.
-
-Planos: [`chasis/chasis.pdf`](chasis/chasis.pdf). Para regenerarlos: `python3 chasis/generar_pdf.py`.
+Regenerar documentos: `python3 chasis/generar_pdf.py` y `python3 docs/generar_manuales.py`.

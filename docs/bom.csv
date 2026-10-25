@@ -1,0 +1,38 @@
+Categoria,Componente,Cantidad,Notas
+Electronica,Arduino UNO R3 (ATmega328P) + cable USB-B,1,Cerebro del robot
+Electronica,"Motorreductor N20, 6 V, 300–500 RPM, sin encoder",2,Mismo modelo los dos
+Electronica,"Rueda para N20, Ø34 × 20 mm, eje D de 3 mm",2,"Si es otra medida, cambiar D_RUEDA en chasis.scad"
+Electronica,Puente H L298N (Steren),1,Quitar jumpers ENA/ENB
+Electronica,Sensor de color TCS34725 (módulo morado),1,Se usa el pin VIN
+Electronica,Sensor de distancia VL53L0X (CJVL53L0XV2),3,"Izquierdo, frente y derecho"
+Electronica,"Pantalla OLED SSD1306 0.96"" I2C (0x3C)",1,4 pines: GND VCC SCL SDA
+Electronica,"Botón de panel Ø7 mm, normalmente abierto",1,Botón de arranque
+Electronica,Interruptor de palanca MTS-102 (Ø6 mm),1,Encendido/apagado
+Electronica,"Batería 2S 18650, 7.4 V, 3000 mAh, conector T",1,Con balanceo JST-XH de 3 pines
+Electronica,Conector T (Deans) hembra con cables,1,Para conectar la batería al robot
+Electronica,Cargador balanceador 2S (JST-XH 3 pines),1,USB 2S o tipo B3 / IMAX B6
+Electronica,Mini protoboard 170 puntos,1,"Reparte 5V, GND, SDA y SCL"
+Electronica,Capacitor cerámico 100 nF,2,Uno soldado en cada motor
+Electronica,Cables dupont macho-macho y macho-hembra (20 cm),20 + 20,
+Electronica,"Cable calibre 22, rojo y negro",1 m c/u,"Batería, interruptor, motores"
+Tornilleria,Separador M3 hembra-hembra 35 mm,4,Piso 1 → piso 2
+Tornilleria,Separador M3 macho-hembra 25 mm,4,Piso 2 → piso 3
+Tornilleria,Tornillo M3 × 8 cabeza cilíndrica,11,"4 bajo piso 1, 4 sobre piso 3, 3 escuadras"
+Tornilleria,Tornillo M3 × 12 cabeza cilíndrica,8,"4 L298N, 4 Arduino"
+Tornilleria,Tornillo M3 × 20 cabeza cilíndrica,4,Cunas de motor
+Tornilleria,Tornillo M3 × 12 avellanado (cabeza plana),2,Patines
+Tornilleria,Tornillo M3 × 10 avellanado (cabeza plana),2,Capucha del sensor de color
+Tornilleria,Tuerca M3,20,17 se usan; sobran 3
+Tornilleria,Tornillo M2 × 6 autorroscante,6,VL53L0X a sus escuadras
+Tornilleria,Cincho de velcro 20 mm × 25 cm,1,Sujeta la batería
+Tornilleria,Cinta doble cara de espuma,1,OLED
+Tornilleria,Cinchos de plástico chicos,10,Ordenar cables
+Impresa 3D,piso1,1,"Base, motores, batería, L298N"
+Impresa 3D,piso2,1,Arduino y VL53L0X
+Impresa 3D,piso3,1,"Protoboard, OLED, botón, interruptor"
+Impresa 3D,cuna_motor,2,Sujeta cada N20
+Impresa 3D,capucha_color,1,Mejor en color negro
+Impresa 3D,patin,2,Apoyo deslizante
+Impresa 3D,escuadra_tof,3,Soporte de cada VL53L0X
+Impresa 3D,espaciador,8,4 Arduino + 4 L298N
+Impresa 3D,prueba,1,Imprimir primero
