@@ -34,8 +34,8 @@ OLED_XY = [29, 46];
 BOTON_XY = [-29, 46];
 
 // Componentes
-BAT = [30, 60, 15];      // LiPo 2S (X, Y, Z)
-BAT_Y = 30;
+BAT = [37, 65, 19];      // 2S 18650 3000 mAh (X, Y, Z)
+BAT_Y = 28;
 L298 = [43, 43, 27];
 L298_Y = -36;
 COLOR_Y = 34;            // centro del sensor de color

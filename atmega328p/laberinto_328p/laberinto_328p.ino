@@ -169,9 +169,10 @@ bool tofInit() {
   for (uint8_t i = 0; i < 3; i++) {
     pinMode(XSHUT[i], INPUT);   // el modulo tiene pull-up propio
     delay(10);
+    // Cambia la direccion antes de init(): en 0x29 tambien contesta el TCS34725
+    tof[i].setAddress(0x30 + i);
     tof[i].setTimeout(50);
     if (!tof[i].init()) return false;
-    tof[i].setAddress(0x30 + i);
     tof[i].setMeasurementTimingBudget(20000);
     tof[i].startContinuous();
   }
@@ -481,8 +482,8 @@ void setup() {
   oled.begin(&Adafruit128x64, 0x3C);
   oled.setFont(System5x7);
   oled.clear();
-  if (!tcsInit()) falla(F("SIN SENSOR COLOR"));
   if (!tofInit()) falla(F("SIN VL53L0X"));
+  if (!tcsInit()) falla(F("SIN SENSOR COLOR"));
   timer1();
   if (digitalRead(BTN) == LOW) calibracion();
   cargar();

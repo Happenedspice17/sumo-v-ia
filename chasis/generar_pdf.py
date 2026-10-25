@@ -27,8 +27,8 @@ POZO_Y = D_RUEDA / 2 + 4
 POSTES = [(48, 28), (-48, 28), (35, -52), (-35, -52)]
 OLED_XY = (29, 46)
 BOTON_XY = (-29, 46)
-BAT = (30, 60, 15)
-BAT_Y = 30
+BAT = (37, 65, 19)
+BAT_Y = 28
 L298 = (43, 43, 27)
 L298_Y = -36
 COLOR_Y, COLOR_MOD, COLOR_Z = 34, 20, 4
@@ -191,7 +191,7 @@ def vistas_3d(pp):
         ax.set_title(t, fontsize=11)
         ax.axis("off")
     leyenda = [("Pisos impresos", C["piso"]), ("Soportes impresos", C["imp"]), ("Placa Arduino", C["placa"]),
-               ("VL53L0X", C["tof"]), ("Batería 2S", C["bat"]), ("L298N", C["l298"]), ("OLED", C["oled"])]
+               ("VL53L0X", C["tof"]), ("Batería 2S 18650", C["bat"]), ("L298N", C["l298"]), ("OLED", C["oled"])]
     for i, (t, c) in enumerate(leyenda):
         fig.patches.append(Rectangle((0.06 + i * 0.13, 0.07), 0.012, 0.016, fc=c, ec="#555",
                                      transform=fig.transFigure, figure=fig))
@@ -206,7 +206,7 @@ def planta_piso1(pp):
     ax = ejes(fig, [0.03, 0.06, 0.6, 0.84], ((-95, 95), (-90, 95)))
     piso1_planta(ax)
     ruedas_planta(ax)
-    caja(ax, 0, BAT_Y, BAT[0], BAT[1], C["bat"], "LiPo 2S\n7.4 V\n30×60", alpha=0.85, tc="white", z=5)
+    caja(ax, 0, BAT_Y, BAT[0], BAT[1], C["bat"], "2S 18650\n7.4 V\n37×65", alpha=0.85, tc="white", z=5)
     caja(ax, 0, L298_Y, L298[0], L298[1], C["l298"], "L298N\n43×43", alpha=0.85, tc="white", z=5)
     caja(ax, 0, COLOR_Y, 26, 26, "none", ls="--", z=6)
     ax.text(16, COLOR_Y + 8, "TCS34725\n(debajo)", fontsize=6, color=C["color"])
@@ -238,7 +238,7 @@ def planta_piso1(pp):
         f"• 2 patines (delante y detrás, y = ±{PATIN_Y}) dejan 0.5 mm\n"
         "  al suelo: el robot se apoya en las ruedas.\n\n"
         "Encima del piso 1\n"
-        "• Batería LiPo 2S al frente (peso bajo y adelante del eje\n"
+        "• Batería 2S 18650 al frente (peso bajo y adelante del eje\n"
         "  para que no cabecee al frenar).\n"
         "• L298N atrás; su disipador mide 27 mm y cabe bajo\n"
         f"  el piso 2 (hueco libre {SEP} mm).\n"
@@ -526,7 +526,8 @@ def piezas(pp):
         ["Sensor de distancia VL53L0X", "3", "✔", "✔"],
         ["OLED SSD1306 0.96\" I2C", "1", "✔", "✔"],
         ["Botón pulsador", "1", "✔", "✔"],
-        ["LiPo 2S 7.4 V 500–1000 mAh", "1", "✔", "✔"],
+        ["Batería 2S 18650 7.4 V 3000 mAh (conector T)", "1", "✔", "✔"],
+        ["Cargador balanceador 2S (JST-XH 3 pines)", "1", "✔", "✔"],
         ["Cámara USB + hub USB-C", "1", "", "✔"],
         ["Separador M3 × 32 / tornillos M3", "4 / 20", "✔", "✔"],
     ]

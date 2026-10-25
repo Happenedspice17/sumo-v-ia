@@ -200,9 +200,10 @@ bool tofInit() {
   for (int i = 0; i < 3; i++) {
     pinMode(XSHUT[i], INPUT);
     delay(10);
+    // Cambia la direccion antes de init(): en 0x29 tambien contesta el TCS34725
+    tof[i].setAddress(0x30 + i);
     tof[i].setTimeout(50);
     if (!tof[i].init()) return false;
-    tof[i].setAddress(0x30 + i);
     tof[i].setMeasurementTimingBudget(20000);
     tof[i].startContinuous();
   }
@@ -332,9 +333,9 @@ void setup() {
   Wire.setClock(400000);
   oled.begin(SSD1306_SWITCHCAPVCC, 0x3C);
   oled.setTextColor(SSD1306_WHITE);
-  if (!tcs.begin()) falla("SIN SENSOR COLOR");
   tofOk = tofInit();
   if (!tofOk) falla("SIN VL53L0X");
+  if (!tcs.begin()) falla("SIN SENSOR COLOR");
 
   Bridge.begin();
   Monitor.begin();

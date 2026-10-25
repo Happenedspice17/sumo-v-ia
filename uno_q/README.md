@@ -13,9 +13,10 @@ El STM32 mueve los motores, lee los sensores y maneja la OLED (`sketch/`). Linux
 | L298N | 12V / GND | Batería + / GND |
 | VL53L0X izq / frente / der | XSHUT | A0 / A1 / A2 |
 | VL53L0X ×3, TCS34725, OLED | SDA / SCL | SDA / SCL |
-| VL53L0X ×3, TCS34725, OLED | VCC / GND | 3.3V / GND |
+| VL53L0X ×3 (VCC), TCS34725 (VIN), OLED | VCC / GND | 3.3V / GND |
+| TCS34725 (morado) | LED / INT | sin conectar (LED siempre encendido) |
 | Botón de arranque | a GND | D12 |
-| Batería 2S | + | VIN |
+| Batería 2S 18650 (conector T) | + | interruptor → VIN |
 | Cámara USB | | hub USB‑C |
 
 GND común entre todo. No alimentes el UNO Q con el regulador de 5 V del L298N. La posición física de cada pieza está en `../chasis/chasis.pdf`.

@@ -13,9 +13,10 @@ Todo corre en el ATmega328P: motores, sensores, OLED y flood‑fill. No lleva c�
 | L298N | 12V / GND | Batería + / GND |
 | VL53L0X izq / frente / der | XSHUT | A0 / A1 / A2 |
 | VL53L0X ×3, TCS34725, OLED | SDA / SCL | A4 / A5 |
-| VL53L0X ×3, TCS34725, OLED | VCC / GND | 5V / GND |
+| VL53L0X ×3 (VCC), TCS34725 (VIN), OLED | VCC / GND | 5V / GND |
+| TCS34725 (morado) | LED / INT | sin conectar (LED siempre encendido) |
 | Botón de arranque | a GND | D2 |
-| Batería 2S | + | VIN |
+| Batería 2S 18650 (conector T) | + | interruptor → VIN |
 
 El Timer1 genera la base de tiempo de 10 ms por interrupción. Por eso los motores usan el PWM de D5/D6 (Timer0) en lugar de D9/D10.
 
