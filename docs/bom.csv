@@ -1,0 +1,31 @@
+Categoria,Componente,Especificacion / donde va,Cantidad
+Impresa 3D,"Piso 1 (base, columnas, postes del L298N, soportes de VL53L0X y topes)",PETG o PLA,1
+Impresa 3D,Piso 2 (marcos de protoboards y OLED),PETG o PLA,1
+Impresa 3D,Cuna de motor,PETG o PLA,2
+Impresa 3D,Capucha del sensor de color con patín delantero,PLA negro,1
+Impresa 3D,Patín trasero,PETG o PLA,1
+Impresa 3D,Pieza de prueba de tolerancias,El mismo de las demás,1
+Electronica,Arduino Nano USB-C,"ATmega328P, CH340, con headers soldados; cable USB-C de datos",1
+Electronica,Motorreductor N20,"6 V, 300–500 RPM, sin encoder",2
+Electronica,Rueda para N20,"Ø34 × 20 mm, eje D de 3 mm",2
+Electronica,Puente H L298N,Módulo rojo 43 × 43 mm con disipador,1
+Electronica,Sensor de color TCS34725,Módulo morado 20.5 × 20.5 mm,1
+Electronica,Sensor de distancia VL53L0X,"CJVL53L0XV2, 25 × 10.7 mm",3
+Electronica,Pantalla OLED SSD1306,"0.96"", I2C, dirección 0x3C, 4 pines",1
+Electronica,Botón de panel,"Ø7 mm, normalmente abierto",1
+Electronica,Interruptor de palanca,"MTS-102, Ø6 mm",1
+Electronica,Batería 2S 18650,"7.4 V, 3000 mAh, conector T y balanceo JST-XH",1
+Electronica,Conector T (Deans) hembra,Con 10 cm de cable calibre 14–16,1
+Electronica,Cargador balanceador 2S,Entrada JST-XH de 3 pines,1
+Electronica,Mini protoboard,"170 puntos, 35 × 47 mm, con adhesivo",2
+Electronica,Capacitor cerámico,100 nF (104),2
+Electronica,Header macho recto,"2.54 mm, tira de 40 (los rectos de siempre)",1
+Cables,Dupont hembra-macho 30 cm,"VL53L0X (3 × 5), OLED (4), L298N lógica (6) + 2 de repuesto",27
+Cables,Dupont macho-macho 30 cm,Se les corta un extremo: TCS34725 (4) y botón (2),6
+Cables,"Cable calibre 22 de silicón, rojo, negro, amarillo, blanco y naranja","Motores, interruptor, batería y Nano",1 m en total por color
+Cables,Jumpers rígidos de protoboard,Puentes del bus y del Nano al bus,8
+Cables,Cinchos chicos y termofit de 3 mm,Ordenar cables y aislar soldaduras,10 / 30 cm
+Tornilleria,Inserto de calor M3 (latón),"Columnas (4) y postes del L298N (4) del piso 1, cunas (4), capucha (2), patín (2)",16
+Tornilleria,Tornillo Allen M3 × 8,"L298N (4), piso 2 (4), capucha (2), patín (2)",12
+Tornilleria,Tornillo Allen M3 × 12,Cunas de motor,4
+Tornilleria,Velcro adhesivo 3 × 5 cm,Bajo la batería,1
