@@ -1,55 +1,72 @@
-"""Genera manual_ensamble.pdf, manual_uso.pdf y bom.csv.
+"""Genera manual_ensamble.pdf (manual de armado), manual_uso.pdf, bom.csv y cables.csv.
 
 Uso: python3 docs/generar_manuales.py
-Usa las imagenes de chasis/img/ y atmega328p/img/.
+Usa las imagenes de chasis/img/ (python3 chasis/renders.py) y la lista de cables que
+chasis.scad imprime con openscad. Si no hay openscad, usa docs/cables.csv.
 """
 import csv
 import os
+import re
+import shutil
+import subprocess
+import tempfile
 
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER
-from reportlab.lib.pagesizes import A4
+from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.platypus import (Image, KeepTogether, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table,
-                                TableStyle)
+from reportlab.platypus import (CondPageBreak, Image, KeepTogether, PageBreak, Paragraph, SimpleDocTemplate, Spacer,
+                                Table, TableStyle)
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 RAIZ = os.path.dirname(AQUI)
 IMG = os.path.join(RAIZ, "chasis", "img")
+SCAD = os.path.join(RAIZ, "chasis", "chasis.scad")
 
 # ---------- Estilos ----------
-FUENTE, NEGRITA = "Helvetica", "Helvetica-Bold"
-for f, n in (("DejaVuSans.ttf", "DV"), ("DejaVuSans-Bold.ttf", "DVB")):
+FUENTE, NEGRITA, CURSIVA = "Helvetica", "Helvetica-Bold", "Helvetica-Oblique"
+for f, n in (("DejaVuSans.ttf", "DV"), ("DejaVuSans-Bold.ttf", "DVB"), ("DejaVuSans-Oblique.ttf", "DVI")):
     ruta = os.path.join("/usr/share/fonts/truetype/dejavu", f)
     if os.path.exists(ruta):
         pdfmetrics.registerFont(TTFont(n, ruta))
 if "DV" in pdfmetrics.getRegisteredFontNames():
     FUENTE, NEGRITA = "DV", "DVB"
+    CURSIVA = "DVI" if "DVI" in pdfmetrics.getRegisteredFontNames() else "DV"
+    pdfmetrics.registerFontFamily("DV", normal="DV", bold="DVB", italic=CURSIVA, boldItalic="DVB")
 
-AZUL = colors.HexColor("#33415c")
-GRIS = colors.HexColor("#f2f4f7")
+AZUL = colors.HexColor("#1f4e79")
+AZUL_OSC = colors.HexColor("#14213d")
+ORO = colors.HexColor("#c8902a")
+FILA = colors.HexColor("#f3f5f8")
+REJILLA = colors.HexColor("#c3c9d2")
+VERIFICA = colors.HexColor("#e8eef9")
 AVISO = colors.HexColor("#fff4e5")
+ANCHO = 176 * mm
 
 base = getSampleStyleSheet()
 S = {
-    "t": ParagraphStyle("t", parent=base["Title"], fontName=NEGRITA, fontSize=24, leading=28, textColor=AZUL),
-    "st": ParagraphStyle("st", parent=base["Normal"], fontName=FUENTE, fontSize=12, leading=16,
-                         textColor=colors.HexColor("#555"), alignment=TA_CENTER),
-    "h1": ParagraphStyle("h1", parent=base["Heading1"], fontName=NEGRITA, fontSize=16, leading=20,
-                         textColor=AZUL, spaceBefore=6, spaceAfter=6),
-    "h2": ParagraphStyle("h2", parent=base["Heading2"], fontName=NEGRITA, fontSize=12.5, leading=16,
-                         textColor=AZUL, spaceBefore=8, spaceAfter=4),
-    "p": ParagraphStyle("p", parent=base["Normal"], fontName=FUENTE, fontSize=9.8, leading=13.5, spaceAfter=4),
-    "li": ParagraphStyle("li", parent=base["Normal"], fontName=FUENTE, fontSize=9.8, leading=13.5,
-                         leftIndent=12, bulletIndent=2, spaceAfter=2),
+    "t": ParagraphStyle("t", parent=base["Title"], fontName=NEGRITA, fontSize=30, leading=36, textColor=AZUL,
+                        alignment=0, spaceAfter=4),
+    "st": ParagraphStyle("st", parent=base["Normal"], fontName=FUENTE, fontSize=14, leading=19, textColor=AZUL_OSC),
+    "h1": ParagraphStyle("h1", parent=base["Heading1"], fontName=NEGRITA, fontSize=19, leading=24,
+                         textColor=AZUL, spaceBefore=8, spaceAfter=6),
+    "h2": ParagraphStyle("h2", parent=base["Heading2"], fontName=NEGRITA, fontSize=13, leading=17,
+                         textColor=AZUL_OSC, spaceBefore=8, spaceAfter=4),
+    "h3": ParagraphStyle("h3", parent=base["Heading3"], fontName=NEGRITA, fontSize=11.5, leading=15,
+                         textColor=AZUL_OSC, spaceBefore=6, spaceAfter=3),
+    "p": ParagraphStyle("p", parent=base["Normal"], fontName=FUENTE, fontSize=10, leading=14, spaceAfter=4),
+    "pz": ParagraphStyle("pz", parent=base["Normal"], fontName=FUENTE, fontSize=8.6, leading=11.5, spaceAfter=4),
+    "li": ParagraphStyle("li", parent=base["Normal"], fontName=FUENTE, fontSize=10, leading=14,
+                         leftIndent=14, bulletIndent=2, spaceAfter=3),
     "c": ParagraphStyle("c", parent=base["Normal"], fontName=FUENTE, fontSize=8.6, leading=11),
     "cb": ParagraphStyle("cb", parent=base["Normal"], fontName=NEGRITA, fontSize=8.6, leading=11,
                          textColor=colors.white),
+    "fig": ParagraphStyle("fig", parent=base["Normal"], fontName=CURSIVA, fontSize=9, leading=12,
+                          textColor=AZUL_OSC, alignment=1, spaceAfter=6),
     "pie": ParagraphStyle("pie", parent=base["Normal"], fontName=FUENTE, fontSize=8.5, leading=11,
-                          textColor=colors.HexColor("#666"), alignment=TA_CENTER),
+                          textColor=colors.HexColor("#666"), alignment=1),
 }
 
 
@@ -65,328 +82,517 @@ def h2(t):
     return Paragraph(t, S["h2"])
 
 
+def h3(t):
+    return Paragraph(t, S["h3"])
+
+
+def fig(t):
+    return Paragraph(t, S["fig"])
+
+
 def lista(items, num=False):
     return [Paragraph(t, S["li"], bulletText=f"{i}." if num else "•") for i, t in enumerate(items, 1)]
 
 
 def tabla(filas, anchos, cabecera=True):
     datos = [[Paragraph(str(c), S["cb"] if (cabecera and i == 0) else S["c"]) for c in f] for i, f in enumerate(filas)]
-    t = Table(datos, colWidths=[a * mm for a in anchos], repeatRows=1 if cabecera else 0)
-    estilo = [("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#bbb")),
+    escala = ANCHO / (sum(anchos) * mm) if sum(anchos) * mm > ANCHO else 1
+    t = Table(datos, colWidths=[a * mm * escala for a in anchos], repeatRows=1 if cabecera else 0)
+    estilo = [("GRID", (0, 0), (-1, -1), 0.5, REJILLA),
               ("VALIGN", (0, 0), (-1, -1), "TOP"),
-              ("LEFTPADDING", (0, 0), (-1, -1), 4), ("RIGHTPADDING", (0, 0), (-1, -1), 4)]
+              ("LEFTPADDING", (0, 0), (-1, -1), 5), ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+              ("TOPPADDING", (0, 0), (-1, -1), 3), ("BOTTOMPADDING", (0, 0), (-1, -1), 4)]
     if cabecera:
         estilo.append(("BACKGROUND", (0, 0), (-1, 0), AZUL))
-        estilo += [("BACKGROUND", (0, i), (-1, i), GRIS) for i in range(2, len(filas), 2)]
+        estilo += [("BACKGROUND", (0, i), (-1, i), FILA) for i in range(2, len(filas), 2)]
     t.setStyle(TableStyle(estilo))
     return t
 
 
-def caja(texto, color=AVISO):
-    t = Table([[Paragraph(texto, S["p"])]], colWidths=[170 * mm])
-    t.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), color), ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#e0a050")),
+def caja(texto, color=AVISO, ancho=ANCHO, borde=colors.HexColor("#e0a050")):
+    t = Table([[Paragraph(texto, S["p"])]], colWidths=[ancho])
+    t.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), color), ("BOX", (0, 0), (-1, -1), 0.5, borde),
                            ("LEFTPADDING", (0, 0), (-1, -1), 8), ("TOPPADDING", (0, 0), (-1, -1), 6),
                            ("BOTTOMPADDING", (0, 0), (-1, -1), 6)]))
     return t
 
 
-def img(ruta, ancho_mm, recorte=None):
+def verifica(texto, ancho=ANCHO):
+    t = Table([[Paragraph("<b>Verifica:</b> " + texto, S["p"])]], colWidths=[ancho])
+    t.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), VERIFICA),
+                           ("LEFTPADDING", (0, 0), (-1, -1), 8), ("TOPPADDING", (0, 0), (-1, -1), 6),
+                           ("BOTTOMPADDING", (0, 0), (-1, -1), 7)]))
+    return t
+
+
+def img(ruta, ancho_mm, alto_max_mm=None):
+    if not os.path.isabs(ruta):
+        ruta = os.path.join(IMG, ruta)
     if not os.path.exists(ruta):
         return p(f"[falta imagen {os.path.basename(ruta)}]")
-    if recorte:
-        from PIL import Image as PImage
-        im = PImage.open(ruta).crop(recorte)
-        tmp = os.path.join(AQUI, ".tmp_" + os.path.basename(ruta))
-        im.save(tmp)
-        ruta = tmp
     i = Image(ruta)
     escala = ancho_mm * mm / i.imageWidth
+    if alto_max_mm and i.imageHeight * escala > alto_max_mm * mm:
+        escala = alto_max_mm * mm / i.imageHeight
     i.drawWidth, i.drawHeight = i.imageWidth * escala, i.imageHeight * escala
     return i
 
 
-def pie_pagina(titulo):
+def lado_a_lado(izq, der, a_izq=96, a_der=80):
+    """Texto a la izquierda, imagen a la derecha (como en el manual de la prensa)."""
+    t = Table([[izq, der]], colWidths=[a_izq * mm, a_der * mm])
+    t.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                           ("RIGHTPADDING", (0, 0), (0, 0), 8), ("RIGHTPADDING", (1, 0), (1, 0), 0),
+                           ("TOPPADDING", (0, 0), (-1, -1), 0), ("BOTTOMPADDING", (0, 0), (-1, -1), 0)]))
+    return t
+
+
+def raya():
+    t = Table([[""]], colWidths=[ANCHO], rowHeights=[2])
+    t.setStyle(TableStyle([("LINEBELOW", (0, 0), (-1, -1), 0.5, colors.HexColor("#d5d9de"))]))
+    return t
+
+
+def bloque(izq, imagen, a_img, alto_img):
+    """Texto completo y debajo la imagen con sus etiquetas, centrada."""
+    if not imagen:
+        return [*izq, Spacer(1, 4), raya(), Spacer(1, 2)]
+    i = img(imagen, a_img, alto_img)
+    t = Table([[i]], colWidths=[ANCHO], style=[("ALIGN", (0, 0), (-1, -1), "CENTER")])
+    return [KeepTogether([*izq, Spacer(1, 3), t]), Spacer(1, 4), raya(), Spacer(1, 2)]
+
+
+def paso(titulo, piezas, items, nota_ver, imagen, herramienta=None, a_img=165, alto_img=100, extra=None):
+    izq = [Paragraph(titulo, S["h2"])]
+    linea = f"<b>Piezas:</b> {piezas}"
+    if herramienta:
+        linea += f" <b>Herramienta:</b> {herramienta}"
+    izq.append(Paragraph(linea, S["pz"]))
+    izq += lista(items, num=True)
+    if extra:
+        izq += extra
+    if nota_ver:
+        izq += [Spacer(1, 3), verifica(nota_ver)]
+    return bloque(izq, imagen, a_img, alto_img)
+
+
+def sub(titulo, items, nota_ver, imagen, a_img=165, alto_img=95, num=True, intro=None):
+    izq = [Paragraph(titulo, S["h3"])]
+    if intro:
+        izq.append(p(intro))
+    izq += lista(items, num=num)
+    if nota_ver:
+        izq += [Spacer(1, 3), verifica(nota_ver)]
+    return bloque(izq, imagen, a_img, alto_img)
+
+
+def marco(titulo):
     def dibujar(c, doc):
         c.saveState()
+        an, al = doc.pagesize
+        c.setStrokeColor(ORO)
+        c.setLineWidth(1.2)
+        c.line(20 * mm, al - 13 * mm, an - 20 * mm, al - 13 * mm)
         c.setFont(FUENTE, 8)
-        c.setFillColor(colors.HexColor("#888"))
-        c.drawString(20 * mm, 10 * mm, f"Robot laberinto · {titulo}")
-        c.drawRightString(190 * mm, 10 * mm, f"{doc.page}")
+        c.setFillColor(AZUL_OSC)
+        c.drawString(20 * mm, 10 * mm, f"{titulo} · Robot de laberinto")
+        c.drawRightString(an - 20 * mm, 10 * mm, f"{doc.page}")
         c.restoreState()
     return dibujar
 
 
 def construir(nombre, titulo, historia):
-    doc = SimpleDocTemplate(os.path.join(AQUI, nombre), pagesize=A4, leftMargin=20 * mm, rightMargin=20 * mm,
-                            topMargin=18 * mm, bottomMargin=18 * mm, title=titulo, author="Equipo robot laberinto")
-    doc.build(historia, onFirstPage=pie_pagina(titulo), onLaterPages=pie_pagina(titulo))
+    doc = SimpleDocTemplate(os.path.join(AQUI, nombre), pagesize=letter, leftMargin=20 * mm, rightMargin=20 * mm,
+                            topMargin=20 * mm, bottomMargin=18 * mm, title=titulo, author="Equipo robot laberinto")
+    doc.build(historia, onFirstPage=marco(titulo), onLaterPages=marco(titulo))
     print("Generado", nombre)
 
 
 # ---------- Datos ----------
+BOM_IMP = [
+    # pieza, material, proceso, cant
+    ["Piso 1 (base, soportes de VL53L0X y topes de batería)", "PETG o PLA", "Impresión 3D", "1"],
+    ["Piso 2 (marcos de protoboards y OLED)", "PETG o PLA", "Impresión 3D", "1"],
+    ["Cuna de motor", "PETG o PLA", "Impresión 3D", "2"],
+    ["Capucha del sensor de color con patín delantero", "PLA negro", "Impresión 3D", "1"],
+    ["Patín trasero", "PETG o PLA", "Impresión 3D", "1"],
+    ["Espaciador de 5 mm (L298N)", "PETG o PLA", "Impresión 3D", "4"],
+    ["Pieza de prueba de tolerancias", "El mismo de las demás", "Impresión 3D (primero)", "1"],
+]
 BOM_ELEC = [
-    ["Arduino Nano USB-C (ATmega328P, CH340) + cable USB-C de datos", "1", "Cerebro del robot"],
-    ["Motorreductor N20, 6 V, 300–500 RPM, sin encoder", "2", "Mismo modelo los dos"],
-    ["Rueda para N20, Ø34 × 20 mm, eje D de 3 mm", "2", "Si es otra medida, cambiar D_RUEDA en chasis.scad"],
-    ["Puente H L298N (Steren)", "1", "Quitar jumpers ENA/ENB"],
-    ["Sensor de color TCS34725 (módulo morado)", "1", "Se usa el pin VIN"],
-    ["Sensor de distancia VL53L0X (CJVL53L0XV2)", "3", "Izquierdo, frente y derecho"],
-    ["Pantalla OLED SSD1306 0.96\" I2C (0x3C)", "1", "4 pines: GND VCC SCL SDA"],
-    ["Botón de panel Ø7 mm, normalmente abierto", "1", "Botón de arranque"],
-    ["Interruptor de palanca MTS-102 (Ø6 mm)", "1", "Encendido/apagado"],
-    ["Batería 2S 18650, 7.4 V, 3000 mAh, conector T", "1", "Con balanceo JST-XH de 3 pines"],
-    ["Conector T (Deans) hembra con cables", "1", "Para conectar la batería al robot"],
-    ["Cargador balanceador 2S (JST-XH 3 pines)", "1", "USB 2S o tipo B3 / IMAX B6"],
-    ["Mini protoboard 170 puntos", "2", "Una para el Nano, otra para el bus I2C"],
-    ["Capacitor cerámico 100 nF", "2", "Uno soldado en cada motor"],
-    ["Header macho recto 2.54 mm, tira de 40", "1", "6 pines para cada VL53L0X (los rectos de siempre, no en L)"],
-    ["Cables dupont macho-macho (20 cm)", "20", "Protoboards y puentes"],
-    ["Cables dupont macho-hembra (20 cm)", "25", "3 × 6 de los VL53L0X + 4 del OLED + repuesto"],
-    ["Cable calibre 22, rojo y negro", "1 m c/u", "Batería, interruptor, motores"],
+    ["Arduino Nano USB-C", "ATmega328P, CH340, con headers soldados; cable USB-C de datos", "1"],
+    ["Motorreductor N20", "6 V, 300–500 RPM, sin encoder", "2"],
+    ["Rueda para N20", "Ø34 × 20 mm, eje D de 3 mm", "2"],
+    ["Puente H L298N", "Módulo rojo 43 × 43 mm con disipador", "1"],
+    ["Sensor de color TCS34725", "Módulo morado 20.5 × 20.5 mm", "1"],
+    ["Sensor de distancia VL53L0X", "CJVL53L0XV2, 25 × 10.7 mm", "3"],
+    ["Pantalla OLED SSD1306", "0.96\", I2C, dirección 0x3C, 4 pines", "1"],
+    ["Botón de panel", "Ø7 mm, normalmente abierto", "1"],
+    ["Interruptor de palanca", "MTS-102, Ø6 mm", "1"],
+    ["Batería 2S 18650", "7.4 V, 3000 mAh, conector T y balanceo JST-XH", "1"],
+    ["Conector T (Deans) hembra", "Con 10 cm de cable calibre 14–16", "1"],
+    ["Cargador balanceador 2S", "Entrada JST-XH de 3 pines", "1"],
+    ["Mini protoboard", "170 puntos, 35 × 47 mm, con adhesivo", "2"],
+    ["Capacitor cerámico", "100 nF (104)", "2"],
+    ["Header macho recto", "2.54 mm, tira de 40 (los rectos de siempre)", "1"],
+]
+BOM_CABLES = [
+    ["Dupont hembra-macho 30 cm", "VL53L0X (3 × 5), OLED (4), L298N lógica (6) + 2 de repuesto", "27"],
+    ["Dupont macho-macho 30 cm", "Se les corta un extremo: TCS34725 (4) y botón (2)", "6"],
+    ["Cable calibre 22 de silicón, rojo, negro, amarillo, blanco y naranja", "Motores, interruptor, batería y Nano", "1 m en total por color"],
+    ["Jumpers rígidos de protoboard", "Puentes del bus y del Nano al bus", "8"],
+    ["Cinchos chicos y termofit de 3 mm", "Ordenar cables y aislar soldaduras", "10 / 30 cm"],
 ]
 BOM_TORN = [
-    ["Separador M3 hembra-hembra 35 mm", "4", "Piso 1 → piso 2"],
-    ["Tornillo M3 × 8 cabeza cilíndrica", "8", "Separadores: 4 abajo, 4 arriba"],
-    ["Tornillo M3 × 16 cabeza cilíndrica", "4", "L298N"],
-    ["Tornillo M3 × 12 avellanado (cabeza plana)", "4", "Cunas de motor (quedan bajo la batería)"],
-    ["Tornillo M3 × 10 avellanado (cabeza plana)", "3", "Capucha de color (2) y patín (1)"],
-    ["Tuerca M3", "6", "4 se usan (L298N); sobran 2"],
+    ["Separador M3 hembra-hembra 35 mm", "4", "Postes entre piso 1 y piso 2"],
+    ["Tornillo M3 × 8 cabeza cilíndrica", "8", "Separadores: 4 por abajo del piso 1 y 4 por arriba del piso 2"],
+    ["Tornillo M3 × 16 cabeza cilíndrica", "4", "L298N, a través de los espaciadores impresos"],
+    ["Tuerca M3", "4", "Bajo el piso 1, en los tornillos del L298N"],
+    ["Tornillo M3 × 12 avellanado", "4", "Cunas de motor; roscan en la cuna"],
+    ["Tornillo M3 × 10 avellanado", "3", "Capucha de color (2) y patín trasero (1); roscan en el plástico"],
     ["Velcro adhesivo 3 × 5 cm", "1", "Bajo la batería"],
-    ["Cinchos de plástico chicos", "10", "Ordenar cables"],
+    ["Nota", "—", "Las cabezas avellanadas quedan a ras del piso 1, porque encima va la batería"],
 ]
-BOM_IMP = [
-    ["piso1", "1", "Plano, soportes hacia arriba", "Base, soportes de VL53L0X (postes + canal) y topes de batería integrados"],
-    ["piso2", "1", "Plano", "Marcos de protoboards y OLED integrados"],
-    ["cuna_motor", "2", "Plano (base abajo)", "Sujeta cada N20"],
-    ["capucha_color", "1", "Orejas abajo", "TCS34725 deslizable y patín delantero. Mejor en negro"],
-    ["patin", "1", "Domo arriba", "Apoyo trasero"],
-    ["espaciador", "4", "De pie", "L298N"],
-    ["prueba", "1", "Plano", "Imprimir primero"],
+HERRAMIENTAS = [
+    ["Imprimir", "Bambu Lab A2L o X2D, boquilla de 0.4 mm, PETG o PLA, Bambu Studio"],
+    ["Soldar", "Cautín de 30–60 W con punta fina, soldadura 60/40 de 0.8 mm, termofit, encendedor o pistola de calor"],
+    ["Cables", "Pinzas de corte, pelacables calibre 22, pinzas de punta"],
+    ["Armado", "Desarmador de cruz chico, desarmador plano de 2.5 mm (bornes del L298N), llave de 5.5 mm o pinzas para tuerca M3"],
+    ["Medir", "Multímetro, vernier"],
+    ["Programar", "Computadora con Microchip Studio 7 y avrdude (manual de uso)"],
 ]
-HERRAMIENTAS = ["Cautín y soldadura", "Desarmador de cruz chico", "Llave o pinzas para tuerca M3 (5.5 mm)",
-                "Multímetro", "Pinzas de corte y pelacables",
-                "Computadora con Microchip Studio 7 y avrdude (viene con Arduino IDE)"]
-PINES = [
-    ["L298N", "ENA / ENB", "D5 / D6"],
-    ["L298N", "IN1 / IN2 / IN3 / IN4", "D7 / D8 / D9 / D10"],
-    ["L298N", "12V", "Batería + (después del interruptor)"],
-    ["L298N", "GND", "GND común"],
-    ["L298N", "OUT1-OUT2 / OUT3-OUT4", "Motor izquierdo / motor derecho"],
-    ["VL53L0X izq / frente / der", "XSHUT", "A0 / A1 / A2"],
-    ["VL53L0X ×3, TCS34725, OLED", "SDA / SCL", "Bus col. 7 / col. 10 → A4 / A5"],
-    ["VL53L0X ×3 (VCC), TCS34725 (VIN), OLED (VCC)", "Alimentación", "Bus col. 1 → 5V del Nano"],
-    ["Todos los módulos", "GND", "Bus col. 4 → GND"],
-    ["VL53L0X", "GPIO1", "Sin conectar"],
-    ["TCS34725", "LED, INT, 3V3", "Sin conectar"],
-    ["Botón", "Una pata / la otra", "D2 / GND"],
-    ["Arduino Nano", "VIN", "Batería + (después del interruptor)"],
+
+TIPO = [  # prefijo del nombre del cable -> tipo y largo a cortar
+    ("Motor", "Calibre 22 soldado al motor"),
+    ("Conector T", "Calibre 22 (viene con el conector T)"),
+    ("Interruptor", "Calibre 22 soldado al interruptor"),
+    ("L298N GND", "Calibre 22"),
+    ("L298N", "Dupont hembra-macho 30 cm"),
+    ("VL53L0X", "Dupont hembra-macho 30 cm"),
+    ("OLED", "Dupont hembra-macho 30 cm"),
+    ("TCS34725", "Dupont macho-macho 30 cm sin un extremo, soldado"),
+    ("Boton", "Dupont macho-macho 30 cm sin un extremo, soldado"),
+    ("Puente", "Jumper rígido de protoboard"),
 ]
+COLOR_ES = {"red": "rojo", "black": "negro", "orange": "naranja", "yellow": "amarillo", "white": "blanco",
+            "cyan": "cian", "royalblue": "azul", "green": "verde", "hotpink": "rosa", "mediumpurple": "morado",
+            "sienna": "café"}
+
+
+def leer_cables():
+    """Lista de cables desde chasis.scad (echo de cable()); se guarda en cables.csv."""
+    csv_ruta = os.path.join(AQUI, "cables.csv")
+    if shutil.which("openscad"):
+        with tempfile.TemporaryDirectory() as tmp:
+            eco = os.path.join(tmp, "e.echo")
+            subprocess.run(["openscad", "-o", eco, SCAD], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            crudos = [re.match(r'ECHO: "CABLE\|(.*)\|(.*)\|(\d+)"', l) for l in open(eco)]
+        crudos = [(m[1], m[2], int(m[3])) for m in crudos if m]
+        completos = {n: [n, c, mm_] for n, c, mm_ in crudos if not n.endswith(" (abajo)")}
+        for n, c, mm_ in crudos:
+            if n.endswith(" (abajo)"):
+                b = n[:-len(" (abajo)")]
+                dest = completos.get(b) or next(v for k, v in completos.items() if k.startswith(b + " -> "))
+                dest[2] += mm_
+        filas = []
+        for n, c, mm_ in completos.values():
+            de, a = n.split(" -> ") if " -> " in n else (n, "otra mitad de su columna")
+            tipo = next(t for pre, t in TIPO if n.startswith(pre))
+            filas.append([de.replace("Boton", "Botón"), a, COLOR_ES.get(c, c), tipo, mm_])
+        orden = ["Motor", "Conector", "Interruptor", "L298N GND", "L298N", "VL53L0X izq", "VL53L0X frente",
+                 "VL53L0X der", "TCS", "OLED", "Botón", "Puente"]
+        filas.sort(key=lambda f: next(i for i, o in enumerate(orden) if f[0].startswith(o)))
+        with open(csv_ruta, "w", newline="", encoding="utf-8") as f:
+            w = csv.writer(f)
+            w.writerow(["De", "A", "Color", "Tipo", "Largo en el modelo (mm)"])
+            w.writerows(filas)
+        print("Generado cables.csv")
+    with open(csv_ruta, encoding="utf-8") as f:
+        return [r[:4] + [int(r[4])] for r in list(csv.reader(f))[1:]]
 
 
 def escribir_csv():
     with open(os.path.join(AQUI, "bom.csv"), "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
-        w.writerow(["Categoria", "Componente", "Cantidad", "Notas"])
-        for cat, filas in (("Electronica", BOM_ELEC), ("Tornilleria", BOM_TORN)):
-            for r in filas:
-                w.writerow([cat, *r])
+        w.writerow(["Categoria", "Componente", "Especificacion / donde va", "Cantidad"])
         for r in BOM_IMP:
             w.writerow(["Impresa 3D", r[0], r[1], r[3]])
+        for r in BOM_ELEC:
+            w.writerow(["Electronica", r[0], r[1], r[2]])
+        for r in BOM_CABLES:
+            w.writerow(["Cables", r[0], r[1], r[2]])
+        for r in BOM_TORN[:-1]:
+            w.writerow(["Tornilleria", r[0], r[2], r[1]])
     print("Generado bom.csv")
 
 
-# ---------- Manual de ensamble ----------
+# ---------- Manual de armado ----------
 def manual_ensamble():
+    cables = leer_cables()
     H = []
-    H += [Spacer(1, 30 * mm), Paragraph("Manual de ensamble", S["t"]),
-          Paragraph("Robot de laberinto · Arduino Nano (ATmega328P)", S["st"]), Spacer(1, 8 * mm),
-          img(os.path.join(IMG, "iso.png"), 150, (200, 120, 1250, 1000)), Spacer(1, 8 * mm),
-          tabla([["Sección", "Contenido"],
-                 ["1. Lista de material", "Electrónica, tornillería, piezas impresas y herramientas"],
-                 ["2. Impresión 3D", "Ajustes, orientación y tolerancias"],
-                 ["3. Preparación", "Medir, soldar y probar en la mesa"],
-                 ["4. Ensamble", "Cuatro pasos, de abajo hacia arriba"],
-                 ["5. Cableado", "Diagrama, tabla de pines y protoboard"],
-                 ["6. Verificación", "Antes de conectar la batería por primera vez"]], [45, 125]),
+
+    # Portada
+    H += [Spacer(1, 22 * mm), Paragraph("Manual de armado", S["t"]),
+          Paragraph("Robot de laberinto — Arduino Nano (ATmega328P), chasis impreso de 120 × 120 mm en dos pisos, "
+                    "sensores I2C deslizables y cableado completo", S["st"]),
+          Spacer(1, 8 * mm), img("iso.png", 150, 120), Spacer(1, 10 * mm),
+          p("<b>Equipo:</b> ______________________________________________________________"),
+          Paragraph("Microcontroladores 2 · Archivos de referencia: <i>chasis/chasis.scad</i>, <i>chasis/stl/</i>, "
+                    "<i>docs/bom.csv</i> y <i>docs/cables.csv</i>", S["pz"]),
           PageBreak()]
 
-    H += [h1("1. Lista de material"), h2("Electrónica"),
-          tabla([["Componente", "Cant.", "Notas"], *BOM_ELEC], [92, 18, 60]),
-          h2("Tornillería y sujeción"), tabla([["Pieza", "Cant.", "Dónde va"], *BOM_TORN], [92, 18, 60]),
-          h2("Piezas impresas (chasis/stl/)"), tabla([["Archivo", "Cant.", "Orientación", "Para qué"], *BOM_IMP],
-                                                       [35, 15, 40, 80]),
-          h2("Herramientas"), *lista(HERRAMIENTAS),
-          p("La misma lista está en <b>docs/bom.csv</b> para abrirla en Excel."), PageBreak()]
+    # 1. Como funciona
+    H += [h1("1. Cómo funciona"),
+          p("Tres VL53L0X miden las paredes a la izquierda, al frente y a la derecha; el Arduino Nano guarda el mapa del "
+            "laberinto y elige el camino con flood-fill. Las dos ruedas con motor N20 las mueve el puente H L298N, con "
+            "PWM del Timer0. Un TCS34725 mira el piso por una capucha y cuenta las marcas de color, que se ven en la "
+            "OLED. Todos los sensores y la OLED comparten un solo bus I2C armado en una mini protoboard. Abajo van "
+            "motores, batería y L298N; arriba, la electrónica de control."),
+          Table([[img("iso.png", 62, 60), img("fig_atras.png", 56, 60), img("fig_lado.png", 52, 60)]],
+                colWidths=[63 * mm, 58 * mm, 55 * mm],
+                style=[("VALIGN", (0, 0), (-1, -1), "MIDDLE"), ("ALIGN", (0, 0), (-1, -1), "CENTER")]),
+          fig("Fig. 1. Robot completo con todos sus cables: frente, atrás y lado."),
+          tabla([["Dato", "Valor"],
+                 ["Huella", "120 × 120 mm con ruedas (esquinas de R30 para girar en pasillos de 180 mm)"],
+                 ["Alto", "≈ 95 mm con los dupont parados en las protoboards"],
+                 ["Pisos", "Piso 1 a 22 mm del suelo; piso 2 sobre separadores de 35 mm"],
+                 ["Alimentación", "Batería 2S 18650 (7.4 V) → interruptor → L298N (12V) y VIN del Nano"],
+                 ["Bus I2C", "VL53L0X × 3 (direcciones 0x30–0x32), TCS34725 (0x29), OLED (0x3C), 400 kHz"],
+                 ["Piezas", "≈ 120 en total: 11 impresas, 21 tornillos y separadores, 85 cables"]], [45, 131]),
+          h1("2. Herramientas"),
+          tabla([["Para", "Herramienta"], *HERRAMIENTAS], [30, 146]),
+          PageBreak()]
 
-    H += [h1("2. Impresión 3D (Bambu Lab X2D)"),
-          caja("No tengo las especificaciones exactas de la X2D. Estos ajustes son los de cualquier Bambu Lab con "
-               "boquilla de 0.4 mm en Bambu Studio. Por eso lo primero es imprimir la <b>pieza de prueba</b> "
-               "y revisar que todo entre."),
-          h2("Ajustes en Bambu Studio"),
-          tabla([["Ajuste", "Valor", "Por qué"],
-                 ["Material", "PLA o PETG", "PETG aguanta mejor golpes y calor; PLA es más fácil"],
-                 ["Boquilla / capa", "0.4 mm / 0.2 mm", "Perfil estándar"],
-                 ["Paredes", "4", "Los pisos de 3 mm quedan casi sólidos y no se doblan"],
-                 ["Capas superior / inferior", "4 / 4", ""],
-                 ["Relleno", "25 % giroide", ""],
-                 ["Soportes", "No", "Ninguna pieza los necesita en la orientación indicada"],
-                 ["Costura (seam)", "Atrás / alineada", "Que no quede dentro de las ranuras de los sensores"],
-                 ["Compensación de pata de elefante", "0.15 mm", "Si no, la primera capa cierra los agujeros"],
-                 ["Compensación X-Y de agujeros", "0", "Las holguras ya vienen en el modelo"],
-                 ["Placa", "Textured PEI", "La pieza más grande mide 120 × 120 mm"]], [52, 38, 80]),
-          h2("Tolerancias que ya trae el modelo"),
-          tabla([["Elemento", "Medida nominal", "Medida impresa", "Variable en chasis.scad"],
-                 ["Agujero M3 pasante", "3.0", "3.4", "M3_PASO"],
-                 ["M3 roscado en plástico", "3.0", "2.8", "M3_ROSCA"],
-                 ["Ranura de PCB (VL53L0X, TCS34725)", "1.6", "2.0", "RANURA"],
-                 ["Ancho del VL53L0X en su soporte", "25.0", "25.4", "TOF + HOLGURA × 2"],
-                 ["Ranura del TCS34725", "20.5", "20.9", "COLOR_MOD + HOLGURA × 2"],
-                 ["Marco de protoboard", "35 × 47", "35.6 × 47.6", "PROTO + 0.3 × 2"],
-                 ["Marco del OLED", "27.3 × 27.8", "27.9 × 28.4", "OLED + 0.3 × 2"],
-                 ["Cuna del motor (ancho)", "12.0", "12.4", "HOLGURA × 2"],
-                 ["Cuna del motor (alto)", "10.0", "9.7 (aprieta)", "MOT_H − 0.3"],
-                 ["Botón de panel", "7.0", "7.3", "D_BOTON"],
-                 ["Interruptor MTS-102", "6.0", "6.3", "D_SWITCH"]], [55, 30, 30, 55]),
-          h2("Pieza de prueba"),
-          img(os.path.join(IMG, "pieza_prueba.png"), 80, (150, 150, 1250, 950)),
+    # 3. Lista de piezas
+    H += [h1("3. Lista de piezas"), h2("Piezas a fabricar"),
+          tabla([["Pieza", "Material", "Proceso", "Cant."], *BOM_IMP], [85, 35, 42, 14]),
+          h2("Componentes comerciales"),
+          tabla([["Componente", "Especificación", "Cant."], *BOM_ELEC], [52, 110, 14]),
+          h2("Cables"),
+          tabla([["Cable", "Para qué", "Cant."], *BOM_CABLES], [70, 80, 26]),
+          p("La lista completa, cable por cable, con su color y su largo, está en el <b>Anexo A</b>."),
+          h2("Tornillería"),
+          tabla([["Elemento", "Cant.", "Dónde va"], *BOM_TORN], [58, 14, 104]),
+          PageBreak()]
+
+    # 4. Preparacion de piezas
+    H += [h1("4. Preparación de piezas"), h2("4.1 Impresión 3D"),
+          p("Las holguras del modelo están ajustadas para la <b>Bambu Lab A2L</b> (cama móvil, boquilla de 0.4 mm): "
+            "ahí los agujeros salen unos 0.1 mm chicos y las ranuras unos 0.15 mm angostas. Todas las piezas caben "
+            "en una sola placa de <b>256 × 256 mm</b>, la cama de la <b>X2D</b>: archivo "
+            "<i>chasis/stl/placa_x2d.stl</i> (en Bambu Studio: clic derecho → <i>Dividir en objetos</i>)."),
+          lado_a_lado([
+              tabla([["Ajuste", "Valor"],
+                     ["Boquilla / capa", "0.4 mm / 0.2 mm"],
+                     ["Paredes / capas sup. e inf.", "4 / 4"],
+                     ["Relleno", "25 % giroide (espaciadores 100 %)"],
+                     ["Soportes", "No"],
+                     ["Pata de elefante", "0.15 mm"],
+                     ["Compensación X-Y de agujeros", "0 (ya está en el modelo)"],
+                     ["Costura", "Atrás, alineada"],
+                     ["Placa", "Textured PEI"]], [42, 50])],
+              [img("placa_x2d.png", 76, 76), fig("Fig. 2. Placa completa en la cama de 256 × 256 de la X2D.")], 96, 80),
+          Spacer(1, 4),
+          tabla([["Pieza", "Orientación en la cama", "Ajustes sugeridos", "Soportes"],
+                 ["Piso 1", "Plano, soportes de sensores hacia arriba", "PETG, 4 paredes, 25 %", "No"],
+                 ["Piso 2", "Plano, marcos hacia arriba", "PETG, 4 paredes, 25 %", "No"],
+                 ["Cuna de motor (2)", "Base abajo, hueco del motor arriba", "PETG, 4 paredes, 40 %", "No"],
+                 ["Capucha de color", "Orejas sobre la cama, patín arriba", "PLA negro, 4 paredes, 30 %", "No"],
+                 ["Patín trasero", "Base plana abajo, domo arriba", "PETG, 4 paredes, 40 %", "No"],
+                 ["Espaciador (4)", "De pie", "100 % de relleno", "No"]], [36, 62, 52, 26]),
           *lista([
-              "Imprímela con los mismos ajustes: <b>PIEZA=\"prueba\"</b> (o chasis/stl/prueba.stl).",
+              "Imprime primero la <b>pieza de prueba</b> (<i>chasis/stl/prueba.stl</i>), sola, con los mismos ajustes.",
               "Agujeros de arriba: M3 de 3.2, 3.4 y 3.6. El tornillo debe pasar libre en el de 3.4.",
               "Agujeros de abajo: 2.8 y 3.0. El M3 debe roscar apretado en el de 2.8.",
-              "Agujeros grandes: botón (7.3) e interruptor (6.3).",
-              "Bloque de la derecha: el N20 debe entrar empujando con el dedo, sin quedar flojo.",
-              "Soporte de abajo (el mismo del piso 1): mete un VL53L0X ya soldado, con sus 6 dupont puestos, "
-              "desde arriba. Debe bajar sin forzar hasta tocar el fondo y no bailar; el header y los dupont "
-              "quedan entre los dos postes sin tocarlos. Si entra apretado, sube RANURA a 2.1; si baila, bájala a 1.9.",
-              "Si algo queda apretado, sube HOLGURA a 0.25 o M3_PASO a 3.6 en chasis.scad y vuelve a exportar.",
-              "Mide también tu TCS34725 y tu OLED con vernier: si difieren más de 0.3 mm del modelo, cambia "
-              "COLOR_MOD u OLED antes de imprimir.",
+              "Agujeros grandes: botón (7.3) e interruptor (6.3). Bloque: el N20 entra empujando con el dedo.",
+              "Soporte de VL53L0X: el sensor, ya con sus dupont, baja sin forzar y no baila. Si entra apretado, sube "
+              "RANURA a 2.1 en chasis.scad; si baila, bájala a 1.9.",
+              "Si cambias algo, exporta otra vez: <font face='Courier' size='8'>openscad -D 'PIEZA=\"placa\"' "
+              "-o placa_x2d.stl chasis/chasis.scad</font>.",
           ]),
-          h2("Exportar los STL"),
-          p("Ya están en <b>chasis/stl/</b>. Si cambias una medida, abre chasis.scad en OpenSCAD, pon PIEZA con el "
-            "nombre de la pieza, F6 y File → Export → STL. Desde terminal:"),
-          Paragraph("<font face='Courier'>openscad -D 'PIEZA=\"piso1\"' -o piso1.stl chasis/chasis.scad</font>", S["p"]),
+          CondPageBreak(60 * mm),
+          h2("4.2 Soldadura"),
+          *lista([
+              "<b>Motores:</b> suelda un capacitor de 100 nF entre las dos terminales de cada N20. Luego un cable "
+              "amarillo (+) y uno blanco (−) de 10 cm a cada motor. Termofit en cada terminal.",
+              "<b>VL53L0X (3):</b> header recto de 6 pines con el <b>plástico del lado sin chip</b>; las puntas cortas se "
+              "sueldan del lado del chip. Recorta lo que sobresalga más de 1.5 mm.",
+              "<b>TCS34725:</b> a 4 dupont macho-macho de 30 cm córtales un extremo. Suelda las puntas cortadas a VIN (rojo), GND "
+              "(negro), SCL (cian) y SDA (azul), saliendo hacia el borde de los pines. No lleva header.",
+              "<b>Botón:</b> igual, un dupont rosa y uno negro sin un extremo, uno en cada pata.",
+              "<b>Interruptor (arnés de potencia):</b> rojo del conector T hembra a una pata exterior; a la pata "
+              "central, dos cables naranjas de 10 cm (uno al L298N y otro al Nano). Termofit en las tres patas.",
+              "<b>Conector T hembra:</b> su cable negro va directo al L298N; el rojo es el que se soldó al interruptor.",
+          ]),
+          h2("4.3 Preparar cables"),
+          *lista([
+              "Pela 6 mm de cada cable calibre 22 que va a un borne y estáñalo.",
+              "Para la protoboard, el naranja de VIN y el negro de GND del Nano: pela 8 mm y estáñalos para que entren rectos.",
+              "Respeta los colores de la Fig. 3: así revisar el cableado al final es comparar colores.",
+          ]),
+          img(os.path.join(RAIZ, "atmega328p", "img", "conexiones_nano.png"), 170),
+          fig("Fig. 3. Diagrama de conexiones. Los colores son los mismos que los de los cables del modelo."),
           PageBreak()]
 
-    H += [h1("3. Preparación"),
-          h2("Medir antes de imprimir"),
-          tabla([["Qué medir", "Valor del modelo", "Variable"],
-                 ["Diámetro y ancho de la rueda", "34 × 20 mm", "D_RUEDA, A_RUEDA"],
-                 ["Separación de agujeros del L298N", "37 mm", "L298_AG"],
-                 ["VL53L0X (ancho × alto del PCB)", "25 × 10.7 mm", "TOF"],
-                 ["Header recto (plástico / pin largo)", "2.5 / 6 mm", "HEADER"],
-                 ["Dupont hembra (largo del plástico)", "14 mm", "DUPONT"],
-                 ["Lado del TCS34725", "20.5 mm", "COLOR_MOD"],
-                 ["PCB del OLED", "27.3 × 27.8 mm", "OLED"],
-                 ["Batería (largo × ancho)", "65 × 37 mm", "BAT"]], [70, 40, 60]),
-          h2("Soldar"),
-          *lista([
-              "<b>Motores:</b> un capacitor de 100 nF entre las dos terminales de cada motor y dos cables de 20 cm.",
-              "<b>TCS34725:</b> suelda 4 cables de 25 cm <b>directo</b> a VIN, GND, SDA y SCL, del lado de "
-              "los componentes y saliendo hacia el borde de los pines. No lleva header: entra deslizando en una ranura.",
-              "<b>VL53L0X:</b> header <b>recto</b> de 6 pines. El <b>plástico va del lado SIN el chip</b> (atrás); "
-              "las puntas cortas atraviesan el PCB y se sueldan del lado del chip (si salen más de 1.5 mm, "
-              "recórtalas). Los pines largos (6 mm) quedan hacia atrás, perpendiculares al PCB. En el robot el "
-              "sensor va de pie con los pines arriba y apuntando hacia adentro; el dupont y el doblez del cable "
-              "ocupan unos 27 mm detrás del sensor, y el chasis deja ese espacio libre.",
-              "<b>OLED:</b> el header recto de fábrica, con los pines hacia atrás de la pantalla. Va con los pines "
-              "hacia la parte trasera del robot; el código ya gira la imagen 180°.",
-              "<b>Interruptor:</b> un cable del + del conector T al interruptor y otro de salida de 30 cm.",
-              "<b>Botón:</b> dos cables de 20 cm.",
-          ]),
-          h2("Probar en la mesa"),
-          *lista([
-              "Carga la batería (ver manual de uso).",
-              "Conecta todo en la mesa siguiendo la sección 5, sin chasis.",
-              "Pon el Nano en su protoboard, sube el código (manual de uso, sección 2) y enciende sosteniendo el botón: entras al modo calibración.",
-              "Revisa que la OLED muestre el color y tres distancias que cambien al acercar la mano.",
-              "Si sale <b>SIN SENSOR COLOR</b> o <b>SIN VL53L0X</b>, revisa ese cableado antes de ensamblar.",
-          ], num=True),
-          caja("Probar todo en la mesa toma 20 minutos y evita desarmar el robot completo por un cable flojo."),
-          PageBreak()]
-
-    pasos = [
-        ("Paso 1 · Motores y ruedas", "paso1.png", None, [
-            "Mete cada N20 en su cuna, con el eje hacia afuera.",
-            "Presenta la cuna bajo el piso 1. Atornilla 2 M3 × 12 avellanados desde arriba; roscan en la cuna. Aprieta hasta que el "
-            "motor no gire dentro de la cuna.",
-            "Presiona cada rueda en su eje. Debe quedar a 1–2 mm del hueco del piso, sin rozar.",
-            "Gira las ruedas con la mano: deben moverse libres.",
-        ]),
-        ("Paso 2 · Capucha de color y patín (vista de abajo)", "paso2.png", None, [
-            "Atornilla la capucha con 2 M3 × 10 avellanados desde arriba del piso 1. Roscan directo en sus orejas.",
-            "Atornilla el patín trasero con 1 M3 × 10 avellanado desde arriba.",
-            "Desliza el TCS34725 en la capucha por la abertura de atrás, con el LED hacia el suelo y el borde de los "
-            "cables hacia atrás, hasta que tope al frente. No necesita tornillos ni silicón.",
-            "Sus 4 cables suben por dentro de la capucha (la abertura de atrás llega hasta arriba, entran de lado) "
-            "y cruzan el piso 1 por la ranura de 14 × 6 que está sobre la capucha.",
-            "Pon el robot en el suelo: se apoya en las dos ruedas; los patines quedan a 0.5 mm.",
-        ]),
-        ("Paso 3 · L298N, batería, VL53L0X y separadores", "paso3.png", None, [
-            "Pon el L298N atrás, sobre 4 espaciadores, con 4 M3 × 16 desde arriba y tuerca abajo.",
-            "Quita los jumpers ENA y ENB del L298N. Motor izquierdo a OUT1-OUT2 y derecho a OUT3-OUT4. Los cables "
-            "de cada motor suben por la ranura de 10 × 10 de su lado, junto al L298N.",
-            "Pega el velcro y acomoda la batería entre sus topes, acostada a lo ancho y sobre el eje de las ruedas.",
-            "Conecta los 6 dupont a cada VL53L0X <b>antes</b> de meterlo. Bájalo por las ranuras de su soporte: "
-            "chip hacia afuera, pines arriba y apuntando hacia adentro. Entra solo, sin tornillos.",
-            "Dobla los cables hacia arriba justo donde termina el dupont. Detrás de cada sensor quedan ~27 mm "
-            "libres: no metas ahí cinchos ni cables sobrantes.",
-            "Atornilla los 4 separadores de 35 mm con M3 × 8 desde abajo del piso 1.",
-        ]),
-        ("Paso 4 · Piso 2: Nano, bus I2C, OLED, botón e interruptor", "paso4.png", "detalle_oled.png", [
-            "Pega las 2 mini protoboards dentro de su marco: la izquierda para el Nano (USB-C hacia atrás), "
-            "la derecha para el bus I2C.",
-            "Pasa el header del OLED por la ranura del marco (pines hacia atrás del robot) y acuéstalo, pantalla arriba.",
-            "Mete el botón y el interruptor en sus agujeros y apriétalos con su tuerca.",
-            "Sube los cables por las ranuras de 16 × 22 de cada lado: izquierda VL53L0X izquierdo y TCS34725; "
-            "derecha VL53L0X derecho, VL53L0X frontal y OLED. Los del L298N, por la ranura central.",
-            "Conecta el OLED por debajo: sus dupont cuelgan entre la batería y el conector del VL53L0X frontal.",
-            "Atornilla el piso 2 con 4 M3 × 8 sobre los separadores y haz el cableado de la sección 5.",
-        ]),
-    ]
-    H.append(h1("4. Ensamble"))
-    for titulo, im, extra, items in pasos:
-        H.append(KeepTogether([h2(titulo), img(os.path.join(IMG, im), 105, (150, 120, 1050, 900)), *lista(items, num=True)]))
-        if extra:
-            H.append(KeepTogether([p("Detalle bajo el piso 2: el plástico del header del OLED queda dentro de la ranura "
-                                     "y los 4 pines salen hacia abajo; ahí se conectan los dupont."),
-                                   img(os.path.join(IMG, extra), 150)]))
+    # 5. Armado paso a paso
+    H += [h1("5. Armado paso a paso"),
+          Paragraph("En cada imagen, las piezas en color son las que se agregan en ese paso; lo ya armado aparece en gris.",
+                    S["pz"]), Spacer(1, 2)]
+    H += paso("Paso 1. Motores y cunas",
+              "piso 1, 2 cunas de motor, 2 motores N20 con capacitor y cables, 4 M3×12 avellanados",
+              ["Voltea el piso 1. Mete cada N20 en su cuna con el eje hacia afuera y las terminales hacia el centro.",
+               "Presenta la cuna bajo el piso 1 y atornilla 2 M3×12 avellanados desde arriba; roscan en la cuna.",
+               "Pasa los dos cables de cada motor por la ranura de 10 × 10 de su lado, junto a donde irá el L298N.",
+               "Aprieta hasta que el motor no gire dentro de la cuna. Las cabezas deben quedar a ras del piso."],
+              "las cabezas no sobresalen del piso 1 (encima va la batería) y los cables no tocan el suelo.",
+              "paso1.png")
+    H += paso("Paso 2. Ruedas, capucha de color y patín",
+              "2 ruedas, capucha de color, patín trasero, TCS34725 con sus 4 cables, 3 M3×10 avellanados",
+              ["Presiona cada rueda en su eje; debe quedar a 1–2 mm del hueco del piso.",
+               "Atornilla la capucha con 2 M3×10 avellanados desde arriba y el patín con 1.",
+               "Desliza el TCS34725 en la capucha por la abertura de atrás, LED hacia el suelo, hasta que tope.",
+               "Sube sus 4 cables por dentro de la capucha y sácalos por la ranura de 14 × 6 del piso 1."],
+              "en el suelo, el robot se apoya en las ruedas y los patines quedan a 0.5 mm.",
+              "paso2.png")
+    H += sub("3.1 Reconoce el L298N",
+             ["<b>OUT1-OUT2</b> (izquierda) y <b>OUT3-OUT4</b> (derecha): motores.",
+              "Borne de potencia al frente: <b>12V</b>, <b>GND</b> y 5V (el 5V no se usa).",
+              "Header de lógica: <b>ENA IN1 IN2 IN3 IN4 ENB</b>. Quita los jumpers de ENA y ENB; deja el de 5V-EN.",
+              "El disipador va hacia atrás del robot; el header y los bornes de potencia, hacia la batería."],
+             None, "det_l298.png", intro="Antes de montarlo, ubica sus conexiones (vista desde arriba, frente del robot arriba).",
+             num=False)
+    H += paso("Paso 3. Puente H L298N y cables de motores",
+              "L298N, 4 espaciadores impresos, 4 M3×16, 4 tuercas M3",
+              ["Pon los 4 espaciadores sobre los agujeros de atrás del piso 1 y el L298N encima, disipador hacia atrás.",
+               "Atornilla 4 M3×16 desde arriba con tuerca abajo del piso 1.",
+               "Motor izquierdo: amarillo a OUT1 y blanco a OUT2. Motor derecho: amarillo a OUT3 y blanco a OUT4.",
+               "Aprieta los bornes con el desarmador plano y jala cada cable suave: no debe salir."],
+              "ningún cable de motor queda colgando bajo el piso 1 ni cerca de las ruedas.",
+              "paso3.png")
+    H += paso("Paso 4. Batería",
+              "batería 2S con su conector T macho, velcro",
+              ["Pega el velcro en el piso 1, entre los topes.",
+               "Acuesta la batería a lo ancho, sobre el eje, con sus cables hacia la izquierda.",
+               "Deja el conector T macho acostado sobre la batería, apuntando a la derecha. <b>No lo conectes todavía.</b>",
+               "El cable de balanceo (blanco) queda encima, a la izquierda; solo se usa para cargar."],
+              "entre la batería y el borde del L298N quedan ~4.5 mm libres para doblar los cables de potencia.",
+              "paso4.png")
+    H += paso("Paso 5. Sensores de distancia VL53L0X",
+              "3 VL53L0X con header, 15 dupont hembra-macho",
+              ["Conecta 5 dupont a cada sensor <b>antes</b> de meterlo: VIN rojo, GND negro, SCL cian, SDA azul y "
+               "XSHUT verde. GPIO1 queda libre.",
+               "Baja cada sensor por las ranuras de su soporte: chip hacia afuera, pines arriba apuntando hacia adentro.",
+               "Dobla los cables hacia arriba justo al final del dupont.",
+               "El cable del frente va por debajo del OLED hacia la ranura derecha; los laterales suben derecho."],
+              "cada sensor tocó el fondo de su soporte y detrás de él quedan ~27 mm libres.",
+              "paso5.png")
+    H += paso("Paso 6. Separadores y cables de lógica",
+              "4 separadores de 35 mm, 4 M3×8, 6 dupont hembra-macho",
+              ["Atornilla los 4 separadores con M3×8 desde abajo del piso 1.",
+               "Conecta un dupont a cada pin del header del L298N: ENA y ENB morados, IN1 a IN4 cafés.",
+               "Sube los 6 cables juntos, por encima de la batería, hacia el centro del robot."],
+              "los separadores no giran y los dupont están en la fila de adelante del header, no en la de 5V.",
+              "paso6.png")
+    H += paso("Paso 7. Piso 2 en la mesa",
+              "piso 2, 2 mini protoboards, Arduino Nano, 8 jumpers rígidos, OLED con 4 dupont, botón, interruptor con su arnés",
+              ["Pega las protoboards en su marco: izquierda para el Nano, derecha para el bus.",
+               "Clava el Nano con el USB hacia atrás, en las columnas 2 a 16 (contando desde adelante).",
+               "Bus: columna 1 GND, 4 5V, 7 SCL y 10 SDA. Une las dos mitades de cada una con un jumper.",
+               "Jumpers del Nano al bus: GND, 5V, A5 (SCL) y A4 (SDA); no se cruzan.",
+               "Pasa el header del OLED por su ranura (pines hacia atrás) y conecta sus 4 dupont por abajo.",
+               "Mete el botón y el interruptor en sus agujeros y apriétalos con su tuerca."],
+              "con el multímetro, cada columna del bus tiene continuidad de punta a punta y no con las demás.",
+              "paso7.png", a_img=165)
+    H += sub("7.1 Pines del OLED",
+             ["El plástico del header queda dentro de la ranura del piso 2.",
+              "Los 4 pines salen hacia abajo; ahí se conectan los dupont: GND negro, VCC rojo, SCL cian y SDA azul.",
+              "Los cables van a la ranura derecha y suben al bus."],
+             None, "detalle_oled.png", alto_img=70)
+    H += sub("8.1 Arnés de potencia",
+             ["Acerca el piso 2 por atrás, inclinado, con el arnés colgando.",
+              "Naranja corto del interruptor al <b>12V</b> del L298N.",
+              "Negro del conector T y negro largo (al Nano) juntos, torcidos, al <b>GND</b> del L298N.",
+              "Dobla los cables hacia arriba entre la batería y el L298N.",
+              "El otro naranja y el negro largo suben por la ranura central del piso 2."],
+             "jala cada cable del borne: ninguno sale. El conector T hembra sigue <b>sin conectar</b>.",
+             "det_arnes.png", intro="Los bornes quedan bajo el piso 2: se aprietan antes de cerrarlo.")
+    H += paso("Paso 8. Montar el piso 2",
+              "conjunto del paso 7, 4 M3×8",
+              ["Baja el piso 2 sobre los separadores pasando los cables: sensores izquierdos y TCS34725 por la ranura "
+               "izquierda; VL53L0X derecho, frontal y OLED por la derecha; L298N, botón y potencia por la central.",
+               "Revisa que ningún cable quede pellizcado entre separador y piso.",
+               "Atornilla 4 M3×8 en los separadores."],
+              "el piso 2 asienta plano en los 4 separadores y los cables de abajo no tocan las ruedas.",
+              "paso8.png")
+    H += paso("Paso 9. Conexiones en las protoboards",
+              "los cables que salen por las ranuras",
+              ["Cada sensor va a su hoyo del bus por color: rojo a 5V, negro a GND, azul a SDA y cian a SCL.",
+               "XSHUT verdes: izquierdo a A0, frente a A1 y derecho a A2 (fila de pines A, junto al canal).",
+               "L298N: ENA→D5, ENB→D6, IN1→D7, IN2→D8, IN3→D9, IN4→D10 (fila D, lado de afuera).",
+               "Botón: rosa a D2 y negro a GND de la fila D.",
+               "Naranja rígido a VIN y negro rígido a GND de la fila A del Nano.",
+               "Agrupa con cinchos los cables de cada sensor; usa el Anexo A como lista de revisión."],
+              "compara cable por cable con la Fig. 3 y el Anexo A antes de seguir.",
+              "paso9.png")
+    H += paso("Paso 10. Primera conexión de la batería",
+              "conector T",
+              ["Haz todas las revisiones de la sección 6.1.",
+               "Pon el interruptor en OFF y levanta el robot para que las ruedas giren en el aire.",
+               "Une el conector T macho de la batería con la hembra del robot y acuéstalo sobre la batería.",
+               "Enciende: la OLED debe decir LABERINTO LISTO."],
+              "nada se calienta en el primer minuto. Si algo huele o se calienta, apaga y desconecta el T.",
+              "paso10.png")
     H.append(PageBreak())
 
-    H += [h1("5. Cableado"),
-          img(os.path.join(RAIZ, "atmega328p", "img", "conexiones_nano.png"), 170), Spacer(1, 4 * mm),
-          tabla([["Módulo", "Pin", "Va a"], *PINES], [60, 45, 65]),
-          h2("Protoboards"),
-          p("<b>Izquierda:</b> el Nano montado cruzando el canal; cada pin queda con 2 o 3 hoyos libres para sus "
-            "cables. <b>Derecha (bus):</b> no tiene rieles. Cada línea usa las dos mitades de una columna, unidas "
-            "con un puente corto que cruza el canal central. Así quedan 8 hoyos libres por línea."),
-          tabla([["Columna", "Línea", "Conexiones"],
-                 ["1", "5V", "5V del Nano, VCC de los 3 VL53L0X, VIN del TCS34725, VCC de la OLED"],
-                 ["4", "GND", "GND del Nano y de los 5 módulos"],
-                 ["7", "SDA", "A4 y SDA de los 5 módulos"],
-                 ["10", "SCL", "A5 y SCL de los 5 módulos"]], [20, 20, 130]),
-          h2("Alimentación"),
+    # 6. Ajustes y pruebas
+    H += [h1("6. Ajustes y pruebas"), h2("6.1 Antes de conectar la batería"),
+          tabla([["", "Revisión"],
+                 ["☐", "Continuidad (batería desconectada): no hay pitido entre 12V y GND del L298N ni entre 5V y GND del Nano."],
+                 ["☐", "El interruptor en ON une el rojo del T con los dos naranjas; en OFF, no."],
+                 ["☐", "Los jumpers ENA y ENB del L298N están quitados; el de 5V-EN está puesto."],
+                 ["☐", "Nada usa la salida de 5V del L298N."],
+                 ["☐", "Las ruedas giran libres y ningún cable las toca."],
+                 ["☐", "El robot mide 120 × 120 mm o menos con las ruedas."]], [10, 166]),
+          h2("6.2 Primer encendido"),
           *lista([
-              "Batería + → interruptor → L298N 12V y VIN del Nano.",
-              "Batería − → L298N GND y GND del Nano. Todos los GND unidos.",
-              "No uses la salida de 5V del L298N. Los módulos toman 5V del pin 5V del Nano.",
+              "Sube el código (manual de uso, sección 2) con el interruptor en OFF.",
+              "Enciende sosteniendo el botón: modo calibración. La OLED muestra el color y las tres distancias.",
+              "Acerca la mano a cada VL53L0X: su distancia debe bajar. Si sale <b>SIN VL53L0X</b>, revisa su XSHUT.",
+              "Botón corto: las dos ruedas avanzan. Si una gira al revés, intercambia sus dos cables en el L298N.",
+              "Botón largo: gira a la derecha. Si gira a la izquierda, intercambia OUT1-2 con OUT3-4.",
+          ], num=True),
+          h2("6.3 Aprietes sugeridos"),
+          tabla([["Unión", "Apriete"],
+                 ["M3 roscado en plástico (cunas, capucha, patín)", "Firme con la mano y el desarmador corto; no forzar"],
+                 ["M3×16 del L298N con tuerca", "Hasta que el espaciador no gire"],
+                 ["Bornes del L298N", "Firme; jalar cada cable para comprobar"],
+                 ["Tuercas del botón y del interruptor", "Con los dedos y un cuarto de vuelta con pinzas"]], [80, 96]),
+          h1("7. Solución de problemas"),
+          tabla([["Síntoma", "Causa probable", "Qué hacer"],
+                 ["La OLED no prende", "Interruptor, VIN o bus I2C", "Mide 7–8 V en VIN; revisa los puentes del bus"],
+                 ["SIN SENSOR COLOR", "Cable del TCS34725 suelto", "Revisa sus 4 soldaduras y su hoyo en el bus"],
+                 ["SIN VL53L0X", "XSHUT o VIN de un sensor", "Revisa A0/A1/A2 y que el dupont siga en el pin"],
+                 ["El Nano se reinicia al arrancar", "Ruido de motores o batería baja", "Capacitores de 100 nF; carga la batería"],
+                 ["Un motor no gira", "Borne flojo o ENA/ENB", "Aprieta OUT y revisa D5/D6"],
+                 ["Una rueda roza", "Cable de motor o rueda muy adentro", "Acomoda el cable; saca la rueda 1 mm"],
+                 ["El sensor de color baila", "Ranura grande", "Calza con cinta; reimprime con RANURA menor"]],
+                [48, 56, 72]),
+          h1("8. Uso seguro"),
+          *lista([
+              "La batería es de litio: cárgala con cargador balanceador, sin dejarla sola y nunca por debajo de 6.4 V.",
+              "Desconecta el conector T para guardar el robot, programarlo con cambios de cableado o soldar.",
+              "No cortocircuites el conector T: un corto en una 2S calienta los cables en segundos.",
+              "Revisa cada semana que los bornes estén apretados y que ningún forro de cable esté pelado.",
           ]),
           PageBreak()]
 
-    H += [h1("6. Verificación"),
-          tabla([["", "Revisión"],
-                 ["☐", "Con el multímetro en continuidad y la batería desconectada: no hay pitido entre + y GND."],
-                 ["☐", "Las ruedas giran libres y no rozan el chasis."],
-                 ["☐", "El robot mide 120 × 120 mm o menos, incluidas las ruedas."],
-                 ["☐", "Ningún cable cuelga bajo el piso 1 ni toca las ruedas."],
-                 ["☐", "Primer encendido con el robot levantado: la OLED dice LABERINTO LISTO."],
-                 ["☐", "Modo calibración: las tres distancias y el color responden."],
-                 ["☐", "Avance de prueba (botón corto en calibración): las dos ruedas giran hacia adelante. Si una "
-                       "gira al revés, intercambia sus dos cables en el L298N."],
-                 ["☐", "Giro de prueba (botón largo): gira a la derecha. Si gira a la izquierda, intercambia los "
-                       "motores en el L298N."]], [10, 160]),
-          Spacer(1, 6 * mm), p("Con todo marcado, sigue con la calibración del <b>manual de uso</b>.")]
-    construir("manual_ensamble.pdf", "Manual de ensamble", H)
+    # Anexo A
+    H += [h1("Anexo A. Lista de cables"),
+          p("Sale del modelo 3D (chasis.scad): cada cable tiene una ruta y este es su largo, sin contar los conectores. Los dupont de "
+            "30 cm alcanzan para todos con holgura (el más largo mide 22 cm). Para los cables de calibre 22, corta el largo de la tabla más 30 mm."),
+          tabla([["De", "A", "Color", "Tipo", "Largo (mm)"], *[[c[0], c[1], c[2], c[3], c[4]] for c in cables]],
+                [44, 32, 18, 62, 20])]
+    construir("manual_ensamble.pdf", "Manual de armado", H)
 
 
 # ---------- Manual de uso ----------
@@ -394,7 +600,7 @@ def manual_uso():
     H = []
     H += [Spacer(1, 30 * mm), Paragraph("Manual de uso", S["t"]),
           Paragraph("Robot de laberinto · Arduino Nano (ATmega328P)", S["st"]), Spacer(1, 10 * mm),
-          img(os.path.join(IMG, "iso.png"), 130, (200, 120, 1250, 1000)), Spacer(1, 8 * mm),
+          img("iso.png", 130, 110), Spacer(1, 8 * mm),
           tabla([["Sección", "Contenido"],
                  ["1. Cómo funciona", "Qué hace el robot y cómo cuenta las marcas"],
                  ["2. Programarlo", "Microchip Studio y carga con avrdude"],

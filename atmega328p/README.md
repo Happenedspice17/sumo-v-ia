@@ -31,7 +31,7 @@ Uso: 13.8 KB de flash (42%) y 1.0 KB de RAM (50%).
 | Botón de arranque | a GND | D2 |
 | Batería 2S | + | interruptor → VIN |
 
-El Nano va en una mini protoboard; la otra es el bus I2C: columnas 1 (5V), 4 (GND), 7 (SDA) y 10 (SCL), cada una con un puente entre sus dos mitades.
+El Nano va en una mini protoboard; la otra es el bus I2C: columnas 1 (GND), 4 (5V), 7 (SCL) y 10 (SDA), contando desde adelante (mismo orden que los pines del Nano), cada una con un puente entre sus dos mitades.
 
 ## Programar con Microchip Studio
 

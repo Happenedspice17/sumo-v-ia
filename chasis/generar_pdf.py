@@ -26,7 +26,7 @@ SEP = 35
 Z2 = Z1 + ESP + SEP
 POSTES = [(42, 50), (-42, 50), (44, -46), (-44, -46)]
 BAT, BAT_Y = (65, 37, 19), 7
-L298, L298_Y, L298_AG = (43, 43, 27), -36, 37
+L298, L298_Y, L298_AG = (43, 43, 27), -37.5, 37
 TOF = (25, 10.7)
 TOF_FRENTE_Y, TOF_LADO = 54, (50, 34.5)
 TOF_CARA = 1.8                      # del centro del soporte a la cara del sensor
@@ -43,7 +43,7 @@ OLED_PINES_Y = OLED_Y - OLED[1] / 2 + 2.5
 BOTON_XY, SWITCH_XY = (-38, 5), (38, 5)
 RAN2_X = 26.5                       # ranuras de cables del piso 2
 PASILLO = 180
-ALTO = Z2 + ESP + PROTO[2] + 8
+ALTO = Z2 + ESP + PROTO[2] + 22          # dupont parados en las protoboards y sus cables
 
 C = {
     "piso": "#c9d6ea", "borde": "#33415c", "rueda": "#222222", "motor": "#d4a017",
@@ -137,7 +137,7 @@ def portada(pp):
     texto(fig, (
         "Cumple los lineamientos\n"
         f"• Huella {L} × {L} mm con ruedas (máximo 120 × 120).\n"
-        f"• Alto ≈ {ALTO:.0f} mm (sin límite).\n"
+        f"• Alto ≈ {ALTO:.0f} mm con cables (sin límite).\n"
         "• Sensor de color I2C, OLED y botón de arranque.\n\n"
         "Pisos\n"
         f"• Piso 1 (a {Z1:.0f} mm): motores, ruedas, patines,\n"
@@ -197,7 +197,7 @@ def planta_piso1(pp):
     for s in (-1, 1):
         for y in (-1, 1):
             caja(ax, s * xb, BAT_Y + y * (yb - 6), 2, 10, C["imp"], z=6)
-        caja(ax, s * 8, BAT_Y - yb, 8, 2, C["imp"], z=6)
+        caja(ax, s * 26, BAT_Y - yb, 8, 2, C["imp"], z=6)
         caja(ax, s * 14, BAT_Y + yb, 8, 2, C["imp"], z=6)
     soporte_tof(ax, 0, TOF_FRENTE_Y, "N")
     soporte_tof(ax, TOF_LADO[0], TOF_LADO[1], "E")
