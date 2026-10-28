@@ -333,7 +333,7 @@ def manual_ensamble():
             "libres: no metas ahí cinchos ni cables sobrantes.",
             "Atornilla los 4 separadores de 35 mm con M3 × 8 desde abajo del piso 1.",
         ]),
-        ("Paso 4 · Piso 2: Nano, bus I2C, OLED, botón e interruptor", "paso4.png", None, [
+        ("Paso 4 · Piso 2: Nano, bus I2C, OLED, botón e interruptor", "paso4.png", "detalle_oled.png", [
             "Pega las 2 mini protoboards dentro de su marco: la izquierda para el Nano (USB-C hacia atrás), "
             "la derecha para el bus I2C.",
             "Pasa el header del OLED por la ranura del marco (pines hacia atrás del robot) y acuéstalo, pantalla arriba.",
@@ -345,8 +345,12 @@ def manual_ensamble():
         ]),
     ]
     H.append(h1("4. Ensamble"))
-    for titulo, im, _, items in pasos:
+    for titulo, im, extra, items in pasos:
         H.append(KeepTogether([h2(titulo), img(os.path.join(IMG, im), 105, (150, 120, 1050, 900)), *lista(items, num=True)]))
+        if extra:
+            H.append(KeepTogether([p("Detalle bajo el piso 2: el plástico del header del OLED queda dentro de la ranura "
+                                     "y los 4 pines salen hacia abajo; ahí se conectan los dupont."),
+                                   img(os.path.join(IMG, extra), 150)]))
     H.append(PageBreak())
 
     H += [h1("5. Cableado"),

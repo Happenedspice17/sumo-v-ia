@@ -301,6 +301,20 @@ def planta_piso2(pp):
     plt.close(fig)
 
 
+def oled_pines(ax, c, ancho):
+    """Header del OLED dentro de la ranura del piso 2, pines y dupont hacia abajo."""
+    z0 = Z2 + ESP
+    caja(ax, c, z0 - HEADER / 2, ancho, HEADER, "#666", z=6)
+    n = 1 if ancho < 5 else 4
+    for k in range(n):
+        x = c + (k - (n - 1) / 2) * 2.54
+        ax.plot([x, x], [z0 + 1.6, z0 - HEADER - 6], color="#c9a227", lw=0.8, zorder=7)
+    caja(ax, c, z0 - HEADER - DUPONT / 2, ancho, DUPONT, "#111", z=6)
+    ax.plot([c, c], [z0 - HEADER - DUPONT, z0 - HEADER - DUPONT - 5], color=C["proto"], lw=1.2, zorder=6)
+    ax.annotate("pines OLED", (c, z0 - HEADER - DUPONT / 2), (c + 22, z0 - 22), fontsize=6.5,
+                arrowprops=dict(arrowstyle="-", lw=0.6), zorder=8)
+
+
 def alzados(pp):
     fig = pagina("Alzados", "Vista lateral (izquierda) y frontal (derecha)")
     ax = ejes(fig, [0.02, 0.06, 0.52, 0.84], ((-110, 140), (-15, 130)))
@@ -326,6 +340,7 @@ def alzados(pp):
     caja(ax, PROTO_Y, Z2 + ESP + PROTO[2] / 2, PROTO[1], PROTO[2], "#f4f4f4", "proto", fs=6)
     caja(ax, PROTO_Y + 1, Z2 + ESP + PROTO[2] + 4, NANO[1], 3, C["placa"], z=4)
     caja(ax, OLED_Y, Z2 + ESP + 1.5, OLED[1], 3, "#223")
+    oled_pines(ax, OLED_PINES_Y, 2.5)
     caja(ax, PASILLO / 2 + 6, 50, 12, 100, C["pared"], alpha=0.35)
     ax.text(PASILLO / 2 + 6, 104, "pared", ha="center", fontsize=6)
     for z, off in ((Z1, -12), (Z2, -24), (ALTO, -36)):
@@ -350,6 +365,8 @@ def alzados(pp):
         caja(ax2, s * (PASILLO / 2 + 6), 50, 12, 100, C["pared"], alpha=0.35)
         caja(ax2, s * (PROTO[0] / 2 + 1.1), Z2 + ESP + PROTO[2] / 2, PROTO[0], PROTO[2], "#f4f4f4", z=4)
     caja(ax2, 0, Z1 + ESP + BAT[2] / 2, BAT[0], BAT[2], C["bat"], z=3)
+    caja(ax2, 0, Z2 + ESP + 1.5, OLED[0], 3, "#223", z=5)
+    oled_pines(ax2, 0, 4 * 2.54)
     caja(ax2, 0, COLOR_Z + 0.8, COLOR_MOD, 1.6, C["color"], z=4)
     cota(ax2, (-L / 2, 0), (L / 2, 0), f"{L} (máximo)", off=-10)
     cota(ax2, (-PASILLO / 2, 100), (PASILLO / 2, 100), f"pasillo {PASILLO}", off=12)
