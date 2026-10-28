@@ -68,9 +68,13 @@ PROTO = [35, 47, 9.5];   // mini protoboard 170 puntos (X, Y, Z)
 PROTO_Y = -32.6;
 NANO = [18, 44];
 OLED = [27.3, 27.8];     // PCB del OLED 0.96" (medir el suyo)
-OLED_Y = 22;
-BOTON_XY = [-40, 25];
-SWITCH_XY = [40, 25];
+OLED_Y = 17.5;           // pines hacia atras, sobre el hueco entre bateria y L298N
+BOTON_XY = [-38, 5];
+SWITCH_XY = [38, 5];
+PASO_PIN = 2.54;
+DUPONT = [2.5, 14];      // conector dupont hembra (lado, largo)
+
+OLED_PINES_Y = OLED_Y - OLED[1] / 2 + 2.5;
 
 // ---------- Utilidades ----------
 module cuadrado_redondo(l, r, h) {
@@ -146,10 +150,11 @@ module piso2() {
       }
     }
     for (p = POSTES) translate([p[0], p[1], 0]) agujero(M3_PASO, ESP);
-    translate([0, OLED_Y + OLED[1] / 2 - 2.5, ESP / 2]) cube([13, 4.5, ESP + 2], center = true);   // pines del OLED
-    translate([0, OLED_Y - 2, ESP / 2]) cube([20, 14, ESP + 2], center = true);                  // aligera
+    translate([0, OLED_PINES_Y, ESP / 2]) cube([13, 4.5, ESP + 2], center = true);               // pines del OLED
+    translate([0, OLED_Y + 3, ESP / 2]) cube([20, 14, ESP + 2], center = true);                  // aligera
     translate([0, -3, ESP / 2]) cube([60, 6, ESP + 2], center = true);                           // cables de abajo
-    translate([0, 46, ESP / 2]) cube([24, 5, ESP + 2], center = true);                           // cables del frente
+    translate([0, TOF_FRENTE_Y - 2, ESP / 2]) cube([24, 5, ESP + 2], center = true);             // cables del VL53L0X frontal
+    for (s = [-1, 1]) translate([s * (TOF_LADO[0] - 2), TOF_LADO[1], ESP / 2]) cube([5, 20, ESP + 2], center = true);   // laterales
     translate([BOTON_XY[0], BOTON_XY[1], 0]) agujero(D_BOTON, ESP);
     translate([SWITCH_XY[0], SWITCH_XY[1], 0]) agujero(D_SWITCH, ESP);
   }
@@ -234,9 +239,56 @@ module postes(z, h) {
   for (p = POSTES) color("silver") translate([p[0], p[1], z]) cylinder(d = 5.5, h = h, $fn = 6);
 }
 
+// Fila de pines con sus conectores dupont y cables. Pines hacia +Z desde z = 0.
+module pines(n, largo = 6, dupont = true, cables = ["red", "black", "royalblue", "cyan", "green", "orange"]) {
+  for (k = [0 : n - 1]) translate([(k - (n - 1) / 2) * PASO_PIN, 0, 0]) {
+    color("gold") translate([-0.32, -0.32, -1]) cube([0.64, 0.64, largo + 1]);
+    if (dupont) {
+      color("black") translate([-DUPONT[0] / 2, -DUPONT[0] / 2, 0.5]) cube([DUPONT[0], DUPONT[0], DUPONT[1]]);
+      color(cables[k % len(cables)]) translate([0, 0, DUPONT[1] + 0.5]) cylinder(d = 1.4, h = 6, $fn = 8);
+    }
+  }
+}
+
+// VL53L0X con header en angulo recto: los pines salen hacia arriba por detras del PCB
 module tof_modulo() {
   color("green") translate([0, 0.5, TOF[1] / 2]) cube([TOF[0], 1.6, TOF[1]], center = true);
   color("black") translate([0, 1.8, TOF[1] / 2]) cube([4.4, 1, 2.4], center = true);
+  color("dimgray") translate([0, -1.55, TOF[1] - 1.3]) cube([6 * PASO_PIN, 2.5, 2.5], center = true);
+  translate([0, -1.55, TOF[1] - 0.05]) pines(6, cables = ["red", "black", "cyan", "royalblue", "white", "green"]);
+}
+
+// OLED acostado: espaciador del header dentro de la ranura y pines hacia abajo
+module oled_modulo() {
+  color("navy") translate([0, OLED_Y, 1.5]) cube([OLED[0], OLED[1], 3], center = true);
+  color("black") translate([0, OLED_Y + 2, 3]) cube([26, 19, 0.6], center = true);
+  color("dimgray") translate([0, OLED_PINES_Y, -1.25]) cube([4 * PASO_PIN, 2.5, 2.5], center = true);
+  translate([0, OLED_PINES_Y, -2.5]) mirror([0, 0, 1]) pines(4, cables = ["black", "red", "cyan", "royalblue"]);
+}
+
+// TCS34725 con 4 cables soldados que salen por atras (cara del sensor hacia abajo)
+module tcs_modulo() {
+  color("purple") cube([COLOR_MOD, COLOR_MOD, 1.6], center = true);
+  color("white") translate([0, 0, -1.3]) cube([3, 3, 1], center = true);
+  for (k = [0 : 6]) color("silver") translate([(k - 3) * PASO_PIN, -COLOR_MOD / 2 + 1.3, 0.8]) cylinder(d = 1.6, h = 0.2);
+  cab = ["red", "black", "cyan", "royalblue"];
+  for (k = [0 : 3]) color(cab[k]) translate([(k - 1.5) * PASO_PIN, -COLOR_MOD / 2 + 1.3, 1]) {
+    cylinder(d = 1.4, h = 3, $fn = 8);
+    translate([0, 0, 3]) rotate([90, 0, 0]) cylinder(d = 1.4, h = 14, $fn = 8);
+  }
+}
+
+// Boton e interruptor con su cuerpo bajo el piso 2
+module boton() {
+  color("black") cylinder(d = 10, h = 6);
+  color("dimgray") translate([0, 0, -ESP - 12]) cylinder(d = 7, h = 12);
+  for (x = [-1, 1]) color("silver") translate([x * 2 - 0.4, -1, -ESP - 17]) cube([0.8, 2, 5]);
+}
+
+module interruptor() {
+  color("silver") cylinder(d = 3, h = 10);
+  color("dimgray") translate([-4, -6.5, -ESP - 10]) cube([8, 13, 10]);
+  for (y = [-1, 0, 1]) color("silver") translate([-1, y * 4.7 - 0.25, -ESP - 15]) cube([2, 0.5, 5]);
 }
 
 module ensamble() {
@@ -251,7 +303,7 @@ module ensamble() {
   mostrar(2) {
     color("orange") translate([0, PATIN_Y, 0]) patin();
     color("orange") translate([0, COLOR_Y, 2]) capucha_color();
-    color("purple") translate([0, COLOR_Y, COLOR_Z + 0.8]) cube([COLOR_MOD, COLOR_MOD, 1.6], center = true);
+    translate([0, COLOR_Y, COLOR_Z + 0.8]) tcs_modulo();
   }
   mostrar(3) {
     color("royalblue") translate([0, BAT_Y, Z1 + ESP + BAT[2] / 2]) cube(BAT, center = true);
@@ -266,10 +318,9 @@ module ensamble() {
     for (s = [-1, 1]) color("white") translate([s * xp, PROTO_Y, Z2 + ESP + PROTO[2] / 2]) cube(PROTO, center = true);
     color("darkcyan") translate([-xp, PROTO_Y + 1, Z2 + ESP + PROTO[2] + 4]) cube([NANO[0], NANO[1], 1.6], center = true);
     color("silver") translate([-xp, PROTO_Y + 1 - NANO[1] / 2 + 3, Z2 + ESP + PROTO[2] + 6.4]) cube([9, 7.5, 3.2], center = true);
-    color("navy") translate([0, OLED_Y, Z2 + ESP + 1.5]) cube([OLED[0], OLED[1], 3], center = true);
-    color("black") translate([0, OLED_Y - 2, Z2 + ESP + 3]) cube([26, 19, 0.6], center = true);
-    color("black") translate([BOTON_XY[0], BOTON_XY[1], Z2 + ESP]) cylinder(d = 10, h = 6);
-    color("dimgray") translate([SWITCH_XY[0], SWITCH_XY[1], Z2 + ESP]) cylinder(d = 3, h = 10);
+    translate([0, 0, Z2 + ESP]) oled_modulo();
+    translate([BOTON_XY[0], BOTON_XY[1], Z2 + ESP]) boton();
+    translate([SWITCH_XY[0], SWITCH_XY[1], Z2 + ESP]) interruptor();
   }
 }
 

@@ -139,6 +139,7 @@ BOM_ELEC = [
     ["Cargador balanceador 2S (JST-XH 3 pines)", "1", "USB 2S o tipo B3 / IMAX B6"],
     ["Mini protoboard 170 puntos", "2", "Una para el Nano, otra para el bus I2C"],
     ["Capacitor cerámico 100 nF", "2", "Uno soldado en cada motor"],
+    ["Header macho en ángulo recto (90°), tira de 40", "1", "6 pines para cada VL53L0X"],
     ["Cables dupont macho-macho y macho-hembra (20 cm)", "20 + 20", ""],
     ["Cable calibre 22, rojo y negro", "1 m c/u", "Batería, interruptor, motores"],
 ]
@@ -279,9 +280,11 @@ def manual_ensamble():
               "<b>Motores:</b> un capacitor de 100 nF entre las dos terminales de cada motor y dos cables de 20 cm.",
               "<b>TCS34725:</b> suelda 4 cables de 25 cm <b>directo</b> a VIN, GND, SDA y SCL, del lado de "
               "los componentes y saliendo hacia el borde de los pines. No lleva header: entra deslizando en una ranura.",
-              "<b>VL53L0X:</b> header recto del lado <b>contrario</b> al sensor, con los pines apuntando hacia "
-              "atrás. Quedan arriba al meterlo en su soporte.",
-              "<b>OLED:</b> el header de fábrica, con los pines hacia atrás de la pantalla.",
+              "<b>VL53L0X:</b> header de 6 pines <b>en ángulo recto (90°)</b>, soldado del lado contrario al "
+              "sensor, con los pines largos apuntando hacia arriba (paralelos al PCB). Así el dupont se conecta "
+              "desde arriba y no choca con la batería.",
+              "<b>OLED:</b> el header recto de fábrica, con los pines hacia atrás de la pantalla. Va con los pines "
+              "hacia la parte trasera del robot; el código ya gira la imagen 180°.",
               "<b>Interruptor:</b> un cable del + del conector T al interruptor y otro de salida de 30 cm.",
               "<b>Botón:</b> dos cables de 20 cm.",
           ]),
@@ -317,12 +320,14 @@ def manual_ensamble():
             "Quita los jumpers ENA y ENB del L298N. Motor izquierdo a OUT1-OUT2 y derecho a OUT3-OUT4.",
             "Pega el velcro y acomoda la batería entre sus topes, acostada a lo ancho.",
             "Baja cada VL53L0X por las ranuras de su soporte: chip hacia afuera, pines arriba. Entra solo, sin tornillos.",
+            "Conecta sus 6 dupont desde arriba antes de poner el piso 2; los cables suben por la ranura que "
+            "queda justo encima de cada sensor.",
             "Atornilla los 4 separadores de 35 mm con M3 × 8 desde abajo del piso 1.",
         ]),
         ("Paso 4 · Piso 2: Nano, bus I2C, OLED, botón e interruptor", "paso4.png", None, [
             "Pega las 2 mini protoboards dentro de su marco: la izquierda para el Nano (USB-C hacia atrás), "
             "la derecha para el bus I2C.",
-            "Pasa el header del OLED por la ranura del marco y acuéstalo, pantalla arriba.",
+            "Pasa el header del OLED por la ranura del marco (pines hacia atrás del robot) y acuéstalo, pantalla arriba.",
             "Mete el botón y el interruptor en sus agujeros y apriétalos con su tuerca.",
             "Sube los cables del piso 1 por las ranuras y conecta el OLED por debajo.",
             "Atornilla el piso 2 con 4 M3 × 8 sobre los separadores y haz el cableado de la sección 5.",

@@ -34,8 +34,9 @@ COLOR_Y, COLOR_MOD, COLOR_Z = 34, 20.5, 5
 PATIN_Y = -52
 PROTO, PROTO_Y = (35, 47, 9.5), -32.6
 NANO = (18, 44)
-OLED, OLED_Y = (27.3, 27.8), 22
-BOTON_XY, SWITCH_XY = (-40, 25), (40, 25)
+OLED, OLED_Y = (27.3, 27.8), 17.5
+OLED_PINES_Y = OLED_Y - OLED[1] / 2 + 2.5
+BOTON_XY, SWITCH_XY = (-38, 5), (38, 5)
 PASILLO = 180
 ALTO = Z2 + ESP + PROTO[2] + 8
 
@@ -245,9 +246,11 @@ def planta_piso2(pp):
     caja(ax, -xp, PROTO_Y - NANO[1] / 2 - 1, 9, 6, "#999", "USB-C", fs=6, z=6)
     caja(ax, 0, OLED_Y, OLED[0] + 3.8, OLED[1] + 3.8, C["imp"], z=3)
     caja(ax, 0, OLED_Y, OLED[0], OLED[1], "#223", "OLED", tc="white", z=4)
-    caja(ax, 0, OLED_Y + OLED[1] / 2 - 2.5, 13, 4.5, "white", "pines", fs=5.5, z=5)
+    caja(ax, 0, OLED_PINES_Y, 13, 4.5, "white", "pines", fs=5.5, z=5)
     caja(ax, 0, -3, 60, 6, "white", z=6)
-    caja(ax, 0, 46, 24, 5, "white", z=6)
+    caja(ax, 0, TOF_FRENTE_Y - 2, 24, 5, "white", z=6)
+    for s in (-1, 1):
+        caja(ax, s * (TOF_LADO[0] - 2), TOF_LADO[1], 5, 20, "white", z=6)
     ax.add_patch(Circle(BOTON_XY, 5, fc="#333", ec="k", zorder=5))
     ax.text(BOTON_XY[0], BOTON_XY[1] + 8, "botón Ø7", ha="center", fontsize=7)
     ax.add_patch(Circle(SWITCH_XY, 3.2, fc="#777", ec="k", zorder=5))
@@ -268,8 +271,11 @@ def planta_piso2(pp):
         "atrás (se programa sin desarmar).\n"
         "Protoboard derecha: bus I2C. Columnas con puente\n"
         "entre mitades: 1 → 5V   4 → GND   7 → SDA   10 → SCL\n\n"
-        "Ranuras: 60 × 6 central y 24 × 5 al frente, para los\n"
-        "cables que suben del piso 1.\n"
+        "OLED con los pines hacia atrás: sus conectores\n"
+        "quedan en el hueco entre batería y L298N. El código\n"
+        "gira la imagen 180° para leerla desde atrás.\n\n"
+        "Ranuras: 60 × 6 central; 24 × 5 y 5 × 20 justo sobre\n"
+        "los conectores de los 3 VL53L0X.\n"
         "Botón de panel Ø7 e interruptor MTS-102 Ø6."
     ))
     pp.savefig(fig)

@@ -13,6 +13,7 @@ Electronica,Conector T (Deans) hembra con cables,1,Para conectar la batería al 
 Electronica,Cargador balanceador 2S (JST-XH 3 pines),1,USB 2S o tipo B3 / IMAX B6
 Electronica,Mini protoboard 170 puntos,2,"Una para el Nano, otra para el bus I2C"
 Electronica,Capacitor cerámico 100 nF,2,Uno soldado en cada motor
+Electronica,"Header macho en ángulo recto (90°), tira de 40",1,6 pines para cada VL53L0X
 Electronica,Cables dupont macho-macho y macho-hembra (20 cm),20 + 20,
 Electronica,"Cable calibre 22, rojo y negro",1 m c/u,"Batería, interruptor, motores"
 Tornilleria,Separador M3 hembra-hembra 35 mm,4,Piso 1 → piso 2
