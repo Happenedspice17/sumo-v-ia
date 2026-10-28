@@ -61,19 +61,19 @@ VISTAS = {
         ("Motor N20", (-30, -6, 14), (-260, 60)),
         ("Capacitor 100 nF\nentre terminales", (-12.5, 0, 19.5), (-250, -150)),
         ("Cables por la\nranura de 10 × 10", (-27, -27, 30), (-180, -170)),
-        ("M3×12 avellanado\n(desde arriba)", (35, -9, 26), (180, -160)),
+        ("Oreja con inserto;\nM3×12 desde arriba", (26.5, 29, 10.5), (180, -160)),
     ]),
     "paso2": ({"PASO": 2}, ABAJO_FRENTE, [
         ("TCS34725: entra deslizando\npor atrás, LED al suelo", (0, 28, 6), (280, 200)),
-        ("Capucha (2 M3×10\navellanados)", (-14, 46, 8), (-300, 140)),
+        ("Capucha (2 M3×8)", (-14, 46, 8), (-300, 140)),
         ("Patín delantero", (0, 48.5, 2.5), (-120, 230)),
-        ("Patín trasero", (0, -52, 2), (230, -40)),
+        ("Patín trasero (2 M3×8)", (0, -52, 2), (230, -40)),
         ("Rueda a presión\nen el eje", (-50, 8, 10), (-260, -80)),
     ]),
     "paso3": ({"PASO": 3}, ATRAS, [
         ("OUT1-OUT2\nmotor izquierdo", (-21.5, -32.5, BORNE_Z), (-260, -40)),
         ("OUT3-OUT4\nmotor derecho", (21.5, -32.5, BORNE_Z), (230, -120)),
-        ("Espaciador de 5 mm\n+ M3×16 y tuerca", (18.5, -56, 28), (200, 120)),
+        ("Poste con inserto\n+ M3×8", (18.5, -56, 28), (200, 120)),
         ("Cables del motor por\nla ranura de su lado", (27, -26, 27), (260, 30)),
         ("Quita los jumpers\nENA y ENB", (1, -21.5, 41), (-120, -230)),
     ]),
@@ -102,8 +102,7 @@ VISTAS = {
         ("Cables hacia arriba", (23, 33.2, 62), (250, -150)),
     ]),
     "paso6": ({"PASO": 6}, ATRAS, [
-        ("Separador de 35 mm", (44, -46, 45), (220, 60)),
-        ("M3×8 por abajo", (-44, -46, 20), (-220, 80)),
+        ("Columna impresa\n(inserto arriba)", (44, -46, 45), (220, 60)),
         ("Dupont en ENA … ENB", (-5, -19, 47), (-200, -220)),
         ("Cables hacia arriba", (-5, -3, 62), (120, -230)),
     ]),
@@ -122,7 +121,7 @@ VISTAS = {
     "paso8": ({"PASO": 8}, FRENTE, [
         ("Piso 2 armado", (-40, 20, Z2 + ESP), (-230, -120)),
         ("Cables de sensores\npor las ranuras", (-26.5, 30, Z2 + ESP + 4), (-150, -250)),
-        ("M3×8 en cada\nseparador", (42, 50, Z2 + ESP + 3), (220, -60)),
+        ("M3×8 en cada\ncolumna", (42, 50, Z2 + ESP + 3), (220, -60)),
     ]),
     "det_arnes": ({"PIEZA": "det_arnes"}, (200, -150, 170, 10, -3, 45), [
         ("Interruptor: rojo a una pata\nexterior, 2 naranjas al centro", (38, 5, 46), (180, -200)),
@@ -141,6 +140,13 @@ VISTAS = {
     "paso10": ({"PIEZA": "det_arnes", "UNIDO": "true"}, (-140, 120, 150, -12, 10, 45), [
         ("Une el conector T", (-12, 10, 51), (200, -180)),
         ("Interruptor en OFF", (38, 5, 60), (220, 40)),
+    ]),
+    "det_insertos": ({"PIEZA": "det_insertos"}, (230, -260, 300, 40, 0, 10), [
+        ("Columnas: 4", (44, -46, 38), (-200, -120)),
+        ("Postes del L298N: 4", (-18.5, -56, 8), (-220, 60)),
+        ("Cunas: 2 c/u", (80, 39, 11.7), (200, -150)),
+        ("Capucha: 2", (107, 60, 20), (200, -40)),
+        ("Patín: 2", (116, -50, 22), (200, 80)),
     ]),
     "placa_x2d": ({"PIEZA": "placa_vista"}, (128, 127, 720, 128, 128, 0), []),
 }

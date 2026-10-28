@@ -1,10 +1,9 @@
 Categoria,Componente,Especificacion / donde va,Cantidad
-Impresa 3D,"Piso 1 (base, soportes de VL53L0X y topes de batería)",PETG o PLA,1
+Impresa 3D,"Piso 1 (base, columnas, postes del L298N, soportes de VL53L0X y topes)",PETG o PLA,1
 Impresa 3D,Piso 2 (marcos de protoboards y OLED),PETG o PLA,1
 Impresa 3D,Cuna de motor,PETG o PLA,2
 Impresa 3D,Capucha del sensor de color con patín delantero,PLA negro,1
 Impresa 3D,Patín trasero,PETG o PLA,1
-Impresa 3D,Espaciador de 5 mm (L298N),PETG o PLA,4
 Impresa 3D,Pieza de prueba de tolerancias,El mismo de las demás,1
 Electronica,Arduino Nano USB-C,"ATmega328P, CH340, con headers soldados; cable USB-C de datos",1
 Electronica,Motorreductor N20,"6 V, 300–500 RPM, sin encoder",2
@@ -26,10 +25,7 @@ Cables,Dupont macho-macho 30 cm,Se les corta un extremo: TCS34725 (4) y botón (
 Cables,"Cable calibre 22 de silicón, rojo, negro, amarillo, blanco y naranja","Motores, interruptor, batería y Nano",1 m en total por color
 Cables,Jumpers rígidos de protoboard,Puentes del bus y del Nano al bus,8
 Cables,Cinchos chicos y termofit de 3 mm,Ordenar cables y aislar soldaduras,10 / 30 cm
-Tornilleria,Separador M3 hembra-hembra 35 mm,Postes entre piso 1 y piso 2,4
-Tornilleria,Tornillo M3 × 8 cabeza cilíndrica,Separadores: 4 por abajo del piso 1 y 4 por arriba del piso 2,8
-Tornilleria,Tornillo M3 × 16 cabeza cilíndrica,"L298N, a través de los espaciadores impresos",4
-Tornilleria,Tuerca M3,"Bajo el piso 1, en los tornillos del L298N",4
-Tornilleria,Tornillo M3 × 12 avellanado,Cunas de motor; roscan en la cuna,4
-Tornilleria,Tornillo M3 × 10 avellanado,Capucha de color (2) y patín trasero (1); roscan en el plástico,3
+Tornilleria,Inserto de calor M3 (latón),"Columnas (4) y postes del L298N (4) del piso 1, cunas (4), capucha (2), patín (2)",16
+Tornilleria,Tornillo Allen M3 × 8,"L298N (4), piso 2 (4), capucha (2), patín (2)",12
+Tornilleria,Tornillo Allen M3 × 12,Cunas de motor,4
 Tornilleria,Velcro adhesivo 3 × 5 cm,Bajo la batería,1

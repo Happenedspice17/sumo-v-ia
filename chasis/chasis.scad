@@ -1,9 +1,9 @@
 // Chasis robot laberinto (Arduino Nano / ATmega328P) - 120 x 120 mm con ruedas
 // Origen: centro del eje de las ruedas, a nivel del piso. X derecha, Y adelante, Z arriba.
 //
-// PIEZA: "ensamble", "piso1", "piso2", "cuna_motor", "capucha_color", "patin", "espaciador", "prueba",
+// PIEZA: "ensamble", "piso1", "piso2", "cuna_motor", "capucha_color", "patin", "prueba",
 //        "placa" (todas las piezas acomodadas en la cama de la X2D), "placa_vista" (igual, con la cama),
-//        "sub_piso2" (piso 2 armado en la mesa), "det_motor", "det_l298", "marca" (esfera en MARCA)
+//        "sub_piso2" (piso 2 armado en la mesa), "det_insertos", "det_motor", "det_l298", "marca" (esfera en MARCA)
 // PASO:  1-10 muestra el ensamble hasta ese paso; lo de pasos anteriores sale en gris. 0 = completo a color
 //
 // Los sensores se insertan sin tornillos:
@@ -11,6 +11,7 @@
 //   TCS34725: entra deslizando por atras de la capucha; sus cables suben por dentro de ella
 //   OLED: se acuesta en su marco del piso 2 con los pines hacia abajo
 //   Protoboards: entran en su marco del piso 2
+// Tornilleria: solo Allen M3 de 8 y 12 mm (cabeza 5.5 x 3) e insertos de calor M3; sin tuercas ni separadores.
 // Todos los cables estan modelados con su ruta; cable() imprime "CABLE|nombre|color|mm" para la lista de cables.
 
 PIEZA = "ensamble";
@@ -20,14 +21,17 @@ UNIDO = false;           // det_arnes: conector T unido
 
 $fn = 48;
 $gris = false;
+$col = "orange";         // color de las piezas impresas
+function en(x, l) = len([for (e = l) if (e == x) 1]) > 0;
+$ins = !en(PIEZA, ["piso1", "piso2", "cuna_motor", "capucha_color", "patin", "prueba", "placa"]);   // dibuja insertos
 
 // ---------- Tolerancias: Bambu Lab A2L, boquilla 0.4, capa 0.2, PLA/PETG ----------
 // En la A2L (cama movil) los agujeros salen ~0.1 mm chicos y las ranuras ~0.15 mm angostas;
 // las medidas de abajo ya lo compensan. Antes de imprimir todo, imprime PIEZA="prueba".
 HOLGURA = 0.2;                 // juego por lado entre pieza impresa y componente
 RANURA = 1.6 + 0.4;            // ranura para un PCB de 1.6 mm
-M3_PASO = 3.4;                 // M3 pasante (tornillo + tuerca)
-M3_ROSCA = 2.8;                // M3 que se atornilla directo al plastico
+M3_PASO = 3.4;                 // M3 pasante
+INSERTO = [4.0, 5.7];          // inserto de calor M3: agujero y largo (medir el suyo; ver PIEZA="prueba")
 D_BOTON = 7 + 2 * 0.15;        // boton de panel de 7 mm
 D_SWITCH = 6 + 2 * 0.15;       // interruptor de palanca MTS-102 (6 mm)
 
@@ -56,7 +60,7 @@ POZO_Y = 19;
 
 // Pisos
 Z1 = EJE_Z + MOT_H / 2;                  // fondo del piso 1 (toca el motor)
-SEP = 35;                                // separadores M3 hembra-hembra
+SEP = 35;                                // columnas impresas del piso 1, con inserto arriba
 Z2 = Z1 + ESP + SEP;                     // fondo del piso 2
 POSTES = [[42, 50], [-42, 50], [44, -46], [-44, -46]];
 
@@ -67,7 +71,8 @@ BAT_PARED = 8;           // alto de los topes que la sujetan
 L298 = [43, 43, 27];
 L298_Y = -37.5;          // 4.5 mm entre su borde y la bateria para doblar los cables de potencia
 L298_AG = 37;            // separacion de agujeros del L298N (medir el suyo)
-L298_Z = Z1 + ESP + 5;   // cara de abajo de su PCB (sobre espaciadores de 5 mm)
+L298_POSTE = 5;          // postes impresos del L298N, con inserto
+L298_Z = Z1 + ESP + L298_POSTE;          // cara de abajo de su PCB
 BORNE_Z = L298_Z + 1.6 + 4;              // altura de entrada de los cables a los bornes
 TOF = [25, 10.7];        // VL53L0X CJVL53L0XV2 (ancho, alto)
 TOF_FRENTE_Y = 54;
@@ -77,6 +82,8 @@ COLOR_MOD = 20.5;        // TCS34725 morado (medir el suyo)
 COLOR_Y = 34;
 COLOR_Z = 5;             // altura de la cara del sensor sobre el suelo
 PATIN_Y = -52;
+PATIN_X = 26;            // tornillos del patin: fuera del L298N
+CUNA_Y = [-16.8, 29];    // tornillos de las cunas: fuera de la bateria
 PROTO = [35, 47, 9.5];   // mini protoboard 170 puntos (X, Y, Z)
 PROTO_Y = -32.6;
 NANO = [17.8, 44];
@@ -119,7 +126,16 @@ module cuadrado_redondo(l, r, h) {
 
 module agujero(d, h) { translate([0, 0, -0.5]) cylinder(d = d, h = h + 1); }
 
-module avellanado() { translate([0, 0, ESP - 1.6]) cylinder(d1 = M3_PASO, d2 = 6.6, h = 1.61); }
+// Agujero para inserto, desde z = 0 hacia abajo
+module ag_inserto(h, d = INSERTO[0]) { translate([0, 0, -h]) cylinder(d = d, h = h + 0.5); }
+
+// Inserto ya puesto (solo para el ensamble), a ras en z = 0
+module inserto() {
+  color(k("goldenrod")) translate([0, 0, -INSERTO[1]]) difference() {
+    cylinder(d = INSERTO[0] + 0.4, h = INSERTO[1]);
+    agujero(3.2, INSERTO[1]);
+  }
+}
 
 // Paso del ensamble: no aparece antes de su paso; en pasos posteriores sale en gris
 module paso(p) {
@@ -160,7 +176,7 @@ module soporte_tof() {
 }
 
 module piso1() {
-  difference() {
+  color(k($col)) difference() {
     union() {
       cuadrado_redondo(L, R_ESQ, ESP);
       translate([0, 0, ESP]) {
@@ -174,19 +190,24 @@ module piso1() {
           translate([s * 26, BAT_Y - yb, BAT_PARED / 2]) cube([8, 2, BAT_PARED], center = true);
           translate([s * 14, BAT_Y + yb, BAT_PARED / 2]) cube([8, 2, BAT_PARED], center = true);
         }
+        for (p = POSTES) translate([p[0], p[1], 0]) cylinder(d = 8, h = SEP);
+        for (x = [-1, 1]) for (y = [-1, 1])
+          translate([x * L298_AG / 2, L298_Y + y * L298_AG / 2, 0]) cylinder(d = 7, h = L298_POSTE);
       }
     }
     for (s = [-1, 1]) translate([s * (POZO_X + 25), 0, ESP / 2]) cube([50, 2 * POZO_Y, ESP + 2], center = true);
-    for (s = [-1, 1]) translate([s * 27, -24, ESP / 2]) cube([10, 10, ESP + 2], center = true);  // cables de motores
+    for (s = [-1, 1]) translate([s * 27, -25, ESP / 2]) cube([10, 10, ESP + 2], center = true);  // cables de motores
     translate([0, COLOR_Y - 4.5, ESP / 2]) cube([14, 6, ESP + 2], center = true);       // cables del TCS34725
-    for (p = POSTES) translate([p[0], p[1], 0]) agujero(M3_PASO, ESP);
-    for (s = [-1, 1]) for (y = [-1, 1])
-      translate([s * X_MOT, y * (MOT_A / 2 + 3), 0]) { agujero(M3_PASO, ESP); avellanado(); }   // cunas: avellanados, bajo la bateria
+    for (p = POSTES) translate([p[0], p[1], ESP + SEP]) ag_inserto(8);
     for (x = [-1, 1]) for (y = [-1, 1])
-      translate([x * L298_AG / 2, L298_Y + y * L298_AG / 2, 0]) agujero(M3_PASO, ESP); // L298N
-    // patin y capucha: avellanados (el del patin queda bajo el L298N)
-    translate([0, PATIN_Y, 0]) { agujero(M3_PASO, ESP); avellanado(); }
-    for (x = [-1, 1]) translate([x * 17, COLOR_Y, 0]) { agujero(M3_PASO, ESP); avellanado(); }
+      translate([x * L298_AG / 2, L298_Y + y * L298_AG / 2, ESP + L298_POSTE]) ag_inserto(7);
+    for (s = [-1, 1]) for (y = CUNA_Y) translate([s * X_MOT, y, 0]) agujero(M3_PASO, ESP);
+    for (x = [-1, 1]) translate([x * PATIN_X, PATIN_Y, 0]) agujero(M3_PASO, ESP);
+    for (x = [-1, 1]) translate([x * 17, COLOR_Y, 0]) agujero(M3_PASO, ESP);
+  }
+  if ($ins) {
+    for (p = POSTES) translate([p[0], p[1], ESP + SEP]) inserto();
+    for (x = [-1, 1]) for (y = [-1, 1]) translate([x * L298_AG / 2, L298_Y + y * L298_AG / 2, ESP + L298_POSTE]) inserto();
   }
 }
 
@@ -222,12 +243,18 @@ module piso2() {
 }
 
 module cuna_motor() {
-  // aprieta el motor contra el piso 1; 0.3 mm mas baja que el motor para que apriete
-  difference() {
-    translate([-8, -MOT_A / 2 - 6, 0]) cube([16, MOT_A + 12, 2 + MOT_H - 0.3]);
+  // aprieta el motor contra el piso 1; 0.3 mm mas baja que el motor para que apriete.
+  // Las orejas sacan los tornillos de debajo de la bateria
+  h = 2 + MOT_H - 0.3;
+  color(k($col)) difference() {
+    union() {
+      translate([-8, -MOT_A / 2 - 3, 0]) cube([16, MOT_A + 6, h]);
+      for (y = CUNA_Y) translate([-3.5, min(0, y + sign(y) * 3.5), 0]) cube([7, abs(y) + 3.5, h]);
+    }
     translate([-9, -MOT_A / 2 - HOLGURA, 2]) cube([18, MOT_A + 2 * HOLGURA, MOT_H + 1]);
-    for (y = [-1, 1]) translate([0, y * (MOT_A / 2 + 3), 0]) agujero(M3_ROSCA, 20);   // M3 avellanado desde el piso 1
+    for (y = CUNA_Y) translate([0, y, h]) ag_inserto(10);
   }
+  if ($ins) for (y = CUNA_Y) translate([0, y, h]) inserto();
 }
 
 // Capucha del sensor de color: el TCS34725 entra deslizando por atras (cara del sensor hacia abajo)
@@ -237,10 +264,10 @@ module capucha_color() {
   a = COLOR_MOD + 2 * HOLGURA;        // ranura del modulo
   v = a - 3;                          // ventana: deja 1.5 mm de apoyo por lado
   z0 = COLOR_Z - 2;                   // fondo de la ranura, medido desde el borde de la capucha
-  difference() {
+  color(k($col)) difference() {
     union() {
       translate([-a / 2 - 2, -a / 2 - 2, 0]) cube([a + 4, a + 4, h]);
-      translate([-22, -5, h - 6]) cube([44, 10, 6]);                         // orejas
+      translate([-22, -5, h - 8]) cube([44, 10, 8]);                         // orejas
       translate([0, a / 2 + 4, 3.5]) {                                       // patin delantero, 0.5 mm sobre el suelo
         cylinder(d = 10, h = h - 3.5);
         sphere(d = 10);
@@ -249,33 +276,32 @@ module capucha_color() {
     translate([-v / 2, -v / 2, -1]) cube([v, v, h + 2]);                     // ventana de luz
     translate([-a / 2, -a / 2 - 3, z0]) cube([a, a + 3, RANURA]);            // ranura, abierta atras
     translate([-v / 2, -a / 2 - 3, z0]) cube([v, 4 + (a - v) / 2, h]);       // salida de cables: suben por dentro
-    for (x = [-1, 1]) translate([x * 17, 0, h - 6]) agujero(M3_ROSCA, 6);
+    for (x = [-1, 1]) translate([x * 17, 0, h]) ag_inserto(7);
   }
+  if ($ins) for (x = [-1, 1]) translate([x * 17, 0, h]) inserto();
 }
 
 module patin() {
-  // apoyo deslizante trasero; deja 0.5 mm al suelo. Se atornilla con M3 avellanado desde el piso 1
+  // apoyo deslizante trasero; deja 0.5 mm al suelo. Sus tornillos quedan a los lados del L298N
   h = Z1 - 0.5;
-  difference() {
-    translate([0, 0, 0.5]) {
-      translate([0, 0, 5]) cylinder(d = 10, h = h - 5);
-      translate([0, 0, 5]) sphere(d = 10);
+  color(k($col)) difference() {
+    union() {
+      translate([0, 0, 0.5]) {
+        translate([0, 0, 5]) cylinder(d = 10, h = h - 5);
+        translate([0, 0, 5]) sphere(d = 10);
+      }
+      translate([-PATIN_X - 4, -4, Z1 - 8]) cube([2 * PATIN_X + 8, 8, 8]);
     }
-    translate([0, 0, Z1 - 10]) cylinder(d = M3_ROSCA, h = 11);
+    for (x = [-1, 1]) translate([x * PATIN_X, 0, Z1]) ag_inserto(7);
   }
-}
-
-module espaciador(h = 5) {
-  // separa el L298N del piso 1
-  difference() { cylinder(d = 7, h = h); agujero(M3_PASO, h); }
+  if ($ins) for (x = [-1, 1]) translate([x * PATIN_X, 0, Z1]) inserto();
 }
 
 module prueba() {
-  // agujeros M3, boton, interruptor, ranura de motor y el soporte de VL53L0X
+  // agujeros M3, insertos, boton, interruptor, ranura de motor y el soporte de VL53L0X
   difference() {
     cube([70, 26, 3]);
     for (i = [0 : 2]) translate([6 + i * 7, 7, 0]) agujero(3.2 + i * 0.2, 3);    // 3.2 / 3.4 / 3.6
-    for (i = [0 : 1]) translate([6 + i * 7, 18, 0]) agujero(M3_ROSCA + i * 0.2, 3);
     translate([40, 8, 0]) agujero(D_BOTON, 3);
     translate([40, 19, 0]) agujero(D_SWITCH, 3);
   }
@@ -284,6 +310,10 @@ module prueba() {
     translate([5, 13 - MOT_A / 2 - HOLGURA, 2]) cube([20, MOT_A + 2 * HOLGURA, 10]);
   }
   translate([0, -12, 0]) { cube([36, 12, 3]); translate([18, 6, 3]) soporte_tof(); }
+  translate([0, 26, 0]) difference() {                                          // insertos: 3.8 / 4.0 / 4.2
+    cube([26, 9, 8]);
+    for (i = [0 : 2]) translate([5.5 + i * 7.5, 4.5, 8]) ag_inserto(7, INSERTO[0] - 0.2 + i * 0.2);
+  }
 }
 
 // Todas las piezas (menos la de prueba) en la cama de 256 x 256 de la X2D, en su orientacion de impresion
@@ -293,9 +323,8 @@ module placa() {
   translate([CAMA - m - L / 2, m + L / 2, 0]) piso2();
   y2 = 2 * m + L + 18;
   for (i = [0 : 1]) translate([m + 12 + i * 24, y2, 0]) cuna_motor();
-  translate([95, y2 + 6, Z1 - 2]) rotate([180, 0, 0]) capucha_color();
-  translate([140, y2, Z1]) rotate([180, 0, 0]) patin();
-  for (i = [0 : 3]) translate([160 + i * 12, y2, 0]) espaciador();
+  translate([85, y2 + 6, Z1 - 2]) rotate([180, 0, 0]) capucha_color();
+  translate([150, y2, Z1]) rotate([180, 0, 0]) patin();
 }
 
 // ---------- Componentes comprados (solo para el ensamble) ----------
@@ -340,15 +369,10 @@ module cables_motor(s, final = true) {
   }
 }
 
-module postes(z, h) {
-  for (p = POSTES) color(k("silver")) translate([p[0], p[1], z]) cylinder(d = 5.5, h = h, $fn = 6);
-}
-
-// Tornillo M3 de largo l, cabeza en z = 0 y cuerpo hacia -Z. plano = avellanado
-module tornillo(l, plano = false) {
+// Tornillo Allen M3 de largo l, cabeza en z = 0 y cuerpo hacia -Z
+module tornillo(l) {
   color(k("dimgray")) {
-    if (plano) translate([0, 0, -1.6]) cylinder(d1 = 3, d2 = 6, h = 1.6);
-    else cylinder(d = 5.5, h = 3);
+    difference() { cylinder(d = 5.5, h = 3); translate([0, 0, 1.2]) cylinder(d = 2.9, h = 2, $fn = 6); }
     translate([0, 0, -l]) cylinder(d = 3, h = l);
   }
 }
@@ -512,12 +536,8 @@ module l298() {
   }
 }
 
-module espaciadores_l298() {
-  for (x = [-1, 1]) for (y = [-1, 1]) translate([x * L298_AG / 2, L298_Y + y * L298_AG / 2, 0]) {
-    color(k("orange")) translate([0, 0, Z1 + ESP]) espaciador();
-    translate([0, 0, L298_Z + 1.6]) tornillo(16);
-    color(k("silver")) translate([0, 0, Z1 - 2.4]) cylinder(d = 6.2, h = 2.4, $fn = 6);
-  }
+module tornillos_l298() {
+  for (x = [-1, 1]) for (y = [-1, 1]) translate([x * L298_AG / 2, L298_Y + y * L298_AG / 2, L298_Z + 1.6]) tornillo(8);
 }
 
 // Bateria 2S: dos 18650 lado a lado; cable principal y de balanceo salen por la izquierda
@@ -690,25 +710,25 @@ module cables_arriba() {
 
 module ensamble() {
   paso(1) {
-    color(k("lightsteelblue")) translate([0, 0, Z1]) piso1();
+    translate([0, 0, Z1]) piso1($col = "lightsteelblue");
     for (s = [-1, 1]) {
       motor(s);
-      color(k("orange")) translate([s * X_MOT, 0, Z1 - MOT_H - 2 + 0.3]) cuna_motor();
-      for (y = [-1, 1]) translate([s * X_MOT, y * (MOT_A / 2 + 3), Z1 + ESP]) tornillo(12, true);
+      translate([s * X_MOT, 0, Z1 - MOT_H - 2 + 0.3]) cuna_motor();
+      for (y = CUNA_Y) translate([s * X_MOT, y, Z1 + ESP]) tornillo(12);
       if (PASO == 1 || PASO == 2) cables_motor(s, false);
     }
   }
   paso(2) {
     for (s = [-1, 1]) rueda(s);
-    color(k("orange")) translate([0, PATIN_Y, 0]) patin();
-    translate([0, PATIN_Y, Z1 + ESP]) tornillo(10, true);
-    color(k("orange")) translate([0, COLOR_Y, 2]) capucha_color();
-    for (x = [-1, 1]) translate([x * 17, COLOR_Y, Z1 + ESP]) tornillo(10, true);
+    translate([0, PATIN_Y, 0]) patin();
+    for (x = [-1, 1]) translate([x * PATIN_X, PATIN_Y, Z1 + ESP]) tornillo(8);
+    translate([0, COLOR_Y, 2]) capucha_color();
+    for (x = [-1, 1]) translate([x * 17, COLOR_Y, Z1 + ESP]) tornillo(8);
     translate([0, COLOR_Y, COLOR_Z + 0.8]) tcs_modulo();
     tcs_cables();
   }
   paso(3) {
-    espaciadores_l298();
+    tornillos_l298();
     l298();
     if (PASO == 0 || PASO >= 3) for (s = [-1, 1]) cables_motor(s);
   }
@@ -721,11 +741,7 @@ module ensamble() {
     for (s = [-1, 1]) translate([s * TOF_LADO[0], TOF_LADO[1], Z1 + ESP]) rotate([0, 0, -s * 90])
       tof_modulo(Z2 + 7 - Z1 - ESP - TOF_PIN_Z, 0, 0, s < 0 ? "VL53L0X izq" : "VL53L0X der");
   }
-  paso(6) {
-    postes(Z1 + ESP, SEP);
-    for (p = POSTES) translate([p[0], p[1], Z1]) rotate([180, 0, 0]) tornillo(8);
-    cables_l298_logica();
-  }
+  paso(6) cables_l298_logica();
   // paso 7 del manual: el piso 2 se arma en la mesa (PIEZA = "sub_piso2")
   paso(8) {
     color(k("lightsteelblue")) translate([0, 0, Z2]) piso2();
@@ -762,7 +778,6 @@ else if (PIEZA == "piso2") piso2();
 else if (PIEZA == "cuna_motor") cuna_motor();
 else if (PIEZA == "capucha_color") translate([0, 0, Z1 - 2]) rotate([180, 0, 0]) capucha_color();
 else if (PIEZA == "patin") translate([0, 0, Z1]) rotate([180, 0, 0]) patin();
-else if (PIEZA == "espaciador") espaciador();
 else if (PIEZA == "prueba") prueba();
 else if (PIEZA == "placa") placa();
 else if (PIEZA == "placa_vista") {
@@ -770,10 +785,17 @@ else if (PIEZA == "placa_vista") {
   color("dimgray") translate([0, 0, -1.01]) cube([CAMA, CAMA, 1]);
 }
 else if (PIEZA == "sub_piso2") sub_piso2();
+else if (PIEZA == "det_insertos") {
+  $col = "lightsteelblue";
+  piso1();
+  for (i = [0 : 1]) translate([80 + i * 20, 10, 0]) cuna_motor();
+  translate([90, 60, 0]) capucha_color();
+  translate([90, -50, 0]) patin();
+}
 else if (PIEZA == "det_motor") { motor(-1); cables_motor(-1, false); }
-else if (PIEZA == "det_l298") { l298(); espaciadores_l298(); }
+else if (PIEZA == "det_l298") { l298(); tornillos_l298(); }
 else if (PIEZA == "det_arnes") {
-  gris() { color(k("lightsteelblue")) translate([0, 0, Z1]) piso1(); bateria(); conector_t(true, false); espaciadores_l298(); }
+  gris() { translate([0, 0, Z1]) piso1($col = "lightsteelblue"); bateria(); conector_t(true, false); tornillos_l298(); }
   l298();
   conector_t(false, true, UNIDO);
   arnes_potencia(UNIDO);

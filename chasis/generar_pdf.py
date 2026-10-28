@@ -36,6 +36,8 @@ TOF_PASILLO = TOF_ATRAS + 10        # pasillo libre detras del sensor (dupont + 
 TOF_PIN_Z = Z1 + ESP + TOF[1] - 1.3
 COLOR_Y, COLOR_MOD, COLOR_Z = 34, 20.5, 5
 PATIN_Y = -52
+PATIN_X = 26
+CUNA_Y = (-16.8, 29)
 PROTO, PROTO_Y = (35, 47, 9.5), -32.6
 NANO = (18, 44)
 OLED, OLED_Y = (27.3, 27.8), 39.4
@@ -203,18 +205,20 @@ def planta_piso1(pp):
     soporte_tof(ax, TOF_LADO[0], TOF_LADO[1], "E")
     soporte_tof(ax, -TOF_LADO[0], TOF_LADO[1], "O")
     for x, y in POSTES:
-        agujero(ax, x, y)
-    for s in (-1, 1):
-        for y in (-1, 1):
-            agujero(ax, s * X_MOT, y * (MOT_A / 2 + 3), d=6.6)
+        ax.add_patch(Circle((x, y), 4, fc=C["imp"], ec="k", lw=0.6, zorder=6))
+        agujero(ax, x, y, d=4)
     for x in (-1, 1):
         for y in (-1, 1):
-            agujero(ax, x * L298_AG / 2, L298_Y + y * L298_AG / 2)
-    agujero(ax, 0, PATIN_Y, d=6.6)
-    for x in (-1, 1):
-        agujero(ax, x * 17, COLOR_Y, d=6.6)
+            ax.add_patch(Circle((x * L298_AG / 2, L298_Y + y * L298_AG / 2), 3.5, fc=C["imp"], ec="k", lw=0.6, zorder=6))
+            agujero(ax, x * L298_AG / 2, L298_Y + y * L298_AG / 2, d=4)
     for s in (-1, 1):
-        caja(ax, s * 27, -24, 10, 10, "white", z=6)
+        for y in CUNA_Y:
+            agujero(ax, s * X_MOT, y)
+    for x in (-1, 1):
+        agujero(ax, x * PATIN_X, PATIN_Y)
+        agujero(ax, x * 17, COLOR_Y)
+    for s in (-1, 1):
+        caja(ax, s * 27, -25, 10, 10, "white", z=6)
     caja(ax, 0, COLOR_Y - 4.5, 14, 6, "white", z=6)
     frente(ax, -75)
     cota(ax, (-L / 2, L / 2), (L / 2, L / 2), f"{L}", off=16)
@@ -231,12 +235,13 @@ def planta_piso1(pp):
         "  plástico y los dupont hacia adentro (negro). La\n"
         f"  zona punteada ({TOF_PASILLO:.0f} mm desde el sensor) es\n"
         "  para doblar el cable: no poner nada ahí.\n"
-        f"• Batería sobre el eje (Y = {BAT_Y}); 6 topes de 8 mm.\n\n"
-        "Agujeros (M3 pasantes Ø3.4)\n"
-        "• 4 separadores: (±42, 50) y (±44, −46).\n"
-        "• 4 del L298N.\n"
-        "• 7 avellanados (Ø6.6): 4 de las cunas de motor\n"
-        "  (bajo la batería), patín trasero y capucha.\n"
+        f"• Batería sobre el eje (Y = {BAT_Y}); 6 topes de 8 mm.\n"
+        f"• 4 columnas Ø8 × {SEP} y 4 postes Ø7 × 5 del L298N,\n"
+        "  con inserto M3 arriba (Ø4.0).\n\n"
+        "Agujeros M3 pasantes Ø3.4 (Allen desde arriba)\n"
+        f"• 4 de las cunas de motor (Y = {CUNA_Y[0]} y {CUNA_Y[1]}),\n"
+        "  fuera de la batería.\n"
+        f"• 2 del patín (X = ±{PATIN_X}) y 2 de la capucha.\n"
         "• Ranuras 10 × 10 para cables de motores y 14 × 6\n"
         "  para los del TCS34725 (suben por la capucha).\n\n"
         "Debajo\n"
@@ -322,7 +327,7 @@ def alzados(pp):
     for z in (Z1, Z2):
         caja(ax, 0, z + ESP / 2, L, ESP, C["piso"])
     for y in (50, -46):
-        caja(ax, y, Z1 + ESP + SEP / 2, 5, SEP, "#aaa")
+        caja(ax, y, Z1 + ESP + SEP / 2, 8, SEP, C["imp"])
     ax.add_patch(Circle((0, EJE_Z), D_RUEDA / 2, fc=C["rueda"], ec="k", zorder=3))
     caja(ax, 0, EJE_Z, MOT_A, MOT_H, C["motor"], z=4)
     caja(ax, BAT_Y, Z1 + ESP + BAT[2] / 2, BAT[1], BAT[2], C["bat"], "batería", tc="white", fs=6)
@@ -355,7 +360,7 @@ def alzados(pp):
     for s in (-1, 1):
         caja(ax2, s * (X_RUEDA_INT + A_RUEDA / 2), EJE_Z, A_RUEDA, D_RUEDA, C["rueda"], z=3)
         caja(ax2, s * X_MOT, EJE_Z, MOT_L, MOT_H, C["motor"], z=3)
-        caja(ax2, s * 42, Z1 + ESP + SEP / 2, 5, SEP, "#aaa")
+        caja(ax2, s * 42, Z1 + ESP + SEP / 2, 8, SEP, C["imp"])
         caja(ax2, s * (TOF_LADO[0] + 0.5), Z1 + ESP + TOF[1] / 2, 1.6, TOF[1], C["tof"], z=4)
         caja(ax2, s * (TOF_LADO[0] - 0.3 - HEADER / 2), TOF_PIN_Z, HEADER, 2.5, "#666", z=4)
         caja(ax2, s * (TOF_LADO[0] - 0.3 - HEADER - DUPONT / 2), TOF_PIN_Z, DUPONT, 2.5, "#111", z=4)

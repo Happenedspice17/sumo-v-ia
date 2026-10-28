@@ -211,12 +211,11 @@ def construir(nombre, titulo, historia):
 # ---------- Datos ----------
 BOM_IMP = [
     # pieza, material, proceso, cant
-    ["Piso 1 (base, soportes de VL53L0X y topes de batería)", "PETG o PLA", "Impresión 3D", "1"],
+    ["Piso 1 (base, columnas, postes del L298N, soportes de VL53L0X y topes)", "PETG o PLA", "Impresión 3D", "1"],
     ["Piso 2 (marcos de protoboards y OLED)", "PETG o PLA", "Impresión 3D", "1"],
     ["Cuna de motor", "PETG o PLA", "Impresión 3D", "2"],
     ["Capucha del sensor de color con patín delantero", "PLA negro", "Impresión 3D", "1"],
     ["Patín trasero", "PETG o PLA", "Impresión 3D", "1"],
-    ["Espaciador de 5 mm (L298N)", "PETG o PLA", "Impresión 3D", "4"],
     ["Pieza de prueba de tolerancias", "El mismo de las demás", "Impresión 3D (primero)", "1"],
 ]
 BOM_ELEC = [
@@ -244,20 +243,18 @@ BOM_CABLES = [
     ["Cinchos chicos y termofit de 3 mm", "Ordenar cables y aislar soldaduras", "10 / 30 cm"],
 ]
 BOM_TORN = [
-    ["Separador M3 hembra-hembra 35 mm", "4", "Postes entre piso 1 y piso 2"],
-    ["Tornillo M3 × 8 cabeza cilíndrica", "8", "Separadores: 4 por abajo del piso 1 y 4 por arriba del piso 2"],
-    ["Tornillo M3 × 16 cabeza cilíndrica", "4", "L298N, a través de los espaciadores impresos"],
-    ["Tuerca M3", "4", "Bajo el piso 1, en los tornillos del L298N"],
-    ["Tornillo M3 × 12 avellanado", "4", "Cunas de motor; roscan en la cuna"],
-    ["Tornillo M3 × 10 avellanado", "3", "Capucha de color (2) y patín trasero (1); roscan en el plástico"],
+    ["Inserto de calor M3 (latón)", "16", "Columnas (4) y postes del L298N (4) del piso 1, cunas (4), capucha (2), patín (2)"],
+    ["Tornillo Allen M3 × 8", "12", "L298N (4), piso 2 (4), capucha (2), patín (2)"],
+    ["Tornillo Allen M3 × 12", "4", "Cunas de motor"],
     ["Velcro adhesivo 3 × 5 cm", "1", "Bajo la batería"],
-    ["Nota", "—", "Las cabezas avellanadas quedan a ras del piso 1, porque encima va la batería"],
+    ["Nota", "—", "Del kit M2–M5 solo se usan Allen M3 de 8 y 12 mm; sin tuercas, rondanas ni separadores"],
 ]
 HERRAMIENTAS = [
     ["Imprimir", "Bambu Lab A2L o X2D, boquilla de 0.4 mm, PETG o PLA, Bambu Studio"],
     ["Soldar", "Cautín de 30–60 W con punta fina, soldadura 60/40 de 0.8 mm, termofit, encendedor o pistola de calor"],
     ["Cables", "Pinzas de corte, pelacables calibre 22, pinzas de punta"],
-    ["Armado", "Desarmador de cruz chico, desarmador plano de 2.5 mm (bornes del L298N), llave de 5.5 mm o pinzas para tuerca M3"],
+    ["Insertos", "El mismo cautín con punta cónica o punta para insertos M3"],
+    ["Armado", "Llave Allen de 2.5 mm (M3), desarmador plano de 2.5 mm (bornes del L298N)"],
     ["Medir", "Multímetro, vernier"],
     ["Programar", "Computadora con Microchip Studio 7 y avrdude (manual de uso)"],
 ]
@@ -355,10 +352,10 @@ def manual_ensamble():
           tabla([["Dato", "Valor"],
                  ["Huella", "120 × 120 mm con ruedas (esquinas de R30 para girar en pasillos de 180 mm)"],
                  ["Alto", "≈ 95 mm con los dupont parados en las protoboards"],
-                 ["Pisos", "Piso 1 a 22 mm del suelo; piso 2 sobre separadores de 35 mm"],
+                 ["Pisos", "Piso 1 a 22 mm del suelo; piso 2 sobre 4 columnas impresas de 35 mm"],
                  ["Alimentación", "Batería 2S 18650 (7.4 V) → interruptor → L298N (12V) y VIN del Nano"],
                  ["Bus I2C", "VL53L0X × 3 (direcciones 0x30–0x32), TCS34725 (0x29), OLED (0x3C), 400 kHz"],
-                 ["Piezas", "≈ 120 en total: 11 impresas, 21 tornillos y separadores, 85 cables"]], [45, 131]),
+                 ["Piezas", "≈ 125 en total: 7 impresas, 16 tornillos, 16 insertos, 85 cables"]], [45, 131]),
           h1("2. Herramientas"),
           tabla([["Para", "Herramienta"], *HERRAMIENTAS], [30, 146]),
           PageBreak()]
@@ -385,7 +382,7 @@ def manual_ensamble():
               tabla([["Ajuste", "Valor"],
                      ["Boquilla / capa", "0.4 mm / 0.2 mm"],
                      ["Paredes / capas sup. e inf.", "4 / 4"],
-                     ["Relleno", "25 % giroide (espaciadores 100 %)"],
+                     ["Relleno", "25 % giroide"],
                      ["Soportes", "No"],
                      ["Pata de elefante", "0.15 mm"],
                      ["Compensación X-Y de agujeros", "0 (ya está en el modelo)"],
@@ -394,16 +391,16 @@ def manual_ensamble():
               [img("placa_x2d.png", 76, 76), fig("Fig. 2. Placa completa en la cama de 256 × 256 de la X2D.")], 96, 80),
           Spacer(1, 4),
           tabla([["Pieza", "Orientación en la cama", "Ajustes sugeridos", "Soportes"],
-                 ["Piso 1", "Plano, soportes de sensores hacia arriba", "PETG, 4 paredes, 25 %", "No"],
+                 ["Piso 1", "Plano, columnas hacia arriba", "PETG, 4 paredes, 25 %", "No"],
                  ["Piso 2", "Plano, marcos hacia arriba", "PETG, 4 paredes, 25 %", "No"],
                  ["Cuna de motor (2)", "Base abajo, hueco del motor arriba", "PETG, 4 paredes, 40 %", "No"],
                  ["Capucha de color", "Orejas sobre la cama, patín arriba", "PLA negro, 4 paredes, 30 %", "No"],
-                 ["Patín trasero", "Base plana abajo, domo arriba", "PETG, 4 paredes, 40 %", "No"],
-                 ["Espaciador (4)", "De pie", "100 % de relleno", "No"]], [36, 62, 52, 26]),
+                 ["Patín trasero", "Barra sobre la cama, domo arriba", "PETG, 4 paredes, 40 %", "No"]], [36, 62, 52, 26]),
           *lista([
               "Imprime primero la <b>pieza de prueba</b> (<i>chasis/stl/prueba.stl</i>), sola, con los mismos ajustes.",
               "Agujeros de arriba: M3 de 3.2, 3.4 y 3.6. El tornillo debe pasar libre en el de 3.4.",
-              "Agujeros de abajo: 2.8 y 3.0. El M3 debe roscar apretado en el de 2.8.",
+              "Bloque de insertos: agujeros de 3.8, 4.0 y 4.2. Usa el que deja el inserto firme y a ras; si no es "
+              "el de 4.0, cambia INSERTO en chasis.scad y exporta otra vez.",
               "Agujeros grandes: botón (7.3) e interruptor (6.3). Bloque: el N20 entra empujando con el dedo.",
               "Soporte de VL53L0X: el sensor, ya con sus dupont, baja sin forzar y no baila. Si entra apretado, sube "
               "RANURA a 2.1 en chasis.scad; si baila, bájala a 1.9.",
@@ -411,7 +408,19 @@ def manual_ensamble():
               "-o placa_x2d.stl chasis/chasis.scad</font>.",
           ]),
           CondPageBreak(60 * mm),
-          h2("4.2 Soldadura"),
+          h2("4.2 Insertos de calor"),
+          p("Todos los tornillos roscan en insertos de latón M3: se ponen antes de armar, con las piezas frías."),
+          *lista([
+              "Cautín a 220 °C para PLA o 245 °C para PETG, con punta cónica.",
+              "Pon el inserto derecho en la boca del agujero, lado angosto abajo.",
+              "Empuja sin forzar: entra solo con el calor en 5–10 s. Para cuando quede a ras.",
+              "Antes de que enfríe, aplánalo con algo metálico frío para dejarlo parejo.",
+              "Piso 1: arriba de las 4 columnas y de los 4 postes del L298N. Cunas: en la cara de las orejas. "
+              "Capucha y patín: en la cara que va contra el piso 1.",
+          ], num=True),
+          img("det_insertos.png", 165, 85), fig("Fig. 3. Los 16 insertos (dorados)."),
+          CondPageBreak(60 * mm),
+          h2("4.3 Soldadura"),
           *lista([
               "<b>Motores:</b> suelda un capacitor de 100 nF entre las dos terminales de cada N20. Luego un cable "
               "amarillo (+) y uno blanco (−) de 10 cm a cada motor. Termofit en cada terminal.",
@@ -424,14 +433,14 @@ def manual_ensamble():
               "central, dos cables naranjas de 10 cm (uno al L298N y otro al Nano). Termofit en las tres patas.",
               "<b>Conector T hembra:</b> su cable negro va directo al L298N; el rojo es el que se soldó al interruptor.",
           ]),
-          h2("4.3 Preparar cables"),
+          h2("4.4 Preparar cables"),
           *lista([
               "Pela 6 mm de cada cable calibre 22 que va a un borne y estáñalo.",
               "Para la protoboard, el naranja de VIN y el negro de GND del Nano: pela 8 mm y estáñalos para que entren rectos.",
-              "Respeta los colores de la Fig. 3: así revisar el cableado al final es comparar colores.",
+              "Respeta los colores de la Fig. 4: así revisar el cableado al final es comparar colores.",
           ]),
           img(os.path.join(RAIZ, "atmega328p", "img", "conexiones_nano.png"), 170),
-          fig("Fig. 3. Diagrama de conexiones. Los colores son los mismos que los de los cables del modelo."),
+          fig("Fig. 4. Diagrama de conexiones. Los colores son los mismos que los de los cables del modelo."),
           PageBreak()]
 
     # 5. Armado paso a paso
@@ -439,17 +448,17 @@ def manual_ensamble():
           Paragraph("En cada imagen, las piezas en color son las que se agregan en ese paso; lo ya armado aparece en gris.",
                     S["pz"]), Spacer(1, 2)]
     H += paso("Paso 1. Motores y cunas",
-              "piso 1, 2 cunas de motor, 2 motores N20 con capacitor y cables, 4 M3×12 avellanados",
+              "piso 1, 2 cunas de motor con insertos, 2 motores N20 con capacitor y cables, 4 Allen M3×12",
               ["Voltea el piso 1. Mete cada N20 en su cuna con el eje hacia afuera y las terminales hacia el centro.",
-               "Presenta la cuna bajo el piso 1 y atornilla 2 M3×12 avellanados desde arriba; roscan en la cuna.",
+               "Presenta la cuna bajo el piso 1 y atornilla 2 M3×12 desde arriba, uno atrás y otro adelante de la batería.",
                "Pasa los dos cables de cada motor por la ranura de 10 × 10 de su lado, junto a donde irá el L298N.",
-               "Aprieta hasta que el motor no gire dentro de la cuna. Las cabezas deben quedar a ras del piso."],
-              "las cabezas no sobresalen del piso 1 (encima va la batería) y los cables no tocan el suelo.",
+               "Aprieta hasta que el motor no gire dentro de la cuna."],
+              "ninguna cabeza queda en el hueco de la batería y los cables no tocan el suelo.",
               "paso1.png")
     H += paso("Paso 2. Ruedas, capucha de color y patín",
-              "2 ruedas, capucha de color, patín trasero, TCS34725 con sus 4 cables, 3 M3×10 avellanados",
+              "2 ruedas, capucha de color y patín trasero con insertos, TCS34725 con sus 4 cables, 4 Allen M3×8",
               ["Presiona cada rueda en su eje; debe quedar a 1–2 mm del hueco del piso.",
-               "Atornilla la capucha con 2 M3×10 avellanados desde arriba y el patín con 1.",
+               "Atornilla la capucha con 2 M3×8 desde arriba y el patín con otros 2 (a los lados del L298N).",
                "Desliza el TCS34725 en la capucha por la abertura de atrás, LED hacia el suelo, hasta que tope.",
                "Sube sus 4 cables por dentro de la capucha y sácalos por la ranura de 14 × 6 del piso 1."],
               "en el suelo, el robot se apoya en las ruedas y los patines quedan a 0.5 mm.",
@@ -462,9 +471,9 @@ def manual_ensamble():
              None, "det_l298.png", intro="Antes de montarlo, ubica sus conexiones (vista desde arriba, frente del robot arriba).",
              num=False)
     H += paso("Paso 3. Puente H L298N y cables de motores",
-              "L298N, 4 espaciadores impresos, 4 M3×16, 4 tuercas M3",
-              ["Pon los 4 espaciadores sobre los agujeros de atrás del piso 1 y el L298N encima, disipador hacia atrás.",
-               "Atornilla 4 M3×16 desde arriba con tuerca abajo del piso 1.",
+              "L298N, 4 Allen M3×8",
+              ["Pon el L298N sobre los 4 postes de atrás del piso 1, disipador hacia atrás.",
+               "Atornilla 4 M3×8 desde arriba a los insertos de los postes.",
                "Motor izquierdo: amarillo a OUT1 y blanco a OUT2. Motor derecho: amarillo a OUT3 y blanco a OUT4.",
                "Aprieta los bornes con el desarmador plano y jala cada cable suave: no debe salir."],
               "ningún cable de motor queda colgando bajo el piso 1 ni cerca de las ruedas.",
@@ -486,12 +495,11 @@ def manual_ensamble():
                "El cable del frente va por debajo del OLED hacia la ranura derecha; los laterales suben derecho."],
               "cada sensor tocó el fondo de su soporte y detrás de él quedan ~27 mm libres.",
               "paso5.png")
-    H += paso("Paso 6. Separadores y cables de lógica",
-              "4 separadores de 35 mm, 4 M3×8, 6 dupont hembra-macho",
-              ["Atornilla los 4 separadores con M3×8 desde abajo del piso 1.",
-               "Conecta un dupont a cada pin del header del L298N: ENA y ENB morados, IN1 a IN4 cafés.",
+    H += paso("Paso 6. Cables de lógica del L298N",
+              "6 dupont hembra-macho",
+              ["Conecta un dupont a cada pin del header del L298N: ENA y ENB morados, IN1 a IN4 cafés.",
                "Sube los 6 cables juntos, por encima de la batería, hacia el centro del robot."],
-              "los separadores no giran y los dupont están en la fila de adelante del header, no en la de 5V.",
+              "los dupont están en la fila de adelante del header, no en la de 5V.",
               "paso6.png")
     H += paso("Paso 7. Piso 2 en la mesa",
               "piso 2, 2 mini protoboards, Arduino Nano, 8 jumpers rígidos, OLED con 4 dupont, botón, interruptor con su arnés",
@@ -517,12 +525,12 @@ def manual_ensamble():
              "jala cada cable del borne: ninguno sale. El conector T hembra sigue <b>sin conectar</b>.",
              "det_arnes.png", intro="Los bornes quedan bajo el piso 2: se aprietan antes de cerrarlo.")
     H += paso("Paso 8. Montar el piso 2",
-              "conjunto del paso 7, 4 M3×8",
-              ["Baja el piso 2 sobre los separadores pasando los cables: sensores izquierdos y TCS34725 por la ranura "
+              "conjunto del paso 7, 4 Allen M3×8",
+              ["Baja el piso 2 sobre las 4 columnas pasando los cables: sensores izquierdos y TCS34725 por la ranura "
                "izquierda; VL53L0X derecho, frontal y OLED por la derecha; L298N, botón y potencia por la central.",
-               "Revisa que ningún cable quede pellizcado entre separador y piso.",
-               "Atornilla 4 M3×8 en los separadores."],
-              "el piso 2 asienta plano en los 4 separadores y los cables de abajo no tocan las ruedas.",
+               "Revisa que ningún cable quede pellizcado entre columna y piso.",
+               "Atornilla 4 M3×8 a los insertos de las columnas."],
+              "el piso 2 asienta plano en las 4 columnas y los cables de abajo no tocan las ruedas.",
               "paso8.png")
     H += paso("Paso 9. Conexiones en las protoboards",
               "los cables que salen por las ranuras",
@@ -532,7 +540,7 @@ def manual_ensamble():
                "Botón: rosa a D2 y negro a GND de la fila D.",
                "Naranja rígido a VIN y negro rígido a GND de la fila A del Nano.",
                "Agrupa con cinchos los cables de cada sensor; usa el Anexo A como lista de revisión."],
-              "compara cable por cable con la Fig. 3 y el Anexo A antes de seguir.",
+              "compara cable por cable con la Fig. 4 y el Anexo A antes de seguir.",
               "paso9.png")
     H += paso("Paso 10. Primera conexión de la batería",
               "conector T",
@@ -563,8 +571,7 @@ def manual_ensamble():
           ], num=True),
           h2("6.3 Aprietes sugeridos"),
           tabla([["Unión", "Apriete"],
-                 ["M3 roscado en plástico (cunas, capucha, patín)", "Firme con la mano y el desarmador corto; no forzar"],
-                 ["M3×16 del L298N con tuerca", "Hasta que el espaciador no gire"],
+                 ["Allen M3 en inserto (todos)", "Firme con el lado corto de la llave; si el inserto gira, cambió de agujero: reponlo"],
                  ["Bornes del L298N", "Firme; jalar cada cable para comprobar"],
                  ["Tuercas del botón y del interruptor", "Con los dedos y un cuarto de vuelta con pinzas"]], [80, 96]),
           h1("7. Solución de problemas"),
