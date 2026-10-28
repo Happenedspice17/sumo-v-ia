@@ -25,18 +25,23 @@ Z1 = EJE_Z + MOT_H / 2
 SEP = 35
 Z2 = Z1 + ESP + SEP
 POSTES = [(42, 50), (-42, 50), (44, -46), (-44, -46)]
-BAT, BAT_Y = (65, 37, 19), 30
+BAT, BAT_Y = (65, 37, 19), 7
 L298, L298_Y, L298_AG = (43, 43, 27), -36, 37
 TOF = (25, 10.7)
 TOF_FRENTE_Y, TOF_LADO = 54, (50, 34.5)
 TOF_CARA = 1.8                      # del centro del soporte a la cara del sensor
+HEADER, DUPONT = 2.5, 14            # plastico del header recto y largo del dupont
+TOF_ATRAS = 0.3 + HEADER + DUPONT   # del centro del soporte al final del dupont
+TOF_PASILLO = TOF_ATRAS + 10        # pasillo libre detras del sensor (dupont + doblez del cable)
+TOF_PIN_Z = Z1 + ESP + TOF[1] - 1.3
 COLOR_Y, COLOR_MOD, COLOR_Z = 34, 20.5, 5
 PATIN_Y = -52
 PROTO, PROTO_Y = (35, 47, 9.5), -32.6
 NANO = (18, 44)
-OLED, OLED_Y = (27.3, 27.8), 17.5
+OLED, OLED_Y = (27.3, 27.8), 39.4
 OLED_PINES_Y = OLED_Y - OLED[1] / 2 + 2.5
 BOTON_XY, SWITCH_XY = (-38, 5), (38, 5)
+RAN2_X = 26.5                       # ranuras de cables del piso 2
 PASILLO = 180
 ALTO = Z2 + ESP + PROTO[2] + 8
 
@@ -140,7 +145,9 @@ def portada(pp):
         f"• Piso 2 (a {Z2:.0f} mm): Nano y bus I2C en 2 mini\n"
         "  protoboards, OLED, botón e interruptor.\n\n"
         "Sensores sin tornillos\n"
-        "• VL53L0X: bajan por ranuras en el piso 1.\n"
+        "• VL53L0X: header recto, pines hacia adentro;\n"
+        "  bajan por ranuras en el piso 1. Detrás de cada uno\n"
+        f"  queda un pasillo libre de {TOF_PASILLO:.0f} mm para el dupont.\n"
         "• TCS34725: entra deslizando por atrás de la capucha.\n"
         "• OLED y protoboards: entran en su marco.\n\n"
         "Giro\n"
@@ -158,16 +165,21 @@ def portada(pp):
 def soporte_tof(ax, x, y, s):
     """Soporte de VL53L0X en planta; s = direccion a la que mira: 'N', 'E', 'O'."""
     a = TOF[0] + 0.4
+    w = 6 * 2.54                     # ancho de los 6 dupont
     if s == "N":
-        for k in (-1, 1):
-            caja(ax, x + k * (a / 2 + 0.5), y, 4, 5, C["imp"], z=5)
+        caja(ax, x, y, a + 3, 5, C["imp"], z=5)
         caja(ax, x, y + 0.5, TOF[0], 1.6, C["tof"], z=6)
+        caja(ax, x, y - 0.3 - HEADER / 2, w, HEADER, "#666", z=6)
+        caja(ax, x, y - 0.3 - HEADER - DUPONT / 2, w, DUPONT, "#111", z=6)
+        caja(ax, x, y - TOF_ATRAS - 5, w, 10, "white", ls="--", z=4)
         ax.annotate("", (x, y + 28), (x, y + 3), arrowprops=dict(arrowstyle="->", color=C["tof"], lw=1.5))
     else:
         k0 = 1 if s == "E" else -1
-        for k in (-1, 1):
-            caja(ax, x, y + k * (a / 2 + 0.5), 5, 4, C["imp"], z=5)
+        caja(ax, x, y, 5, a + 3, C["imp"], z=5)
         caja(ax, x + k0 * 0.5, y, 1.6, TOF[0], C["tof"], z=6)
+        caja(ax, x - k0 * (0.3 + HEADER / 2), y, HEADER, w, "#666", z=6)
+        caja(ax, x - k0 * (0.3 + HEADER + DUPONT / 2), y, DUPONT, w, "#111", z=6)
+        caja(ax, x - k0 * (TOF_ATRAS + 5), y, 10, w, "white", ls="--", z=4)
         ax.annotate("", (x + k0 * 28, y), (x + k0 * 3, y), arrowprops=dict(arrowstyle="->", color=C["tof"], lw=1.5))
 
 
@@ -185,8 +197,8 @@ def planta_piso1(pp):
     for s in (-1, 1):
         for y in (-1, 1):
             caja(ax, s * xb, BAT_Y + y * (yb - 6), 2, 10, C["imp"], z=6)
-        caja(ax, s * 16.5, BAT_Y - yb, 9, 2, C["imp"], z=6)
-        caja(ax, s * 25, BAT_Y + yb, 10, 2, C["imp"], z=6)
+        caja(ax, s * 8, BAT_Y - yb, 8, 2, C["imp"], z=6)
+        caja(ax, s * 14, BAT_Y + yb, 8, 2, C["imp"], z=6)
     soporte_tof(ax, 0, TOF_FRENTE_Y, "N")
     soporte_tof(ax, TOF_LADO[0], TOF_LADO[1], "E")
     soporte_tof(ax, -TOF_LADO[0], TOF_LADO[1], "O")
@@ -194,14 +206,16 @@ def planta_piso1(pp):
         agujero(ax, x, y)
     for s in (-1, 1):
         for y in (-1, 1):
-            agujero(ax, s * X_MOT, y * (MOT_A / 2 + 3))
+            agujero(ax, s * X_MOT, y * (MOT_A / 2 + 3), d=6.6)
     for x in (-1, 1):
         for y in (-1, 1):
             agujero(ax, x * L298_AG / 2, L298_Y + y * L298_AG / 2)
     agujero(ax, 0, PATIN_Y, d=6.6)
     for x in (-1, 1):
         agujero(ax, x * 17, COLOR_Y, d=6.6)
-    caja(ax, 0, 0, 24, 10, "white", z=6)
+    for s in (-1, 1):
+        caja(ax, s * 27, -24, 10, 10, "white", z=6)
+    caja(ax, 0, COLOR_Y - 4.5, 14, 6, "white", z=6)
     frente(ax, -75)
     cota(ax, (-L / 2, L / 2), (L / 2, L / 2), f"{L}", off=16)
     cota(ax, (L / 2, -L / 2), (L / 2, L / 2), f"{L}", off=14, horiz=False)
@@ -211,22 +225,25 @@ def planta_piso1(pp):
     ax.text(L / 2 + 22, 0, "eje", fontsize=7, va="center")
     texto(fig, (
         "Impreso con la placa\n"
-        "• 3 soportes de VL53L0X: 2 postes con ranura de\n"
-        "  2.0 mm; el sensor baja desde arriba con los\n"
-        "  pines hacia arriba y el chip hacia afuera.\n"
-        "• 6 topes de 8 mm de alto para la batería; el centro\n"
-        "  de cada lado queda libre para sus cables.\n\n"
+        "• 3 soportes de VL53L0X: 2 postes y un canal con\n"
+        "  ranura de 2.0 mm; el sensor baja desde arriba con\n"
+        "  el chip hacia afuera. Header recto arriba, con el\n"
+        "  plástico y los dupont hacia adentro (negro). La\n"
+        f"  zona punteada ({TOF_PASILLO:.0f} mm desde el sensor) es\n"
+        "  para doblar el cable: no poner nada ahí.\n"
+        f"• Batería sobre el eje (Y = {BAT_Y}); 6 topes de 8 mm.\n\n"
         "Agujeros (M3 pasantes Ø3.4)\n"
         "• 4 separadores: (±42, 50) y (±44, −46).\n"
-        "• 4 de las cunas de motor y 4 del L298N.\n"
-        "• 3 avellanados (Ø6.6): patín trasero y capucha\n"
-        "  de color; quedan bajo el L298N y la batería.\n\n"
+        "• 4 del L298N.\n"
+        "• 7 avellanados (Ø6.6): 4 de las cunas de motor\n"
+        "  (bajo la batería), patín trasero y capucha.\n"
+        "• Ranuras 10 × 10 para cables de motores y 14 × 6\n"
+        "  para los del TCS34725 (suben por la capucha).\n\n"
         "Debajo\n"
         f"• Eje a {EJE_Z:.0f} mm del suelo.\n"
         f"• Capucha de color {COLOR_Y} mm delante del eje, con\n"
         "  el patín delantero integrado.\n"
-        f"• Patín trasero a {PATIN_Y} mm. Ambos dejan 0.5 mm.\n"
-        "• Paso central de 24 × 10 para cables."
+        f"• Patín trasero a {PATIN_Y} mm. Ambos dejan 0.5 mm."
     ))
     pp.savefig(fig)
     plt.close(fig)
@@ -248,9 +265,8 @@ def planta_piso2(pp):
     caja(ax, 0, OLED_Y, OLED[0], OLED[1], "#223", "OLED", tc="white", z=4)
     caja(ax, 0, OLED_PINES_Y, 13, 4.5, "white", "pines", fs=5.5, z=5)
     caja(ax, 0, -3, 60, 6, "white", z=6)
-    caja(ax, 0, TOF_FRENTE_Y - 2, 24, 5, "white", z=6)
     for s in (-1, 1):
-        caja(ax, s * (TOF_LADO[0] - 2), TOF_LADO[1], 5, 20, "white", z=6)
+        caja(ax, s * RAN2_X, TOF_LADO[1], 16, 22, "white", z=6)
     ax.add_patch(Circle(BOTON_XY, 5, fc="#333", ec="k", zorder=5))
     ax.text(BOTON_XY[0], BOTON_XY[1] + 8, "botón Ø7", ha="center", fontsize=7)
     ax.add_patch(Circle(SWITCH_XY, 3.2, fc="#777", ec="k", zorder=5))
@@ -271,11 +287,14 @@ def planta_piso2(pp):
         "atrás (se programa sin desarmar).\n"
         "Protoboard derecha: bus I2C. Columnas con puente\n"
         "entre mitades: 1 → 5V   4 → GND   7 → SDA   10 → SCL\n\n"
-        "OLED con los pines hacia atrás: sus conectores\n"
-        "quedan en el hueco entre batería y L298N. El código\n"
-        "gira la imagen 180° para leerla desde atrás.\n\n"
-        "Ranuras: 60 × 6 central; 24 × 5 y 5 × 20 justo sobre\n"
-        "los conectores de los 3 VL53L0X.\n"
+        "OLED al frente con los pines hacia atrás: sus dupont\n"
+        "cuelgan entre la batería y el conector del VL53L0X\n"
+        "frontal. El código gira la imagen 180° para leerla\n"
+        "desde atrás.\n\n"
+        "Ranuras: 60 × 6 central (L298N); 16 × 22 a cada\n"
+        "lado para los cables de los sensores: izquierda\n"
+        "VL53L0X izq. y TCS34725; derecha VL53L0X der.,\n"
+        "VL53L0X frontal y OLED.\n"
         "Botón de panel Ø7 e interruptor MTS-102 Ø6."
     ))
     pp.savefig(fig)
@@ -300,6 +319,10 @@ def alzados(pp):
         caja(ax, y, (Z1 + 5.5) / 2, 10, Z1 - 5.5, C["imp"])
         ax.add_patch(Circle((y, 5.5), 5, fc=C["imp"], ec=C["borde"], zorder=2))
     caja(ax, TOF_FRENTE_Y + 0.5, Z1 + ESP + TOF[1] / 2, 1.6, TOF[1], C["tof"], z=4)
+    caja(ax, TOF_FRENTE_Y - 0.3 - HEADER / 2, TOF_PIN_Z, HEADER, 2.5, "#666", z=4)
+    caja(ax, TOF_FRENTE_Y - 0.3 - HEADER - DUPONT / 2, TOF_PIN_Z, DUPONT, 2.5, "#111", z=4)
+    ax.plot([TOF_FRENTE_Y - TOF_ATRAS, TOF_FRENTE_Y - TOF_ATRAS - 1, TOF_FRENTE_Y - TOF_ATRAS - 4, TOF_FRENTE_Y - TOF_ATRAS - 4],
+            [TOF_PIN_Z, TOF_PIN_Z, TOF_PIN_Z + 3, 50], color=C["proto"], lw=1.2, zorder=4)
     caja(ax, PROTO_Y, Z2 + ESP + PROTO[2] / 2, PROTO[1], PROTO[2], "#f4f4f4", "proto", fs=6)
     caja(ax, PROTO_Y + 1, Z2 + ESP + PROTO[2] + 4, NANO[1], 3, C["placa"], z=4)
     caja(ax, OLED_Y, Z2 + ESP + 1.5, OLED[1], 3, "#223")
@@ -319,13 +342,18 @@ def alzados(pp):
         caja(ax2, s * X_MOT, EJE_Z, MOT_L, MOT_H, C["motor"], z=3)
         caja(ax2, s * 42, Z1 + ESP + SEP / 2, 5, SEP, "#aaa")
         caja(ax2, s * (TOF_LADO[0] + 0.5), Z1 + ESP + TOF[1] / 2, 1.6, TOF[1], C["tof"], z=4)
+        caja(ax2, s * (TOF_LADO[0] - 0.3 - HEADER / 2), TOF_PIN_Z, HEADER, 2.5, "#666", z=4)
+        caja(ax2, s * (TOF_LADO[0] - 0.3 - HEADER - DUPONT / 2), TOF_PIN_Z, DUPONT, 2.5, "#111", z=4)
+        xv = s * (TOF_LADO[0] - TOF_ATRAS - 4)
+        ax2.plot([s * (TOF_LADO[0] - TOF_ATRAS), xv + s * 3, xv, xv], [TOF_PIN_Z, TOF_PIN_Z, TOF_PIN_Z + 3, Z2 + ESP + 4],
+                 color=C["proto"], lw=1.2, zorder=4)
         caja(ax2, s * (PASILLO / 2 + 6), 50, 12, 100, C["pared"], alpha=0.35)
         caja(ax2, s * (PROTO[0] / 2 + 1.1), Z2 + ESP + PROTO[2] / 2, PROTO[0], PROTO[2], "#f4f4f4", z=4)
     caja(ax2, 0, Z1 + ESP + BAT[2] / 2, BAT[0], BAT[2], C["bat"], z=3)
     caja(ax2, 0, COLOR_Z + 0.8, COLOR_MOD, 1.6, C["color"], z=4)
     cota(ax2, (-L / 2, 0), (L / 2, 0), f"{L} (máximo)", off=-10)
     cota(ax2, (-PASILLO / 2, 100), (PASILLO / 2, 100), f"pasillo {PASILLO}", off=12)
-    ax2.text(0, Z1 + ESP + TOF[1] + 4, f"VL53L0X a ≈{Z1 + ESP + TOF[1] / 2:.0f} mm del suelo", ha="center", fontsize=7, color=C["tof"])
+    ax2.text(0, ALTO + 6, f"VL53L0X (verde) a ≈{Z1 + ESP + TOF[1] / 2:.0f} mm del suelo; dupont (negro) hacia adentro", ha="center", fontsize=7, color=C["tof"])
     pp.savefig(fig)
     plt.close(fig)
 

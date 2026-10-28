@@ -5,8 +5,9 @@
 // PASO:  1-4 muestra el ensamble hasta ese paso (manual de ensamble); 0 = completo
 //
 // Los sensores se insertan sin tornillos:
-//   VL53L0X: bajan por las ranuras de los soportes del piso 1
-//   TCS34725: entra deslizando por atras de la capucha
+//   VL53L0X: header recto, pines hacia adentro; bajan por las ranuras de su soporte en el piso 1.
+//            Detras de cada uno queda un pasillo libre de 27 mm para el dupont y el doblez del cable.
+//   TCS34725: entra deslizando por atras de la capucha; sus cables suben por dentro de ella
 //   OLED: se acuesta en su marco del piso 2 con los pines hacia abajo
 //   Protoboards: entran en su marco del piso 2
 //
@@ -52,7 +53,7 @@ POSTES = [[42, 50], [-42, 50], [44, -46], [-44, -46]];
 
 // Componentes
 BAT = [65, 37, 19];      // 2S 18650 acostada a lo ancho (X, Y, Z)
-BAT_Y = 30;
+BAT_Y = 7;               // sobre el eje: deja libres los pasillos de los conectores de los VL53L0X
 BAT_PARED = 8;           // alto de los topes que la sujetan
 L298 = [43, 43, 27];
 L298_Y = -36;
@@ -60,6 +61,7 @@ L298_AG = 37;            // separacion de agujeros del L298N (medir el suyo)
 TOF = [25, 10.7];        // VL53L0X CJVL53L0XV2 (ancho, alto)
 TOF_FRENTE_Y = 54;
 TOF_LADO = [50, 34.5];   // (X, Y) de los soportes laterales
+HEADER = [2.5, 6, 1.4];  // header recto: plastico, pin largo, punta corta que sale del lado del chip
 COLOR_MOD = 20.5;        // TCS34725 morado (medir el suyo)
 COLOR_Y = 34;
 COLOR_Z = 5;             // altura de la cara del sensor sobre el suelo
@@ -68,13 +70,18 @@ PROTO = [35, 47, 9.5];   // mini protoboard 170 puntos (X, Y, Z)
 PROTO_Y = -32.6;
 NANO = [18, 44];
 OLED = [27.3, 27.8];     // PCB del OLED 0.96" (medir el suyo)
-OLED_Y = 17.5;           // pines hacia atras, sobre el hueco entre bateria y L298N
+OLED_Y = 39.4;           // pines hacia atras, sobre el hueco entre bateria y conector frontal
 BOTON_XY = [-38, 5];
 SWITCH_XY = [38, 5];
 PASO_PIN = 2.54;
 DUPONT = [2.5, 14];      // conector dupont hembra (lado, largo)
+CABLE = 1.4;             // diametro del cable dupont
+RAN2_X = 26.5;           // ranuras laterales de cables del piso 2 (centro X)
 
 OLED_PINES_Y = OLED_Y - OLED[1] / 2 + 2.5;
+TOF_PIN_Z = TOF[1] - 1.3;                // fila de pines del VL53L0X, medida desde su borde de abajo
+TOF_ATRAS = 0.3 + HEADER[0] + DUPONT[1]; // del centro de la ranura al final del dupont (16.8)
+TOF_SUBE = 50 - Z1 - ESP - TOF_PIN_Z;    // el cable frontal sube a 50 mm y va a la ranura derecha
 
 // ---------- Utilidades ----------
 module cuadrado_redondo(l, r, h) {
@@ -87,14 +94,32 @@ module avellanado() { translate([0, 0, ESP - 1.6]) cylinder(d1 = M3_PASO, d2 = 6
 
 module mostrar(p) { if (PASO == 0 || PASO >= p) children(); }
 
+// Cable que pasa por una lista de puntos
+module cable(pts, col, d = CABLE) {
+  color(col) for (i = [0 : len(pts) - 2]) hull() {
+    translate(pts[i]) sphere(d = d, $fn = 8);
+    translate(pts[i + 1]) sphere(d = d, $fn = 8);
+  }
+}
+
 // ---------- Piezas impresas ----------
 
-// Soporte de VL53L0X: dos postes con ranura; el modulo baja desde arriba y queda mirando a +Y
+// Soporte de VL53L0X: dos postes y un canal abajo, todo con ranura; el modulo baja desde arriba
+// con el chip a +Y. Entre los postes queda libre el header recto (atras, arriba).
 module soporte_tof() {
   a = TOF[0] + 2 * HOLGURA;
+  h = TOF[1] + 1.5;
   difference() {
-    for (s = [-1, 1]) translate([s * (a / 2 + 0.5) - 2, -2.5, 0]) cube([4, 5, TOF[1] + 1.5]);
+    union() {
+      for (s = [-1, 1]) translate([s * (a / 2 + 0.5) - 2, -2.5, 0]) cube([4, 5, h]);
+      translate([-a / 2 - 1.5, -2.5, 0]) cube([a + 3, 5, 2]);                 // canal del borde de abajo
+    }
     translate([-a / 2, 0.5 - RANURA / 2, -1]) cube([a, RANURA, 20]);
+    // entrada abocinada arriba
+    hull() {
+      translate([-a / 2, 0.5 - RANURA / 2, h - 1.5]) cube([a, RANURA, 0.01]);
+      translate([-a / 2 - 0.8, 0.5 - RANURA / 2 - 0.8, h]) cube([a + 1.6, RANURA + 1.6, 0.01]);
+    }
   }
 }
 
@@ -105,24 +130,25 @@ module piso1() {
       translate([0, 0, ESP]) {
         translate([0, TOF_FRENTE_Y, 0]) soporte_tof();
         for (s = [-1, 1]) translate([s * TOF_LADO[0], TOF_LADO[1], 0]) rotate([0, 0, -s * 90]) soporte_tof();
-        // topes de la bateria en las esquinas; dejan libre el centro de cada lado para los cables
+        // topes de la bateria; fuera de los pasillos de los conectores de los VL53L0X
         xb = BAT[0] / 2 + HOLGURA + 1;
         yb = BAT[1] / 2 + HOLGURA + 1;
         for (s = [-1, 1]) {
           for (y = [-1, 1]) translate([s * xb, BAT_Y + y * (yb - 6), BAT_PARED / 2]) cube([2, 10, BAT_PARED], center = true);
-          translate([s * 16.5, BAT_Y - yb, BAT_PARED / 2]) cube([9, 2, BAT_PARED], center = true);
-          translate([s * 25, BAT_Y + yb, BAT_PARED / 2]) cube([10, 2, BAT_PARED], center = true);
+          translate([s * 8, BAT_Y - yb, BAT_PARED / 2]) cube([8, 2, BAT_PARED], center = true);
+          translate([s * 14, BAT_Y + yb, BAT_PARED / 2]) cube([8, 2, BAT_PARED], center = true);
         }
       }
     }
     for (s = [-1, 1]) translate([s * (POZO_X + 25), 0, ESP / 2]) cube([50, 2 * POZO_Y, ESP + 2], center = true);
-    translate([0, 0, ESP / 2]) cube([24, 10, ESP + 2], center = true);                 // paso de cables
+    for (s = [-1, 1]) translate([s * 27, -24, ESP / 2]) cube([10, 10, ESP + 2], center = true);  // cables de motores
+    translate([0, COLOR_Y - 4.5, ESP / 2]) cube([14, 6, ESP + 2], center = true);       // cables del TCS34725
     for (p = POSTES) translate([p[0], p[1], 0]) agujero(M3_PASO, ESP);
     for (s = [-1, 1]) for (y = [-1, 1])
-      translate([s * X_MOT, y * (MOT_A / 2 + 3), 0]) agujero(M3_PASO, ESP);            // cunas de motor
+      translate([s * X_MOT, y * (MOT_A / 2 + 3), 0]) { agujero(M3_PASO, ESP); avellanado(); }   // cunas: avellanados, bajo la bateria
     for (x = [-1, 1]) for (y = [-1, 1])
       translate([x * L298_AG / 2, L298_Y + y * L298_AG / 2, 0]) agujero(M3_PASO, ESP); // L298N
-    // patin y capucha: avellanados, quedan bajo el L298N y la bateria
+    // patin y capucha: avellanados (el del patin queda bajo el L298N)
     translate([0, PATIN_Y, 0]) { agujero(M3_PASO, ESP); avellanado(); }
     for (x = [-1, 1]) translate([x * 17, COLOR_Y, 0]) { agujero(M3_PASO, ESP); avellanado(); }
   }
@@ -153,8 +179,7 @@ module piso2() {
     translate([0, OLED_PINES_Y, ESP / 2]) cube([13, 4.5, ESP + 2], center = true);               // pines del OLED
     translate([0, OLED_Y + 3, ESP / 2]) cube([20, 14, ESP + 2], center = true);                  // aligera
     translate([0, -3, ESP / 2]) cube([60, 6, ESP + 2], center = true);                           // cables de abajo
-    translate([0, TOF_FRENTE_Y - 2, ESP / 2]) cube([24, 5, ESP + 2], center = true);             // cables del VL53L0X frontal
-    for (s = [-1, 1]) translate([s * (TOF_LADO[0] - 2), TOF_LADO[1], ESP / 2]) cube([5, 20, ESP + 2], center = true);   // laterales
+    for (s = [-1, 1]) translate([s * RAN2_X, TOF_LADO[1], ESP / 2]) cube([16, 22, ESP + 2], center = true); // cables de sensores
     translate([BOTON_XY[0], BOTON_XY[1], 0]) agujero(D_BOTON, ESP);
     translate([SWITCH_XY[0], SWITCH_XY[1], 0]) agujero(D_SWITCH, ESP);
   }
@@ -165,7 +190,7 @@ module cuna_motor() {
   difference() {
     translate([-8, -MOT_A / 2 - 6, 0]) cube([16, MOT_A + 12, 2 + MOT_H - 0.3]);
     translate([-9, -MOT_A / 2 - HOLGURA, 2]) cube([18, MOT_A + 2 * HOLGURA, MOT_H + 1]);
-    for (y = [-1, 1]) translate([0, y * (MOT_A / 2 + 3), 0]) agujero(M3_PASO, 20);
+    for (y = [-1, 1]) translate([0, y * (MOT_A / 2 + 3), 0]) agujero(M3_ROSCA, 20);   // M3 avellanado desde el piso 1
   }
 }
 
@@ -187,7 +212,7 @@ module capucha_color() {
     }
     translate([-v / 2, -v / 2, -1]) cube([v, v, h + 2]);                     // ventana de luz
     translate([-a / 2, -a / 2 - 3, z0]) cube([a, a + 3, RANURA]);            // ranura, abierta atras
-    translate([-v / 2, -a / 2 - 3, z0]) cube([v, 4, h]);                     // salida de cables atras
+    translate([-v / 2, -a / 2 - 3, z0]) cube([v, 4 + (a - v) / 2, h]);       // salida de cables: suben por dentro
     for (x = [-1, 1]) translate([x * 17, 0, h - 6]) agujero(M3_ROSCA, 6);
   }
 }
@@ -210,7 +235,7 @@ module espaciador(h = 5) {
 }
 
 module prueba() {
-  // agujeros M3, boton, interruptor, ranura de motor y un soporte de VL53L0X
+  // agujeros M3, boton, interruptor, ranura de motor y el soporte de VL53L0X
   difference() {
     cube([70, 26, 3]);
     for (i = [0 : 2]) translate([6 + i * 7, 7, 0]) agujero(3.2 + i * 0.2, 3);    // 3.2 / 3.4 / 3.6
@@ -239,43 +264,86 @@ module postes(z, h) {
   for (p = POSTES) color("silver") translate([p[0], p[1], z]) cylinder(d = 5.5, h = h, $fn = 6);
 }
 
-// Fila de pines con sus conectores dupont y cables. Pines hacia +Z desde z = 0.
-module pines(n, largo = 6, dupont = true, cables = ["red", "black", "royalblue", "cyan", "green", "orange"]) {
+// Fila de pines con sus conectores dupont (sin cable). Pines hacia +Z desde z = 0 (cara del plastico);
+// "atras" es lo que sale del otro lado.
+module pines(n, largo = 6, atras = 1, dupont = true) {
   for (k = [0 : n - 1]) translate([(k - (n - 1) / 2) * PASO_PIN, 0, 0]) {
-    color("gold") translate([-0.32, -0.32, -1]) cube([0.64, 0.64, largo + 1]);
-    if (dupont) {
-      color("black") translate([-DUPONT[0] / 2, -DUPONT[0] / 2, 0.5]) cube([DUPONT[0], DUPONT[0], DUPONT[1]]);
-      color(cables[k % len(cables)]) translate([0, 0, DUPONT[1] + 0.5]) cylinder(d = 1.4, h = 6, $fn = 8);
+    color("gold") translate([-0.32, -0.32, -atras]) cube([0.64, 0.64, largo + atras]);
+    if (dupont) color("black") translate([-DUPONT[0] / 2, -DUPONT[0] / 2, 0]) cube([DUPONT[0], DUPONT[0], DUPONT[1]]);
+  }
+}
+
+COL_TOF = ["red", "black", "cyan", "royalblue", "white", "green"];   // VIN GND SCL SDA GPIO1 XSHUT
+
+// Conector del VL53L0X: header recto (plastico atras), 6 dupont hacia -Y y cables.
+// recto > 0: cable recto de ese largo (prueba de choques); si no, el cable se dobla y sube "sube" mm.
+// va != 0: despues de subir, los cables van de lado hasta x = va y suben "sube2" mm mas.
+module tof_conector(recto = 0, sube = 14, va = 0, sube2 = 0) {
+  y0 = -0.3 - HEADER[0];                 // cara de atras del plastico
+  yd = -TOF_ATRAS;                       // final del dupont
+  color("dimgray") translate([-3 * PASO_PIN, y0, TOF_PIN_Z - 1.25]) cube([6 * PASO_PIN, HEADER[0], 2.5]);
+  translate([0, y0, TOF_PIN_Z]) rotate([90, 0, 0]) pines(6, HEADER[1], 1.6 + HEADER[0] + HEADER[2]);
+  for (k = [0 : 5]) {
+    x = (k - 2.5) * PASO_PIN;
+    if (recto > 0) cable([[x, yd, TOF_PIN_Z], [x, yd - recto, TOF_PIN_Z]], COL_TOF[k]);
+    else {
+      z = TOF_PIN_Z + sube + (va == 0 ? 0 : k * 1.5);
+      xv = va + (k - 2.5) * 1.5;
+      cable(concat([[x, yd, TOF_PIN_Z]],
+                   [for (a = [0 : 30 : 90]) [x, yd - 1 - 3 * sin(a), TOF_PIN_Z + 3 - 3 * cos(a)]],
+                   [[x, yd - 4, z]],
+                   va == 0 ? [] : [[xv, yd - 4, z], [xv, yd - 4, z + sube2]]), COL_TOF[k]);
     }
   }
 }
 
-// VL53L0X con header en angulo recto: los pines salen hacia arriba por detras del PCB
-module tof_modulo() {
+// VL53L0X con header recto: chip a +Y, pines hacia -Y en el borde de arriba
+module tof_modulo(sube = 14, va = 0, sube2 = 0) {
   color("green") translate([0, 0.5, TOF[1] / 2]) cube([TOF[0], 1.6, TOF[1]], center = true);
   color("black") translate([0, 1.8, TOF[1] / 2]) cube([4.4, 1, 2.4], center = true);
-  color("dimgray") translate([0, -1.55, TOF[1] - 1.3]) cube([6 * PASO_PIN, 2.5, 2.5], center = true);
-  translate([0, -1.55, TOF[1] - 0.05]) pines(6, cables = ["red", "black", "cyan", "royalblue", "white", "green"]);
+  for (k = [0 : 5]) color("silver") translate([(k - 2.5) * PASO_PIN, 1.3, TOF_PIN_Z]) rotate([-90, 0, 0]) cylinder(d1 = 1.8, d2 = 0.8, h = 0.8);
+  tof_conector(0, sube, va, sube2);
 }
 
-// OLED acostado: espaciador del header dentro de la ranura y pines hacia abajo
+// OLED acostado: espaciador del header dentro de la ranura y pines hacia abajo.
+// recto > 0: cable recto hacia abajo (prueba de choques); si no, va a la ranura derecha del piso 2.
+module oled_conector(recto = 0) {
+  cab = ["black", "red", "cyan", "royalblue"];
+  zd = -HEADER[0] - DUPONT[1];
+  color("dimgray") translate([0, OLED_PINES_Y, -HEADER[0] / 2]) cube([4 * PASO_PIN, 2.5, HEADER[0]], center = true);
+  translate([0, OLED_PINES_Y, -HEADER[0]]) mirror([0, 0, 1]) pines(4, HEADER[1], 1.6 + HEADER[0] + HEADER[2]);
+  for (k = [0 : 3]) {
+    x = (k - 1.5) * PASO_PIN;
+    z = zd - 3 - k * 1.6;
+    if (recto > 0) cable([[x, OLED_PINES_Y, zd], [x, OLED_PINES_Y, zd - recto]], cab[k]);
+    else cable([[x, OLED_PINES_Y, zd], [x, OLED_PINES_Y, z], [20, OLED_PINES_Y, z], [20, OLED_PINES_Y, 4]], cab[k]);
+  }
+}
+
 module oled_modulo() {
   color("navy") translate([0, OLED_Y, 1.5]) cube([OLED[0], OLED[1], 3], center = true);
   color("black") translate([0, OLED_Y + 2, 3]) cube([26, 19, 0.6], center = true);
-  color("dimgray") translate([0, OLED_PINES_Y, -1.25]) cube([4 * PASO_PIN, 2.5, 2.5], center = true);
-  translate([0, OLED_PINES_Y, -2.5]) mirror([0, 0, 1]) pines(4, cables = ["black", "red", "cyan", "royalblue"]);
+  oled_conector();
 }
 
-// TCS34725 con 4 cables soldados que salen por atras (cara del sensor hacia abajo)
+// Cables del TCS34725 (coordenadas del robot): suben por dentro de la capucha, cruzan el piso 1
+// por su ranura, van a la izquierda por debajo del conector frontal y suben a la ranura del piso 2.
+module tcs_cables() {
+  cab = ["red", "black", "cyan", "royalblue"];
+  y0 = COLOR_Y - COLOR_MOD / 2 + 1.3;
+  yr = COLOR_Y - 4.5;
+  for (k = [0 : 3]) {
+    x = (k - 1.5) * PASO_PIN;
+    z = Z1 + ESP + 2.5 + k * 1.5;
+    cable([[x, y0, COLOR_Z + 2.6], [x, y0, 12], [x, yr, 18], [x, yr, z], [-20, yr, z], [-20, yr, Z2 + ESP + 4]], cab[k]);
+  }
+}
+
+// TCS34725 (cara del sensor hacia abajo) con sus 4 cables soldados
 module tcs_modulo() {
   color("purple") cube([COLOR_MOD, COLOR_MOD, 1.6], center = true);
   color("white") translate([0, 0, -1.3]) cube([3, 3, 1], center = true);
   for (k = [0 : 6]) color("silver") translate([(k - 3) * PASO_PIN, -COLOR_MOD / 2 + 1.3, 0.8]) cylinder(d = 1.6, h = 0.2);
-  cab = ["red", "black", "cyan", "royalblue"];
-  for (k = [0 : 3]) color(cab[k]) translate([(k - 1.5) * PASO_PIN, -COLOR_MOD / 2 + 1.3, 1]) {
-    cylinder(d = 1.4, h = 3, $fn = 8);
-    translate([0, 0, 3]) rotate([90, 0, 0]) cylinder(d = 1.4, h = 14, $fn = 8);
-  }
 }
 
 // Boton e interruptor con su cuerpo bajo el piso 2
@@ -304,12 +372,13 @@ module ensamble() {
     color("orange") translate([0, PATIN_Y, 0]) patin();
     color("orange") translate([0, COLOR_Y, 2]) capucha_color();
     translate([0, COLOR_Y, COLOR_Z + 0.8]) tcs_modulo();
+    tcs_cables();
   }
   mostrar(3) {
     color("royalblue") translate([0, BAT_Y, Z1 + ESP + BAT[2] / 2]) cube(BAT, center = true);
     color("red") translate([0, L298_Y, Z1 + ESP + 5 + L298[2] / 2]) cube(L298, center = true);
-    translate([0, TOF_FRENTE_Y, Z1 + ESP]) tof_modulo();
-    for (s = [-1, 1]) translate([s * TOF_LADO[0], TOF_LADO[1], Z1 + ESP]) rotate([0, 0, -s * 90]) tof_modulo();
+    translate([0, TOF_FRENTE_Y, Z1 + ESP]) tof_modulo(TOF_SUBE, 23, 14);
+    for (s = [-1, 1]) translate([s * TOF_LADO[0], TOF_LADO[1], Z1 + ESP]) rotate([0, 0, -s * 90]) tof_modulo(Z2 + 7 - Z1 - ESP - TOF_PIN_Z);
     postes(Z1 + ESP, SEP);
   }
   mostrar(4) {

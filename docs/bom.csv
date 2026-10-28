@@ -13,18 +13,19 @@ Electronica,Conector T (Deans) hembra con cables,1,Para conectar la batería al 
 Electronica,Cargador balanceador 2S (JST-XH 3 pines),1,USB 2S o tipo B3 / IMAX B6
 Electronica,Mini protoboard 170 puntos,2,"Una para el Nano, otra para el bus I2C"
 Electronica,Capacitor cerámico 100 nF,2,Uno soldado en cada motor
-Electronica,"Header macho en ángulo recto (90°), tira de 40",1,6 pines para cada VL53L0X
-Electronica,Cables dupont macho-macho y macho-hembra (20 cm),20 + 20,
+Electronica,"Header macho recto 2.54 mm, tira de 40",1,"6 pines para cada VL53L0X (los rectos de siempre, no en L)"
+Electronica,Cables dupont macho-macho (20 cm),20,Protoboards y puentes
+Electronica,Cables dupont macho-hembra (20 cm),25,3 × 6 de los VL53L0X + 4 del OLED + repuesto
 Electronica,"Cable calibre 22, rojo y negro",1 m c/u,"Batería, interruptor, motores"
 Tornilleria,Separador M3 hembra-hembra 35 mm,4,Piso 1 → piso 2
 Tornilleria,Tornillo M3 × 8 cabeza cilíndrica,8,"Separadores: 4 abajo, 4 arriba"
 Tornilleria,Tornillo M3 × 16 cabeza cilíndrica,4,L298N
-Tornilleria,Tornillo M3 × 20 cabeza cilíndrica,4,Cunas de motor
+Tornilleria,Tornillo M3 × 12 avellanado (cabeza plana),4,Cunas de motor (quedan bajo la batería)
 Tornilleria,Tornillo M3 × 10 avellanado (cabeza plana),3,Capucha de color (2) y patín (1)
-Tornilleria,Tuerca M3,10,8 se usan; sobran 2
+Tornilleria,Tuerca M3,6,4 se usan (L298N); sobran 2
 Tornilleria,Velcro adhesivo 3 × 5 cm,1,Bajo la batería
 Tornilleria,Cinchos de plástico chicos,10,Ordenar cables
-Impresa 3D,piso1,1,"Base, soportes de VL53L0X y topes de batería integrados"
+Impresa 3D,piso1,1,"Base, soportes de VL53L0X (postes + canal) y topes de batería integrados"
 Impresa 3D,piso2,1,Marcos de protoboards y OLED integrados
 Impresa 3D,cuna_motor,2,Sujeta cada N20
 Impresa 3D,capucha_color,1,TCS34725 deslizable y patín delantero. Mejor en negro

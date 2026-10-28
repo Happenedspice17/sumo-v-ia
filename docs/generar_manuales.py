@@ -139,22 +139,23 @@ BOM_ELEC = [
     ["Cargador balanceador 2S (JST-XH 3 pines)", "1", "USB 2S o tipo B3 / IMAX B6"],
     ["Mini protoboard 170 puntos", "2", "Una para el Nano, otra para el bus I2C"],
     ["Capacitor cerámico 100 nF", "2", "Uno soldado en cada motor"],
-    ["Header macho en ángulo recto (90°), tira de 40", "1", "6 pines para cada VL53L0X"],
-    ["Cables dupont macho-macho y macho-hembra (20 cm)", "20 + 20", ""],
+    ["Header macho recto 2.54 mm, tira de 40", "1", "6 pines para cada VL53L0X (los rectos de siempre, no en L)"],
+    ["Cables dupont macho-macho (20 cm)", "20", "Protoboards y puentes"],
+    ["Cables dupont macho-hembra (20 cm)", "25", "3 × 6 de los VL53L0X + 4 del OLED + repuesto"],
     ["Cable calibre 22, rojo y negro", "1 m c/u", "Batería, interruptor, motores"],
 ]
 BOM_TORN = [
     ["Separador M3 hembra-hembra 35 mm", "4", "Piso 1 → piso 2"],
     ["Tornillo M3 × 8 cabeza cilíndrica", "8", "Separadores: 4 abajo, 4 arriba"],
     ["Tornillo M3 × 16 cabeza cilíndrica", "4", "L298N"],
-    ["Tornillo M3 × 20 cabeza cilíndrica", "4", "Cunas de motor"],
+    ["Tornillo M3 × 12 avellanado (cabeza plana)", "4", "Cunas de motor (quedan bajo la batería)"],
     ["Tornillo M3 × 10 avellanado (cabeza plana)", "3", "Capucha de color (2) y patín (1)"],
-    ["Tuerca M3", "10", "8 se usan; sobran 2"],
+    ["Tuerca M3", "6", "4 se usan (L298N); sobran 2"],
     ["Velcro adhesivo 3 × 5 cm", "1", "Bajo la batería"],
     ["Cinchos de plástico chicos", "10", "Ordenar cables"],
 ]
 BOM_IMP = [
-    ["piso1", "1", "Plano", "Base, soportes de VL53L0X y topes de batería integrados"],
+    ["piso1", "1", "Plano, soportes hacia arriba", "Base, soportes de VL53L0X (postes + canal) y topes de batería integrados"],
     ["piso2", "1", "Plano", "Marcos de protoboards y OLED integrados"],
     ["cuna_motor", "2", "Plano (base abajo)", "Sujeta cada N20"],
     ["capucha_color", "1", "Orejas abajo", "TCS34725 deslizable y patín delantero. Mejor en negro"],
@@ -254,8 +255,9 @@ def manual_ensamble():
               "Agujeros de abajo: 2.8 y 3.0. El M3 debe roscar apretado en el de 2.8.",
               "Agujeros grandes: botón (7.3) e interruptor (6.3).",
               "Bloque de la derecha: el N20 debe entrar empujando con el dedo, sin quedar flojo.",
-              "Soporte de abajo: mete un VL53L0X desde arriba. Debe bajar sin forzar y no bailar. Si entra "
-              "apretado, sube RANURA a 2.1; si baila, bájala a 1.9.",
+              "Soporte de abajo (el mismo del piso 1): mete un VL53L0X ya soldado, con sus 6 dupont puestos, "
+              "desde arriba. Debe bajar sin forzar hasta tocar el fondo y no bailar; el header y los dupont "
+              "quedan entre los dos postes sin tocarlos. Si entra apretado, sube RANURA a 2.1; si baila, bájala a 1.9.",
               "Si algo queda apretado, sube HOLGURA a 0.25 o M3_PASO a 3.6 en chasis.scad y vuelve a exportar.",
               "Mide también tu TCS34725 y tu OLED con vernier: si difieren más de 0.3 mm del modelo, cambia "
               "COLOR_MOD u OLED antes de imprimir.",
@@ -272,6 +274,8 @@ def manual_ensamble():
                  ["Diámetro y ancho de la rueda", "34 × 20 mm", "D_RUEDA, A_RUEDA"],
                  ["Separación de agujeros del L298N", "37 mm", "L298_AG"],
                  ["VL53L0X (ancho × alto del PCB)", "25 × 10.7 mm", "TOF"],
+                 ["Header recto (plástico / pin largo)", "2.5 / 6 mm", "HEADER"],
+                 ["Dupont hembra (largo del plástico)", "14 mm", "DUPONT"],
                  ["Lado del TCS34725", "20.5 mm", "COLOR_MOD"],
                  ["PCB del OLED", "27.3 × 27.8 mm", "OLED"],
                  ["Batería (largo × ancho)", "65 × 37 mm", "BAT"]], [70, 40, 60]),
@@ -280,9 +284,11 @@ def manual_ensamble():
               "<b>Motores:</b> un capacitor de 100 nF entre las dos terminales de cada motor y dos cables de 20 cm.",
               "<b>TCS34725:</b> suelda 4 cables de 25 cm <b>directo</b> a VIN, GND, SDA y SCL, del lado de "
               "los componentes y saliendo hacia el borde de los pines. No lleva header: entra deslizando en una ranura.",
-              "<b>VL53L0X:</b> header de 6 pines <b>en ángulo recto (90°)</b>, soldado del lado contrario al "
-              "sensor, con los pines largos apuntando hacia arriba (paralelos al PCB). Así el dupont se conecta "
-              "desde arriba y no choca con la batería.",
+              "<b>VL53L0X:</b> header <b>recto</b> de 6 pines. El <b>plástico va del lado SIN el chip</b> (atrás); "
+              "las puntas cortas atraviesan el PCB y se sueldan del lado del chip (si salen más de 1.5 mm, "
+              "recórtalas). Los pines largos (6 mm) quedan hacia atrás, perpendiculares al PCB. En el robot el "
+              "sensor va de pie con los pines arriba y apuntando hacia adentro; el dupont y el doblez del cable "
+              "ocupan unos 27 mm detrás del sensor, y el chasis deja ese espacio libre.",
               "<b>OLED:</b> el header recto de fábrica, con los pines hacia atrás de la pantalla. Va con los pines "
               "hacia la parte trasera del robot; el código ya gira la imagen 180°.",
               "<b>Interruptor:</b> un cable del + del conector T al interruptor y otro de salida de 30 cm.",
@@ -302,7 +308,7 @@ def manual_ensamble():
     pasos = [
         ("Paso 1 · Motores y ruedas", "paso1.png", None, [
             "Mete cada N20 en su cuna, con el eje hacia afuera.",
-            "Presenta la cuna bajo el piso 1. Atornilla 2 M3 × 20 desde abajo, con tuerca arriba. Aprieta hasta que el "
+            "Presenta la cuna bajo el piso 1. Atornilla 2 M3 × 12 avellanados desde arriba; roscan en la cuna. Aprieta hasta que el "
             "motor no gire dentro de la cuna.",
             "Presiona cada rueda en su eje. Debe quedar a 1–2 mm del hueco del piso, sin rozar.",
             "Gira las ruedas con la mano: deben moverse libres.",
@@ -310,18 +316,21 @@ def manual_ensamble():
         ("Paso 2 · Capucha de color y patín (vista de abajo)", "paso2.png", None, [
             "Atornilla la capucha con 2 M3 × 10 avellanados desde arriba del piso 1. Roscan directo en sus orejas.",
             "Atornilla el patín trasero con 1 M3 × 10 avellanado desde arriba.",
-            "Desliza el TCS34725 en la capucha por la abertura de atrás, con el LED hacia el suelo y los cables "
-            "hacia atrás, hasta que tope al frente. No necesita tornillos ni silicón.",
-            "Lleva sus cables por debajo del piso 1 hasta el paso central y súbelos.",
+            "Desliza el TCS34725 en la capucha por la abertura de atrás, con el LED hacia el suelo y el borde de los "
+            "cables hacia atrás, hasta que tope al frente. No necesita tornillos ni silicón.",
+            "Sus 4 cables suben por dentro de la capucha (la abertura de atrás llega hasta arriba, entran de lado) "
+            "y cruzan el piso 1 por la ranura de 14 × 6 que está sobre la capucha.",
             "Pon el robot en el suelo: se apoya en las dos ruedas; los patines quedan a 0.5 mm.",
         ]),
         ("Paso 3 · L298N, batería, VL53L0X y separadores", "paso3.png", None, [
             "Pon el L298N atrás, sobre 4 espaciadores, con 4 M3 × 16 desde arriba y tuerca abajo.",
-            "Quita los jumpers ENA y ENB del L298N. Motor izquierdo a OUT1-OUT2 y derecho a OUT3-OUT4.",
-            "Pega el velcro y acomoda la batería entre sus topes, acostada a lo ancho.",
-            "Baja cada VL53L0X por las ranuras de su soporte: chip hacia afuera, pines arriba. Entra solo, sin tornillos.",
-            "Conecta sus 6 dupont desde arriba antes de poner el piso 2; los cables suben por la ranura que "
-            "queda justo encima de cada sensor.",
+            "Quita los jumpers ENA y ENB del L298N. Motor izquierdo a OUT1-OUT2 y derecho a OUT3-OUT4. Los cables "
+            "de cada motor suben por la ranura de 10 × 10 de su lado, junto al L298N.",
+            "Pega el velcro y acomoda la batería entre sus topes, acostada a lo ancho y sobre el eje de las ruedas.",
+            "Conecta los 6 dupont a cada VL53L0X <b>antes</b> de meterlo. Bájalo por las ranuras de su soporte: "
+            "chip hacia afuera, pines arriba y apuntando hacia adentro. Entra solo, sin tornillos.",
+            "Dobla los cables hacia arriba justo donde termina el dupont. Detrás de cada sensor quedan ~27 mm "
+            "libres: no metas ahí cinchos ni cables sobrantes.",
             "Atornilla los 4 separadores de 35 mm con M3 × 8 desde abajo del piso 1.",
         ]),
         ("Paso 4 · Piso 2: Nano, bus I2C, OLED, botón e interruptor", "paso4.png", None, [
@@ -329,7 +338,9 @@ def manual_ensamble():
             "la derecha para el bus I2C.",
             "Pasa el header del OLED por la ranura del marco (pines hacia atrás del robot) y acuéstalo, pantalla arriba.",
             "Mete el botón y el interruptor en sus agujeros y apriétalos con su tuerca.",
-            "Sube los cables del piso 1 por las ranuras y conecta el OLED por debajo.",
+            "Sube los cables por las ranuras de 16 × 22 de cada lado: izquierda VL53L0X izquierdo y TCS34725; "
+            "derecha VL53L0X derecho, VL53L0X frontal y OLED. Los del L298N, por la ranura central.",
+            "Conecta el OLED por debajo: sus dupont cuelgan entre la batería y el conector del VL53L0X frontal.",
             "Atornilla el piso 2 con 4 M3 × 8 sobre los separadores y haz el cableado de la sección 5.",
         ]),
     ]
