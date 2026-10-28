@@ -1,12 +1,17 @@
-// Chasis robot laberinto (Arduino UNO R3 / ATmega328P) - 125 x 125 mm
+// Chasis robot laberinto (Arduino Nano / ATmega328P) - 120 x 120 mm con ruedas
 // Origen: centro del eje de las ruedas, a nivel del piso. X derecha, Y adelante, Z arriba.
 //
-// PIEZA: "ensamble", "piso1", "piso2", "piso3", "cuna_motor", "capucha_color", "patin",
-//        "escuadra_tof", "espaciador", "prueba"
-// PASO:  1-5 muestra el ensamble hasta ese paso (manual de ensamble); 0 = completo
+// PIEZA: "ensamble", "piso1", "piso2", "cuna_motor", "capucha_color", "patin", "espaciador", "prueba"
+// PASO:  1-4 muestra el ensamble hasta ese paso (manual de ensamble); 0 = completo
 //
-// Tolerancias para FDM con boquilla 0.4 (Bambu Lab): ver la seccion "Tolerancias".
-// Antes de imprimir todo, imprime PIEZA="prueba" y ajusta HOLGURA si algo no entra.
+// Los sensores se insertan sin tornillos:
+//   VL53L0X: bajan por las ranuras de los soportes del piso 1
+//   TCS34725: entra deslizando por atras de la capucha
+//   OLED: se acuesta en su marco del piso 2 con los pines hacia abajo
+//   Protoboards: entran en su marco del piso 2
+//
+// Tolerancias para FDM con boquilla 0.4 (Bambu Lab). Antes de imprimir todo,
+// imprime PIEZA="prueba" y ajusta HOLGURA/RANURA si algo no entra.
 
 PIEZA = "ensamble";
 PASO = 0;
@@ -15,64 +20,57 @@ $fn = 48;
 
 // ---------- Tolerancias ----------
 HOLGURA = 0.2;                 // juego por lado entre pieza impresa y componente
+RANURA = 1.6 + 0.4;            // ranura para un PCB de 1.6 mm
 M3_PASO = 3.4;                 // M3 pasante (tornillo + tuerca)
 M3_ROSCA = 2.8;                // M3 que se atornilla directo al plastico
-M2_ROSCA = 1.8;                // M2 que se atornilla directo al plastico
 D_BOTON = 7 + 2 * 0.15;        // boton de panel de 7 mm
 D_SWITCH = 6 + 2 * 0.15;       // interruptor de palanca MTS-102 (6 mm)
 
 // ---------- Medidas generales ----------
-L = 125;            // lado maximo permitido
+L = 120;            // lado maximo con ruedas
 R_ESQ = 30;         // radio de esquinas (deja girar en un pasillo de 180)
 ESP = 3;            // espesor de pisos
 
 // Ruedas y motores N20
 D_RUEDA = 34;
-A_RUEDA = 20;       // ancho de cada rueda
+A_RUEDA = 20;
 MOT_L = 24;         // caja + motor
 MOT_A = 12;         // ancho (Y)
 MOT_H = 10;         // alto (Z)
 EJE_Z = D_RUEDA / 2;
-X_RUEDA_INT = L / 2 - A_RUEDA;           // 42.5
+X_RUEDA_INT = L / 2 - A_RUEDA;           // 40
 X_MOT_EXT = X_RUEDA_INT - 1.5;           // cara de la caja de engranes
 X_MOT = X_MOT_EXT - MOT_L / 2;           // centro del motor
+POZO_X = X_RUEDA_INT - 2;                // hueco de la rueda en el piso 1
+POZO_Y = 19;
 
 // Pisos
 Z1 = EJE_Z + MOT_H / 2;                  // fondo del piso 1 (toca el motor)
-SEP = 35;                                // separadores M3 piso 1 -> 2
+SEP = 35;                                // separadores M3 hembra-hembra
 Z2 = Z1 + ESP + SEP;                     // fondo del piso 2
-SEP3 = 25;                               // separadores M3 piso 2 -> 3
-Z3 = Z2 + ESP + SEP3;                    // fondo del piso 3
-P3 = [110, 104];                         // piso 3 (X, Y)
-P3_Y = -8;
-R3 = 15;
-POZO_Y = D_RUEDA / 2 + 4;                // medio largo del hueco de rueda
-POSTES = [[48, 28], [-48, 28], [35, -52], [-35, -52]];
+POSTES = [[42, 50], [-42, 50], [44, -46], [-44, -46]];
 
 // Componentes
-BAT = [37, 65, 19];      // 2S 18650 3000 mAh (X, Y, Z)
-BAT_Y = 28;
+BAT = [65, 37, 19];      // 2S 18650 acostada a lo ancho (X, Y, Z)
+BAT_Y = 30;
+BAT_PARED = 8;           // alto de los topes que la sujetan
 L298 = [43, 43, 27];
 L298_Y = -36;
 L298_AG = 37;            // separacion de agujeros del L298N (medir el suyo)
-COLOR_Y = 34;            // centro del sensor de color
+TOF = [25, 10.7];        // VL53L0X CJVL53L0XV2 (ancho, alto)
+TOF_FRENTE_Y = 54;
+TOF_LADO = [50, 34.5];   // (X, Y) de los soportes laterales
 COLOR_MOD = 20.5;        // TCS34725 morado (medir el suyo)
+COLOR_Y = 34;
 COLOR_Z = 5;             // altura de la cara del sensor sobre el suelo
-PATIN_Y = 52;
-PLACA = [53.4, 68.6];    // Arduino UNO R3
-PLACA_Y = -10;
-AG_UNO = [[2.5, 14.0], [50.7, 15.3], [7.6, 66.1], [35.5, 66.1]];   // agujeros UNO R3: (desde el borde de A0-A5, desde el borde del USB)
-TOF = [25, 10.7, 2];     // VL53L0X CJVL53L0XV2
-TOF_AG = 20;             // separacion de sus agujeros (medir el suyo)
-TOF_FRENTE_Y = 35;
-TOF_LADO_X = 40;
-OLED = 27;
-OLED_XY = [28, 29];
-BOTON_XY = [-30, 30];
-SWITCH_XY = [36, -42];
-PROTO = [35, 47, 9];     // mini protoboard 170 puntos, girada (X, Y, Z)
-PROTO_XY = [0, -25];
-RANURA_X = 25;           // ranuras del piso 3 sobre los headers del Arduino
+PATIN_Y = -52;
+PROTO = [35, 47, 9.5];   // mini protoboard 170 puntos (X, Y, Z)
+PROTO_Y = -32.6;
+NANO = [18, 44];
+OLED = [27.3, 27.8];     // PCB del OLED 0.96" (medir el suyo)
+OLED_Y = 22;
+BOTON_XY = [-40, 25];
+SWITCH_XY = [40, 25];
 
 // ---------- Utilidades ----------
 module cuadrado_redondo(l, r, h) {
@@ -81,53 +79,84 @@ module cuadrado_redondo(l, r, h) {
 
 module agujero(d, h) { translate([0, 0, -0.5]) cylinder(d = d, h = h + 1); }
 
+module avellanado() { translate([0, 0, ESP - 1.6]) cylinder(d1 = M3_PASO, d2 = 6.6, h = 1.61); }
+
 module mostrar(p) { if (PASO == 0 || PASO >= p) children(); }
 
 // ---------- Piezas impresas ----------
-module avellanado() { translate([0, 0, ESP - 1.6]) cylinder(d1 = M3_PASO, d2 = 6.6, h = 1.61); }
+
+// Soporte de VL53L0X: dos postes con ranura; el modulo baja desde arriba y queda mirando a +Y
+module soporte_tof() {
+  a = TOF[0] + 2 * HOLGURA;
+  difference() {
+    for (s = [-1, 1]) translate([s * (a / 2 + 0.5) - 2, -2.5, 0]) cube([4, 5, TOF[1] + 1.5]);
+    translate([-a / 2, 0.5 - RANURA / 2, -1]) cube([a, RANURA, 20]);
+  }
+}
 
 module piso1() {
   difference() {
-    cuadrado_redondo(L, R_ESQ, ESP);
-    for (s = [-1, 1])
-      translate([s * (X_RUEDA_INT - 2 + 25), 0, ESP / 2]) cube([50, 2 * POZO_Y, ESP + 2], center = true);
-    translate([0, COLOR_Y, ESP / 2]) cube([16, 16, ESP + 2], center = true);           // cables del sensor de color
+    union() {
+      cuadrado_redondo(L, R_ESQ, ESP);
+      translate([0, 0, ESP]) {
+        translate([0, TOF_FRENTE_Y, 0]) soporte_tof();
+        for (s = [-1, 1]) translate([s * TOF_LADO[0], TOF_LADO[1], 0]) rotate([0, 0, -s * 90]) soporte_tof();
+        // topes de la bateria en las esquinas; dejan libre el centro de cada lado para los cables
+        xb = BAT[0] / 2 + HOLGURA + 1;
+        yb = BAT[1] / 2 + HOLGURA + 1;
+        for (s = [-1, 1]) {
+          for (y = [-1, 1]) translate([s * xb, BAT_Y + y * (yb - 6), BAT_PARED / 2]) cube([2, 10, BAT_PARED], center = true);
+          translate([s * 16.5, BAT_Y - yb, BAT_PARED / 2]) cube([9, 2, BAT_PARED], center = true);
+          translate([s * 25, BAT_Y + yb, BAT_PARED / 2]) cube([10, 2, BAT_PARED], center = true);
+        }
+      }
+    }
+    for (s = [-1, 1]) translate([s * (POZO_X + 25), 0, ESP / 2]) cube([50, 2 * POZO_Y, ESP + 2], center = true);
     translate([0, 0, ESP / 2]) cube([24, 10, ESP + 2], center = true);                 // paso de cables
     for (p = POSTES) translate([p[0], p[1], 0]) agujero(M3_PASO, ESP);
     for (s = [-1, 1]) for (y = [-1, 1])
       translate([s * X_MOT, y * (MOT_A / 2 + 3), 0]) agujero(M3_PASO, ESP);            // cunas de motor
     for (x = [-1, 1]) for (y = [-1, 1])
       translate([x * L298_AG / 2, L298_Y + y * L298_AG / 2, 0]) agujero(M3_PASO, ESP); // L298N
-    // patines y capucha: avellanados, quedan bajo la bateria
-    for (y = [PATIN_Y, -PATIN_Y]) translate([0, y, 0]) { agujero(M3_PASO, ESP); avellanado(); }
+    // patin y capucha: avellanados, quedan bajo el L298N y la bateria
+    translate([0, PATIN_Y, 0]) { agujero(M3_PASO, ESP); avellanado(); }
     for (x = [-1, 1]) translate([x * 17, COLOR_Y, 0]) { agujero(M3_PASO, ESP); avellanado(); }
-    for (x = [-1, 1]) translate([x * 22.5, BAT_Y, ESP / 2]) cube([3, 22, ESP + 2], center = true);   // cincho de bateria
   }
 }
 
 module piso2() {
+  ap = PROTO[0] + 2 * 0.3;
+  lp = PROTO[1] + 2 * 0.3;
+  ao = [OLED[0] + 2 * 0.3, OLED[1] + 2 * 0.3];
   difference() {
-    cuadrado_redondo(L, R_ESQ, ESP);
+    union() {
+      cuadrado_redondo(L, R_ESQ, ESP);
+      translate([0, 0, ESP]) {
+        // marco para dos protoboards (Nano a la izquierda, bus I2C a la derecha)
+        translate([0, PROTO_Y, 2]) difference() {
+          cube([2 * ap + 3 * 1.6, lp + 3.2, 4], center = true);
+          for (s = [-1, 1]) translate([s * (ap / 2 + 0.8), 0, 0]) cube([ap, lp, 6], center = true);
+          translate([-(ap / 2 + 0.8), -lp / 2, 0]) cube([12, 6, 6], center = true);   // salida del USB
+        }
+        // marco del OLED
+        translate([0, OLED_Y, 1.5]) difference() {
+          cube([ao[0] + 3.2, ao[1] + 3.2, 3], center = true);
+          cube([ao[0], ao[1], 4], center = true);
+        }
+      }
+    }
     for (p = POSTES) translate([p[0], p[1], 0]) agujero(M3_PASO, ESP);
-    for (h = AG_UNO) translate([PLACA[0] / 2 - h[0], PLACA_Y - PLACA[1] / 2 + h[1], 0]) agujero(M3_PASO, ESP);
-    translate([0, -53, ESP / 2]) cube([24, 8, ESP + 2], center = true);                // cables de abajo
-    translate([0, TOF_FRENTE_Y - 7.5, 0]) agujero(M3_PASO, ESP);                        // escuadras VL53L0X
-    for (s = [-1, 1]) translate([s * (TOF_LADO_X - 7.5), 0, 0]) agujero(M3_PASO, ESP);
-  }
-}
-
-module piso3() {
-  difference() {
-    translate([0, P3_Y, 0]) linear_extrude(ESP) offset(R3) square([P3[0] - 2 * R3, P3[1] - 2 * R3], center = true);
-    for (p = POSTES) translate([p[0], p[1], 0]) agujero(M3_PASO, ESP);
+    translate([0, OLED_Y + OLED[1] / 2 - 2.5, ESP / 2]) cube([13, 4.5, ESP + 2], center = true);   // pines del OLED
+    translate([0, OLED_Y - 2, ESP / 2]) cube([20, 14, ESP + 2], center = true);                  // aligera
+    translate([0, -3, ESP / 2]) cube([60, 6, ESP + 2], center = true);                           // cables de abajo
+    translate([0, 46, ESP / 2]) cube([24, 5, ESP + 2], center = true);                           // cables del frente
     translate([BOTON_XY[0], BOTON_XY[1], 0]) agujero(D_BOTON, ESP);
     translate([SWITCH_XY[0], SWITCH_XY[1], 0]) agujero(D_SWITCH, ESP);
-    for (s = [-1, 1]) translate([s * RANURA_X, -12, ESP / 2]) cube([8, 52, ESP + 2], center = true);
   }
 }
 
 module cuna_motor() {
-  // aprieta el motor contra el piso 1; abierta arriba, 0.3 mm mas baja que el motor para que apriete
+  // aprieta el motor contra el piso 1; 0.3 mm mas baja que el motor para que apriete
   difference() {
     translate([-8, -MOT_A / 2 - 6, 0]) cube([16, MOT_A + 12, 2 + MOT_H - 0.3]);
     translate([-9, -MOT_A / 2 - HOLGURA, 2]) cube([18, MOT_A + 2 * HOLGURA, MOT_H + 1]);
@@ -135,26 +164,31 @@ module cuna_motor() {
   }
 }
 
+// Capucha del sensor de color: el TCS34725 entra deslizando por atras (cara del sensor hacia abajo)
+// y queda atrapado en una ranura. Al frente lleva el patin delantero.
 module capucha_color() {
-  // tubo que tapa la luz ambiente; el TCS34725 entra por abajo y se apoya en el borde interior
   h = Z1 - 2;                         // de 2 mm sobre el suelo hasta el piso 1
-  hueco = COLOR_MOD + 2 * HOLGURA;
-  borde = COLOR_Z + 1.6;              // altura donde se apoya la espalda del modulo
+  a = COLOR_MOD + 2 * HOLGURA;        // ranura del modulo
+  v = a - 3;                          // ventana: deja 1.5 mm de apoyo por lado
+  z0 = COLOR_Z - 2;                   // fondo de la ranura, medido desde el borde de la capucha
   difference() {
     union() {
-      translate([-hueco / 2 - 2, -hueco / 2 - 2, 0]) cube([hueco + 4, hueco + 4, h]);
-      translate([-22, -5, h - 3]) cube([44, 10, 3]);                       // orejas
-      for (x = [-1, 1]) translate([x * (hueco / 2 - 0.75), 0, borde - 2 + 1])   // topes donde se apoya el modulo
-        cube([1.5, 8, 2], center = true);
+      translate([-a / 2 - 2, -a / 2 - 2, 0]) cube([a + 4, a + 4, h]);
+      translate([-22, -5, h - 6]) cube([44, 10, 6]);                         // orejas
+      translate([0, a / 2 + 4, 3.5]) {                                       // patin delantero, 0.5 mm sobre el suelo
+        cylinder(d = 10, h = h - 3.5);
+        sphere(d = 10);
+      }
     }
-    translate([-hueco / 2, -hueco / 2, -1]) cube([hueco, hueco, borde - 2 + 1]);
-    translate([-hueco / 2, -hueco / 2, 0]) cube([hueco, hueco, h + 1]);
-    for (x = [-1, 1]) translate([x * 17, 0, h - 4]) agujero(M3_PASO, 5);
+    translate([-v / 2, -v / 2, -1]) cube([v, v, h + 2]);                     // ventana de luz
+    translate([-a / 2, -a / 2 - 3, z0]) cube([a, a + 3, RANURA]);            // ranura, abierta atras
+    translate([-v / 2, -a / 2 - 3, z0]) cube([v, 4, h]);                     // salida de cables atras
+    for (x = [-1, 1]) translate([x * 17, 0, h - 6]) agujero(M3_ROSCA, 6);
   }
 }
 
 module patin() {
-  // apoyo deslizante; deja 0.5 mm al suelo. Se atornilla con M3 desde arriba del piso 1
+  // apoyo deslizante trasero; deja 0.5 mm al suelo. Se atornilla con M3 avellanado desde el piso 1
   h = Z1 - 0.5;
   difference() {
     translate([0, 0, 0.5]) {
@@ -165,30 +199,17 @@ module patin() {
   }
 }
 
-module escuadra_tof() {
-  // el VL53L0X se atornilla en la cara +Y (mira hacia +Y)
-  difference() {
-    union() {
-      translate([-15, 0, 0]) cube([30, 3, 18]);
-      translate([-15, -9, 0]) cube([30, 12, 3]);
-    }
-    for (x = [-1, 1]) translate([x * TOF_AG / 2, -1, 12]) rotate([-90, 0, 0]) cylinder(d = M2_ROSCA, h = 5);
-    translate([0, -4.5, 0]) agujero(M3_PASO, 3);
-  }
-}
-
 module espaciador(h = 5) {
-  // separa el Arduino y el L298N de su piso (5 mm)
+  // separa el L298N del piso 1
   difference() { cylinder(d = 7, h = h); agujero(M3_PASO, h); }
 }
 
 module prueba() {
-  // pieza de prueba: agujeros M3 y M2, boton, interruptor y ranura del motor
+  // agujeros M3, boton, interruptor, ranura de motor y un soporte de VL53L0X
   difference() {
     cube([70, 26, 3]);
     for (i = [0 : 2]) translate([6 + i * 7, 7, 0]) agujero(3.2 + i * 0.2, 3);    // 3.2 / 3.4 / 3.6
     for (i = [0 : 1]) translate([6 + i * 7, 18, 0]) agujero(M3_ROSCA + i * 0.2, 3);
-    translate([30, 18, 0]) agujero(M2_ROSCA, 3);
     translate([40, 8, 0]) agujero(D_BOTON, 3);
     translate([40, 19, 0]) agujero(D_SWITCH, 3);
   }
@@ -196,6 +217,7 @@ module prueba() {
     cube([22, 26, 9]);
     translate([5, 13 - MOT_A / 2 - HOLGURA, 2]) cube([20, MOT_A + 2 * HOLGURA, 10]);
   }
+  translate([0, -12, 0]) { cube([36, 12, 3]); translate([18, 6, 3]) soporte_tof(); }
 }
 
 // ---------- Componentes comprados (solo para el ensamble) ----------
@@ -212,6 +234,11 @@ module postes(z, h) {
   for (p = POSTES) color("silver") translate([p[0], p[1], z]) cylinder(d = 5.5, h = h, $fn = 6);
 }
 
+module tof_modulo() {
+  color("green") translate([0, 0.5, TOF[1] / 2]) cube([TOF[0], 1.6, TOF[1]], center = true);
+  color("black") translate([0, 1.8, TOF[1] / 2]) cube([4.4, 1, 2.4], center = true);
+}
+
 module ensamble() {
   mostrar(1) {
     color("lightsteelblue") translate([0, 0, Z1]) piso1();
@@ -222,43 +249,35 @@ module ensamble() {
     }
   }
   mostrar(2) {
-    color("orange") for (y = [PATIN_Y, -PATIN_Y]) translate([0, y, 0]) patin();
+    color("orange") translate([0, PATIN_Y, 0]) patin();
     color("orange") translate([0, COLOR_Y, 2]) capucha_color();
     color("purple") translate([0, COLOR_Y, COLOR_Z + 0.8]) cube([COLOR_MOD, COLOR_MOD, 1.6], center = true);
   }
   mostrar(3) {
     color("royalblue") translate([0, BAT_Y, Z1 + ESP + BAT[2] / 2]) cube(BAT, center = true);
-    color("dimgray") translate([0, BAT_Y, Z1 + ESP + BAT[2] + 0.5]) cube([46, 20, 1], center = true);
     color("red") translate([0, L298_Y, Z1 + ESP + 5 + L298[2] / 2]) cube(L298, center = true);
+    translate([0, TOF_FRENTE_Y, Z1 + ESP]) tof_modulo();
+    for (s = [-1, 1]) translate([s * TOF_LADO[0], TOF_LADO[1], Z1 + ESP]) rotate([0, 0, -s * 90]) tof_modulo();
     postes(Z1 + ESP, SEP);
   }
   mostrar(4) {
+    xp = PROTO[0] / 2 + 1.1;
     color("lightsteelblue", 0.9) translate([0, 0, Z2]) piso2();
-    color("darkcyan") translate([0, PLACA_Y, Z2 + ESP + 5 + 7]) cube([PLACA[0], PLACA[1], 14], center = true);
-    color("orange") translate([0, TOF_FRENTE_Y - 3, Z2 + ESP]) escuadra_tof();
-    color("green") translate([0, TOF_FRENTE_Y + 0.5, Z2 + ESP + 12]) cube([TOF[0], 1.6, TOF[1]], center = true);
-    for (s = [-1, 1]) {
-      color("orange") translate([s * (TOF_LADO_X - 3), 0, Z2 + ESP]) rotate([0, 0, -s * 90]) escuadra_tof();
-      color("green") translate([s * (TOF_LADO_X + 0.5), 0, Z2 + ESP + 12]) cube([1.6, TOF[0], TOF[1]], center = true);
-    }
-  }
-  mostrar(5) {
-    postes(Z2 + ESP, SEP3);
-    color("lightsteelblue", 0.9) translate([0, 0, Z3]) piso3();
-    color("crimson") translate([PROTO_XY[0], PROTO_XY[1], Z3 + ESP + PROTO[2] / 2]) cube(PROTO, center = true);
-    color("white") translate([OLED_XY[0], OLED_XY[1], Z3 + ESP + 3]) cube([OLED, OLED, 4], center = true);
-    color("black") translate([BOTON_XY[0], BOTON_XY[1], Z3 + ESP]) cylinder(d = 10, h = 6);
-    color("dimgray") translate([SWITCH_XY[0], SWITCH_XY[1], Z3 + ESP]) cylinder(d = 3, h = 10);
+    for (s = [-1, 1]) color("white") translate([s * xp, PROTO_Y, Z2 + ESP + PROTO[2] / 2]) cube(PROTO, center = true);
+    color("darkcyan") translate([-xp, PROTO_Y + 1, Z2 + ESP + PROTO[2] + 4]) cube([NANO[0], NANO[1], 1.6], center = true);
+    color("silver") translate([-xp, PROTO_Y + 1 - NANO[1] / 2 + 3, Z2 + ESP + PROTO[2] + 6.4]) cube([9, 7.5, 3.2], center = true);
+    color("navy") translate([0, OLED_Y, Z2 + ESP + 1.5]) cube([OLED[0], OLED[1], 3], center = true);
+    color("black") translate([0, OLED_Y - 2, Z2 + ESP + 3]) cube([26, 19, 0.6], center = true);
+    color("black") translate([BOTON_XY[0], BOTON_XY[1], Z2 + ESP]) cylinder(d = 10, h = 6);
+    color("dimgray") translate([SWITCH_XY[0], SWITCH_XY[1], Z2 + ESP]) cylinder(d = 3, h = 10);
   }
 }
 
 if (PIEZA == "ensamble") ensamble();
 else if (PIEZA == "piso1") piso1();
 else if (PIEZA == "piso2") piso2();
-else if (PIEZA == "piso3") piso3();
 else if (PIEZA == "cuna_motor") cuna_motor();
 else if (PIEZA == "capucha_color") translate([0, 0, Z1 - 2]) rotate([180, 0, 0]) capucha_color();
 else if (PIEZA == "patin") translate([0, 0, Z1]) rotate([180, 0, 0]) patin();
-else if (PIEZA == "escuadra_tof") escuadra_tof();
 else if (PIEZA == "espaciador") espaciador();
 else if (PIEZA == "prueba") prueba();

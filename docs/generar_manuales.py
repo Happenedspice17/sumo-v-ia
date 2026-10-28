@@ -125,7 +125,7 @@ def construir(nombre, titulo, historia):
 
 # ---------- Datos ----------
 BOM_ELEC = [
-    ["Arduino UNO R3 (ATmega328P) + cable USB-B", "1", "Cerebro del robot"],
+    ["Arduino Nano USB-C (ATmega328P, CH340) + cable USB-C de datos", "1", "Cerebro del robot"],
     ["Motorreductor N20, 6 V, 300–500 RPM, sin encoder", "2", "Mismo modelo los dos"],
     ["Rueda para N20, Ø34 × 20 mm, eje D de 3 mm", "2", "Si es otra medida, cambiar D_RUEDA en chasis.scad"],
     ["Puente H L298N (Steren)", "1", "Quitar jumpers ENA/ENB"],
@@ -137,39 +137,33 @@ BOM_ELEC = [
     ["Batería 2S 18650, 7.4 V, 3000 mAh, conector T", "1", "Con balanceo JST-XH de 3 pines"],
     ["Conector T (Deans) hembra con cables", "1", "Para conectar la batería al robot"],
     ["Cargador balanceador 2S (JST-XH 3 pines)", "1", "USB 2S o tipo B3 / IMAX B6"],
-    ["Mini protoboard 170 puntos", "1", "Reparte 5V, GND, SDA y SCL"],
+    ["Mini protoboard 170 puntos", "2", "Una para el Nano, otra para el bus I2C"],
     ["Capacitor cerámico 100 nF", "2", "Uno soldado en cada motor"],
     ["Cables dupont macho-macho y macho-hembra (20 cm)", "20 + 20", ""],
     ["Cable calibre 22, rojo y negro", "1 m c/u", "Batería, interruptor, motores"],
 ]
 BOM_TORN = [
     ["Separador M3 hembra-hembra 35 mm", "4", "Piso 1 → piso 2"],
-    ["Separador M3 macho-hembra 25 mm", "4", "Piso 2 → piso 3"],
-    ["Tornillo M3 × 8 cabeza cilíndrica", "11", "4 bajo piso 1, 4 sobre piso 3, 3 escuadras"],
-    ["Tornillo M3 × 12 cabeza cilíndrica", "8", "4 L298N, 4 Arduino"],
+    ["Tornillo M3 × 8 cabeza cilíndrica", "8", "Separadores: 4 abajo, 4 arriba"],
+    ["Tornillo M3 × 16 cabeza cilíndrica", "4", "L298N"],
     ["Tornillo M3 × 20 cabeza cilíndrica", "4", "Cunas de motor"],
-    ["Tornillo M3 × 12 avellanado (cabeza plana)", "2", "Patines"],
-    ["Tornillo M3 × 10 avellanado (cabeza plana)", "2", "Capucha del sensor de color"],
-    ["Tuerca M3", "20", "17 se usan; sobran 3"],
-    ["Tornillo M2 × 6 autorroscante", "6", "VL53L0X a sus escuadras"],
-    ["Cincho de velcro 20 mm × 25 cm", "1", "Sujeta la batería"],
-    ["Cinta doble cara de espuma", "1", "OLED"],
+    ["Tornillo M3 × 10 avellanado (cabeza plana)", "3", "Capucha de color (2) y patín (1)"],
+    ["Tuerca M3", "10", "8 se usan; sobran 2"],
+    ["Velcro adhesivo 3 × 5 cm", "1", "Bajo la batería"],
     ["Cinchos de plástico chicos", "10", "Ordenar cables"],
 ]
 BOM_IMP = [
-    ["piso1", "1", "Plano", "Base, motores, batería, L298N"],
-    ["piso2", "1", "Plano", "Arduino y VL53L0X"],
-    ["piso3", "1", "Plano", "Protoboard, OLED, botón, interruptor"],
+    ["piso1", "1", "Plano", "Base, soportes de VL53L0X y topes de batería integrados"],
+    ["piso2", "1", "Plano", "Marcos de protoboards y OLED integrados"],
     ["cuna_motor", "2", "Plano (base abajo)", "Sujeta cada N20"],
-    ["capucha_color", "1", "Orejas abajo", "Mejor en color negro"],
-    ["patin", "2", "Domo arriba", "Apoyo deslizante"],
-    ["escuadra_tof", "3", "Base abajo", "Soporte de cada VL53L0X"],
-    ["espaciador", "8", "De pie", "4 Arduino + 4 L298N"],
+    ["capucha_color", "1", "Orejas abajo", "TCS34725 deslizable y patín delantero. Mejor en negro"],
+    ["patin", "1", "Domo arriba", "Apoyo trasero"],
+    ["espaciador", "4", "De pie", "L298N"],
     ["prueba", "1", "Plano", "Imprimir primero"],
 ]
 HERRAMIENTAS = ["Cautín y soldadura", "Desarmador de cruz chico", "Llave o pinzas para tuerca M3 (5.5 mm)",
-                "Multímetro", "Pinzas de corte y pelacables", "Pistola de silicón (opcional)",
-                "Computadora con Arduino IDE"]
+                "Multímetro", "Pinzas de corte y pelacables",
+                "Computadora con Microchip Studio 7 y avrdude (viene con Arduino IDE)"]
 PINES = [
     ["L298N", "ENA / ENB", "D5 / D6"],
     ["L298N", "IN1 / IN2 / IN3 / IN4", "D7 / D8 / D9 / D10"],
@@ -177,13 +171,13 @@ PINES = [
     ["L298N", "GND", "GND común"],
     ["L298N", "OUT1-OUT2 / OUT3-OUT4", "Motor izquierdo / motor derecho"],
     ["VL53L0X izq / frente / der", "XSHUT", "A0 / A1 / A2"],
-    ["VL53L0X ×3, TCS34725, OLED", "SDA / SCL", "Protoboard col. 7 / col. 10 → A4 / A5"],
-    ["VL53L0X ×3 (VCC), TCS34725 (VIN), OLED (VCC)", "Alimentación", "Protoboard col. 1 → 5V"],
-    ["Todos los módulos", "GND", "Protoboard col. 4 → GND"],
+    ["VL53L0X ×3, TCS34725, OLED", "SDA / SCL", "Bus col. 7 / col. 10 → A4 / A5"],
+    ["VL53L0X ×3 (VCC), TCS34725 (VIN), OLED (VCC)", "Alimentación", "Bus col. 1 → 5V del Nano"],
+    ["Todos los módulos", "GND", "Bus col. 4 → GND"],
     ["VL53L0X", "GPIO1", "Sin conectar"],
     ["TCS34725", "LED, INT, 3V3", "Sin conectar"],
     ["Botón", "Una pata / la otra", "D2 / GND"],
-    ["Arduino", "VIN", "Batería + (después del interruptor)"],
+    ["Arduino Nano", "VIN", "Batería + (después del interruptor)"],
 ]
 
 
@@ -203,13 +197,13 @@ def escribir_csv():
 def manual_ensamble():
     H = []
     H += [Spacer(1, 30 * mm), Paragraph("Manual de ensamble", S["t"]),
-          Paragraph("Robot de laberinto · Arduino UNO R3 (ATmega328P)", S["st"]), Spacer(1, 8 * mm),
+          Paragraph("Robot de laberinto · Arduino Nano (ATmega328P)", S["st"]), Spacer(1, 8 * mm),
           img(os.path.join(IMG, "iso.png"), 150, (200, 120, 1250, 1000)), Spacer(1, 8 * mm),
           tabla([["Sección", "Contenido"],
                  ["1. Lista de material", "Electrónica, tornillería, piezas impresas y herramientas"],
                  ["2. Impresión 3D", "Ajustes, orientación y tolerancias"],
                  ["3. Preparación", "Medir, soldar y probar en la mesa"],
-                 ["4. Ensamble", "Cinco pasos, de abajo hacia arriba"],
+                 ["4. Ensamble", "Cuatro pasos, de abajo hacia arriba"],
                  ["5. Cableado", "Diagrama, tabla de pines y protoboard"],
                  ["6. Verificación", "Antes de conectar la batería por primera vez"]], [45, 125]),
           PageBreak()]
@@ -234,28 +228,36 @@ def manual_ensamble():
                  ["Capas superior / inferior", "4 / 4", ""],
                  ["Relleno", "25 % giroide", ""],
                  ["Soportes", "No", "Ninguna pieza los necesita en la orientación indicada"],
+                 ["Costura (seam)", "Atrás / alineada", "Que no quede dentro de las ranuras de los sensores"],
                  ["Compensación de pata de elefante", "0.15 mm", "Si no, la primera capa cierra los agujeros"],
                  ["Compensación X-Y de agujeros", "0", "Las holguras ya vienen en el modelo"],
-                 ["Placa", "Textured PEI", "Ninguna pieza mide más de 125 × 125 mm"]], [52, 38, 80]),
+                 ["Placa", "Textured PEI", "La pieza más grande mide 120 × 120 mm"]], [52, 38, 80]),
           h2("Tolerancias que ya trae el modelo"),
           tabla([["Elemento", "Medida nominal", "Medida impresa", "Variable en chasis.scad"],
                  ["Agujero M3 pasante", "3.0", "3.4", "M3_PASO"],
-                 ["M3 roscado en plástico (patín)", "3.0", "2.8", "M3_ROSCA"],
-                 ["M2 roscado en plástico (escuadras)", "2.0", "1.8", "M2_ROSCA"],
+                 ["M3 roscado en plástico", "3.0", "2.8", "M3_ROSCA"],
+                 ["Ranura de PCB (VL53L0X, TCS34725)", "1.6", "2.0", "RANURA"],
+                 ["Ancho del VL53L0X en su soporte", "25.0", "25.4", "TOF + HOLGURA × 2"],
+                 ["Ranura del TCS34725", "20.5", "20.9", "COLOR_MOD + HOLGURA × 2"],
+                 ["Marco de protoboard", "35 × 47", "35.6 × 47.6", "PROTO + 0.3 × 2"],
+                 ["Marco del OLED", "27.3 × 27.8", "27.9 × 28.4", "OLED + 0.3 × 2"],
                  ["Cuna del motor (ancho)", "12.0", "12.4", "HOLGURA × 2"],
                  ["Cuna del motor (alto)", "10.0", "9.7 (aprieta)", "MOT_H − 0.3"],
-                 ["Capucha del TCS34725", "20.5", "20.9", "COLOR_MOD + HOLGURA × 2"],
                  ["Botón de panel", "7.0", "7.3", "D_BOTON"],
                  ["Interruptor MTS-102", "6.0", "6.3", "D_SWITCH"]], [55, 30, 30, 55]),
           h2("Pieza de prueba"),
-          img(os.path.join(IMG, "pieza_prueba.png"), 90, (60, 120, 840, 600)),
+          img(os.path.join(IMG, "pieza_prueba.png"), 80, (150, 150, 1250, 950)),
           *lista([
               "Imprímela con los mismos ajustes: <b>PIEZA=\"prueba\"</b> (o chasis/stl/prueba.stl).",
               "Agujeros de arriba: M3 de 3.2, 3.4 y 3.6. El tornillo debe pasar libre en el de 3.4.",
-              "Agujeros de abajo: 2.8 y 3.0 (M3 debe roscar apretado en el de 2.8) y 1.8 (M2).",
+              "Agujeros de abajo: 2.8 y 3.0. El M3 debe roscar apretado en el de 2.8.",
               "Agujeros grandes: botón (7.3) e interruptor (6.3).",
               "Bloque de la derecha: el N20 debe entrar empujando con el dedo, sin quedar flojo.",
+              "Soporte de abajo: mete un VL53L0X desde arriba. Debe bajar sin forzar y no bailar. Si entra "
+              "apretado, sube RANURA a 2.1; si baila, bájala a 1.9.",
               "Si algo queda apretado, sube HOLGURA a 0.25 o M3_PASO a 3.6 en chasis.scad y vuelve a exportar.",
+              "Mide también tu TCS34725 y tu OLED con vernier: si difieren más de 0.3 mm del modelo, cambia "
+              "COLOR_MOD u OLED antes de imprimir.",
           ]),
           h2("Exportar los STL"),
           p("Ya están en <b>chasis/stl/</b>. Si cambias una medida, abre chasis.scad en OpenSCAD, pon PIEZA con el "
@@ -268,14 +270,18 @@ def manual_ensamble():
           tabla([["Qué medir", "Valor del modelo", "Variable"],
                  ["Diámetro y ancho de la rueda", "34 × 20 mm", "D_RUEDA, A_RUEDA"],
                  ["Separación de agujeros del L298N", "37 mm", "L298_AG"],
+                 ["VL53L0X (ancho × alto del PCB)", "25 × 10.7 mm", "TOF"],
                  ["Lado del TCS34725", "20.5 mm", "COLOR_MOD"],
-                 ["Separación de agujeros del VL53L0X", "20 mm", "TOF_AG"]], [70, 40, 60]),
+                 ["PCB del OLED", "27.3 × 27.8 mm", "OLED"],
+                 ["Batería (largo × ancho)", "65 × 37 mm", "BAT"]], [70, 40, 60]),
           h2("Soldar"),
           *lista([
               "<b>Motores:</b> un capacitor de 100 nF entre las dos terminales de cada motor y dos cables de 20 cm.",
-              "<b>TCS34725:</b> suelda 4 cables de 25 cm <b>directo</b> a VIN, GND, SDA y SCL, sin header. El sensor "
-              "va metido en la capucha bajo la batería y no hay espacio para conectores dupont.",
-              "<b>VL53L0X y OLED:</b> header recto; se conectan con dupont macho-hembra.",
+              "<b>TCS34725:</b> suelda 4 cables de 25 cm <b>directo</b> a VIN, GND, SDA y SCL, del lado de "
+              "los componentes y saliendo hacia el borde de los pines. No lleva header: entra deslizando en una ranura.",
+              "<b>VL53L0X:</b> header recto del lado <b>contrario</b> al sensor, con los pines apuntando hacia "
+              "atrás. Quedan arriba al meterlo en su soporte.",
+              "<b>OLED:</b> el header de fábrica, con los pines hacia atrás de la pantalla.",
               "<b>Interruptor:</b> un cable del + del conector T al interruptor y otro de salida de 30 cm.",
               "<b>Botón:</b> dos cables de 20 cm.",
           ]),
@@ -283,7 +289,7 @@ def manual_ensamble():
           *lista([
               "Carga la batería (ver manual de uso).",
               "Conecta todo en la mesa siguiendo la sección 5, sin chasis.",
-              "Sube el código (manual de uso, sección 2) y enciende sosteniendo el botón: entras al modo calibración.",
+              "Pon el Nano en su protoboard, sube el código (manual de uso, sección 2) y enciende sosteniendo el botón: entras al modo calibración.",
               "Revisa que la OLED muestre el color y tres distancias que cambien al acercar la mano.",
               "Si sale <b>SIN SENSOR COLOR</b> o <b>SIN VL53L0X</b>, revisa ese cableado antes de ensamblar.",
           ], num=True),
@@ -298,35 +304,28 @@ def manual_ensamble():
             "Presiona cada rueda en su eje. Debe quedar a 1–2 mm del hueco del piso, sin rozar.",
             "Gira las ruedas con la mano: deben moverse libres.",
         ]),
-        ("Paso 2 · Patines y sensor de color (vista de abajo)", "paso2.png", None, [
-            "Atornilla los 2 patines con M3 × 12 avellanado desde arriba del piso 1. Roscan directo en el plástico.",
-            "Pasa los 4 cables del TCS34725 por la capucha y por la ventana del piso 1.",
-            "Mete el TCS34725 en la capucha desde abajo, con el LED hacia el suelo, hasta que se apoye en los topes. "
-            "Fíjalo con dos puntos de silicón.",
-            "Atornilla la capucha con 2 M3 × 10 avellanados desde arriba y tuerca abajo.",
-            "Pon el robot en el suelo: debe apoyarse en las dos ruedas y los patines casi tocar.",
+        ("Paso 2 · Capucha de color y patín (vista de abajo)", "paso2.png", None, [
+            "Atornilla la capucha con 2 M3 × 10 avellanados desde arriba del piso 1. Roscan directo en sus orejas.",
+            "Atornilla el patín trasero con 1 M3 × 10 avellanado desde arriba.",
+            "Desliza el TCS34725 en la capucha por la abertura de atrás, con el LED hacia el suelo y los cables "
+            "hacia atrás, hasta que tope al frente. No necesita tornillos ni silicón.",
+            "Lleva sus cables por debajo del piso 1 hasta el paso central y súbelos.",
+            "Pon el robot en el suelo: se apoya en las dos ruedas; los patines quedan a 0.5 mm.",
         ]),
-        ("Paso 3 · L298N, batería y separadores", "paso3.png", None, [
-            "Pon el L298N atrás, sobre 4 espaciadores, con 4 M3 × 12 desde abajo y tuerca arriba.",
-            "Quita los jumpers ENA y ENB del L298N.",
-            "Motor izquierdo a OUT1-OUT2 y derecho a OUT3-OUT4.",
-            "Pasa el velcro por las 2 ranuras y sujeta la batería al frente, con los cables hacia atrás.",
+        ("Paso 3 · L298N, batería, VL53L0X y separadores", "paso3.png", None, [
+            "Pon el L298N atrás, sobre 4 espaciadores, con 4 M3 × 16 desde arriba y tuerca abajo.",
+            "Quita los jumpers ENA y ENB del L298N. Motor izquierdo a OUT1-OUT2 y derecho a OUT3-OUT4.",
+            "Pega el velcro y acomoda la batería entre sus topes, acostada a lo ancho.",
+            "Baja cada VL53L0X por las ranuras de su soporte: chip hacia afuera, pines arriba. Entra solo, sin tornillos.",
             "Atornilla los 4 separadores de 35 mm con M3 × 8 desde abajo del piso 1.",
         ]),
-        ("Paso 4 · Piso 2: Arduino y VL53L0X", "paso4.png", None, [
-            "Atornilla cada VL53L0X a su escuadra con 2 M2 × 6, con el sensor (la ventanita) hacia afuera.",
-            "Atornilla las 3 escuadras al piso 2 con M3 × 8 y tuerca: frente, izquierda y derecha.",
-            "Atornilla el Arduino sobre 4 espaciadores con M3 × 12 y tuerca, con el USB hacia atrás. Si una tuerca "
-            "choca con un header, deja ese tornillo fuera.",
-            "Pasa por la ranura trasera los cables que suben del piso 1: L298N, batería, sensor de color.",
-            "Coloca el piso 2 sobre los separadores de 35 mm y fíjalo con los 4 separadores macho-hembra de 25 mm.",
-        ]),
-        ("Paso 5 · Piso 3: protoboard, OLED, botón e interruptor", "paso5.png", None, [
-            "Pega la mini protoboard con su adhesivo, girada como en la imagen.",
-            "Pega la OLED con cinta de espuma, con los pines hacia la protoboard.",
+        ("Paso 4 · Piso 2: Nano, bus I2C, OLED, botón e interruptor", "paso4.png", None, [
+            "Pega las 2 mini protoboards dentro de su marco: la izquierda para el Nano (USB-C hacia atrás), "
+            "la derecha para el bus I2C.",
+            "Pasa el header del OLED por la ranura del marco y acuéstalo, pantalla arriba.",
             "Mete el botón y el interruptor en sus agujeros y apriétalos con su tuerca.",
-            "Haz el cableado de la sección 5. Los cables al Arduino bajan por las ranuras laterales.",
-            "Atornilla el piso 3 con 4 M3 × 8 sobre los separadores.",
+            "Sube los cables del piso 1 por las ranuras y conecta el OLED por debajo.",
+            "Atornilla el piso 2 con 4 M3 × 8 sobre los separadores y haz el cableado de la sección 5.",
         ]),
     ]
     H.append(h1("4. Ensamble"))
@@ -335,21 +334,22 @@ def manual_ensamble():
     H.append(PageBreak())
 
     H += [h1("5. Cableado"),
-          img(os.path.join(RAIZ, "atmega328p", "img", "conexiones_uno.png"), 170), Spacer(1, 4 * mm),
+          img(os.path.join(RAIZ, "atmega328p", "img", "conexiones_nano.png"), 170), Spacer(1, 4 * mm),
           tabla([["Módulo", "Pin", "Va a"], *PINES], [60, 45, 65]),
-          h2("Mini protoboard"),
-          p("No tiene rieles. Cada línea usa las dos mitades de una columna, unidas con un puente corto que cruza "
-            "el canal central. Así quedan 8 hoyos libres por línea."),
+          h2("Protoboards"),
+          p("<b>Izquierda:</b> el Nano montado cruzando el canal; cada pin queda con 2 o 3 hoyos libres para sus "
+            "cables. <b>Derecha (bus):</b> no tiene rieles. Cada línea usa las dos mitades de una columna, unidas "
+            "con un puente corto que cruza el canal central. Así quedan 8 hoyos libres por línea."),
           tabla([["Columna", "Línea", "Conexiones"],
-                 ["1", "5V", "5V del Arduino, VCC de los 3 VL53L0X, VIN del TCS34725, VCC de la OLED"],
-                 ["4", "GND", "GND del Arduino y de los 5 módulos"],
+                 ["1", "5V", "5V del Nano, VCC de los 3 VL53L0X, VIN del TCS34725, VCC de la OLED"],
+                 ["4", "GND", "GND del Nano y de los 5 módulos"],
                  ["7", "SDA", "A4 y SDA de los 5 módulos"],
                  ["10", "SCL", "A5 y SCL de los 5 módulos"]], [20, 20, 130]),
           h2("Alimentación"),
           *lista([
-              "Batería + → interruptor → L298N 12V y Arduino VIN.",
-              "Batería − → L298N GND y Arduino GND. Todos los GND unidos.",
-              "No uses la salida de 5V del L298N.",
+              "Batería + → interruptor → L298N 12V y VIN del Nano.",
+              "Batería − → L298N GND y GND del Nano. Todos los GND unidos.",
+              "No uses la salida de 5V del L298N. Los módulos toman 5V del pin 5V del Nano.",
           ]),
           PageBreak()]
 
@@ -357,7 +357,7 @@ def manual_ensamble():
           tabla([["", "Revisión"],
                  ["☐", "Con el multímetro en continuidad y la batería desconectada: no hay pitido entre + y GND."],
                  ["☐", "Las ruedas giran libres y no rozan el chasis."],
-                 ["☐", "El robot mide 125 × 125 mm o menos, incluidas las ruedas."],
+                 ["☐", "El robot mide 120 × 120 mm o menos, incluidas las ruedas."],
                  ["☐", "Ningún cable cuelga bajo el piso 1 ni toca las ruedas."],
                  ["☐", "Primer encendido con el robot levantado: la OLED dice LABERINTO LISTO."],
                  ["☐", "Modo calibración: las tres distancias y el color responden."],
@@ -373,11 +373,11 @@ def manual_ensamble():
 def manual_uso():
     H = []
     H += [Spacer(1, 30 * mm), Paragraph("Manual de uso", S["t"]),
-          Paragraph("Robot de laberinto · Arduino UNO R3 (ATmega328P)", S["st"]), Spacer(1, 10 * mm),
+          Paragraph("Robot de laberinto · Arduino Nano (ATmega328P)", S["st"]), Spacer(1, 10 * mm),
           img(os.path.join(IMG, "iso.png"), 130, (200, 120, 1250, 1000)), Spacer(1, 8 * mm),
           tabla([["Sección", "Contenido"],
                  ["1. Cómo funciona", "Qué hace el robot y cómo cuenta las marcas"],
-                 ["2. Programarlo", "Arduino IDE, librerías y carga"],
+                 ["2. Programarlo", "Microchip Studio y carga con avrdude"],
                  ["3. Controles", "Interruptor, botón y pantalla"],
                  ["4. Calibración", "Colores, distancias y tiempos, con hoja para llenar"],
                  ["5. En la competencia", "Paso a paso de cada corrida"],
@@ -394,7 +394,7 @@ def manual_uso():
               "<b>Algoritmo:</b> flood-fill. Calcula la distancia de cada celda a la meta y siempre avanza a la celda "
               "más cercana. Si encuentra una pared nueva, recalcula.",
               "<b>Movimiento:</b> los motores no tienen encoder. El avance y los giros se miden por tiempo con el "
-              "Timer1 (base de 10 ms). Por eso hay que calibrar con la batería cargada.",
+              "Timer1 (interrupción de 1 ms, tick de 10 ms). Por eso hay que calibrar con la batería cargada.",
               "<b>Marcas de color:</b> el TCS34725 lee el piso cada 30 ms. Una marca cuenta si el color se sostiene en "
               "3 lecturas seguidas después de haber visto piso. Además se guarda la celda, así que pasar otra vez "
               "por la misma marca no la vuelve a contar, ni en otra corrida.",
@@ -408,16 +408,40 @@ def manual_uso():
           PageBreak()]
 
     H += [h1("2. Programarlo"),
+          p("El código está en C++ sin librerías de Arduino, en <b>atmega328p/laberinto/</b>. Maneja el ATmega328P "
+            "por registros: TWI (I2C) en twi.cpp, Timer0 (PWM de motores) en motores.cpp y Timer1 (base de tiempo "
+            "por interrupción) en tiempo.cpp. Se compila en Microchip Studio y se carga por USB con avrdude, "
+            "usando el bootloader que ya trae el Nano."),
+          h2("Una sola vez"),
           *lista([
-              "Instala Arduino IDE 2.",
-              "En el gestor de librerías instala <b>VL53L0X</b> (de Pololu) y <b>SSD1306Ascii</b> (de Bill Greiman).",
-              "Abre <b>atmega328p/laberinto_328p/laberinto_328p.ino</b>.",
-              "Placa: <b>Arduino Uno</b>. Elige el puerto y pulsa <b>Subir</b>.",
-              "Para cambiar un valor de calibración: edítalo al inicio del archivo y vuelve a subir.",
+              "Instala <b>Microchip Studio 7</b> y <b>Arduino IDE 2</b> (solo para tener avrdude). En Arduino IDE "
+              "instala una vez la placa Arduino AVR Boards.",
+              "Instala el driver <b>CH340</b> si Windows no reconoce el Nano. En el Administrador de dispositivos anota "
+              "el puerto (por ejemplo COM5).",
+              "Microchip Studio: File → New → Project → <b>GCC C++ Executable Project</b>, nombre <b>laberinto</b>, "
+              "dispositivo <b>ATmega328P</b>.",
+              "Borra el main.cpp que crea. Clic derecho en el proyecto → Add → Existing Item… y agrega todos los "
+              ".cpp y .h de atmega328p/laberinto/.",
+              "Arriba elige la configuración <b>Release</b> (optimiza a -Os).",
+              "Tools → External Tools… → Add. Title: <b>Cargar Nano</b>. Command: la ruta de avrdude.exe, por ejemplo "
+              "<font face='Courier' size='8'>%LOCALAPPDATA%\\Arduino15\\packages\\arduino\\tools\\avrdude\\"
+              "6.3.0-arduino17\\bin\\avrdude.exe</font>. Arguments:",
           ], num=True),
+          Paragraph("<font face='Courier' size='7.5'>-C \"...\\etc\\avrdude.conf\" -p atmega328p -c arduino -P COM5 "
+                    "-b 115200 -U flash:w:\"$(TargetDir)$(TargetName).hex\":i</font>", S["p"]),
+          p("Marca <b>Use Output window</b>. El avrdude.conf está en la carpeta etc junto a bin."),
+          h2("Cada vez que cambies algo"),
+          *lista([
+              "Edita el valor en <b>config.h</b> (pines, laberinto y calibración están ahí).",
+              "Build → Build Solution (F7). Debe terminar sin errores; usa unos 14 KB de flash y 1 KB de RAM.",
+              "Conecta el Nano por USB-C con el interruptor del robot <b>apagado</b> y usa Tools → Cargar Nano.",
+          ], num=True),
+          caja("Si avrdude dice <b>not in sync</b>, tu Nano tiene el bootloader viejo: cambia -b 115200 por "
+               "<b>-b 57600</b>. Desde Linux o Mac también sirve el Makefile: <font face='Courier'>make cargar "
+               "PUERTO=/dev/ttyUSB0</font>."),
           caja("Al subir código nuevo no se borra el mapa: está en la EEPROM. Para borrarlo usa el botón sostenido "
                "(sección 3)."),
-          h2("Dónde poner el laberinto en el código"),
+          h2("Dónde poner el laberinto en el código (config.h)"),
           tabla([["Constante", "Valor", "Qué es"],
                  ["N", "16", "Celdas por lado (3 m / 18 cm ≈ 16)"],
                  ["INI_X, INI_Y", "0, 0", "Celda de inicio"],
@@ -451,7 +475,7 @@ def manual_uso():
 
     H += [h1("4. Calibración"),
           p("Hazla en el orden de la tabla, con la batería cargada (más de 8.0 V) y sobre un piso igual al de la "
-            "competencia. Todos los valores están al inicio del archivo .ino."),
+            "competencia. Todos los valores están en config.h."),
           h2("4.1 Colores"),
           *lista([
               "Enciende con el botón presionado. La OLED muestra r, g, b (proporciones), c (brillo) y el color que reconoce.",
@@ -483,8 +507,8 @@ def manual_uso():
                  ["VERDE r / g / b / c", "0.26/0.46/0.28/350", "", "", ""],
                  ["AZUL r / g / b / c", "0.20/0.32/0.48/300", "", "", ""],
                  ["AMAR r / g / b / c", "0.42/0.40/0.18/700", "", "", ""],
-                 ["D_LADO (mm)", "50", "", "", ""],
-                 ["D_FRENTE (mm)", "55", "", "", ""],
+                 ["D_LADO (mm)", "38", "", "", ""],
+                 ["D_FRENTE (mm)", "34", "", "", ""],
                  ["T_CELDA (× 10 ms)", "60", "", "", ""],
                  ["T_90 (× 10 ms)", "25", "", "", ""],
                  ["T_RAPIDA (× 10 ms)", "40", "", "", ""],
@@ -533,8 +557,9 @@ def manual_uso():
           h1("7. Problemas"),
           tabla([["Síntoma", "Causa probable", "Solución"],
                  ["Pantalla apagada", "Batería, interruptor o I2C", "Mide voltaje en VIN; revisa SDA/SCL de la OLED"],
-                 ["SIN SENSOR COLOR", "TCS34725 sin conexión", "Revisa VIN, GND, SDA, SCL del sensor"],
-                 ["SIN VL53L0X", "Un VL53L0X sin alimentación o XSHUT", "Revisa VCC y XSHUT de cada uno (A0, A1, A2)"],
+                 ["avrdude: not in sync", "Bootloader viejo o puerto mal", "Usa -b 57600; revisa el COM y el driver CH340"],
+                 ["SIN SENSOR COLOR", "TCS34725 sin conexión", "Revisa sus cables y que esté metido hasta el fondo de la capucha"],
+                 ["SIN VL53L0X", "Un VL53L0X sin alimentación o XSHUT", "Revisa VCC y XSHUT de cada uno (A0, A1, A2) y que su dupont no se haya salido"],
                  ["Una rueda gira al revés", "Cables del motor invertidos", "Intercambia sus 2 cables en el L298N"],
                  ["Gira al lado contrario", "Motores cruzados", "Intercambia OUT1-2 con OUT3-4"],
                  ["Choca con paredes", "Mal calibrado o batería baja", "Carga la batería; revisa T_CELDA, T_90, AJUSTE_DER"],

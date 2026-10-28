@@ -34,7 +34,7 @@ def w(a, b, c, mid, lw=1.8, ls="-"):
 
 
 # Arduino: pines de potencia/motores a la izquierda, sensores a la derecha
-UL = box(62, 30, 26, 62, "Arduino UNO R3\n(ATmega328P)", "#1a7f8e",
+UL = box(62, 30, 26, 62, "Arduino Nano\n(ATmega328P)", "#1a7f8e",
          ["VIN", "GND", "D2", "D5", "D6", "D7", "D8", "D9", "D10"], side="l")
 UR = box(62, 30, 26, 62, "", "#1a7f8e", ["5V", "GND ", "A4 SDA", "A5 SCL", "A0", "A1", "A2"], side="r")
 
@@ -68,7 +68,7 @@ ax.text(52, 5.5, "otra pata → GND", fontsize=7.5, ha="center")
 # Bus I2C en protoboard
 bx = 100
 ax.add_patch(FancyBboxPatch((bx, 6), 7, 88, boxstyle="round,pad=0.3", fc="#f4f4f4", ec="#888"))
-ax.text(bx + 3.5, 96, "protoboard", ha="center", fontsize=8)
+ax.text(bx + 3.5, 96, "protoboard bus", ha="center", fontsize=8)
 rails = {"5V": bx + 1, "GND": bx + 2.7, "SDA": bx + 4.4, "SCL": bx + 6.1}
 for k, x in rails.items():
     ax.plot([x, x], [7, 93], color=COL[k], lw=2.4)
@@ -93,10 +93,10 @@ for name, y, xpin, xm in mods:
         ax.plot([up[0], xm, xm, 117, 117, xs[0]], [up[1], up[1], y - 3, y - 3, xs[1], xs[1]],
                 color=COL["X"], lw=1.4, ls="--")
 
-ax.set_title("Conexiones · Arduino UNO R3 (ATmega328P)", fontsize=16, weight="bold", loc="left")
+ax.set_title("Conexiones · Arduino Nano (ATmega328P)", fontsize=16, weight="bold", loc="left")
 leg = [("Batería 7.4 V", "BAT"), ("5V", "5V"), ("GND", "GND"), ("SDA", "SDA"), ("SCL", "SCL"),
        ("PWM motores", "PWM"), ("Dirección", "DIR"), ("XSHUT", "X"), ("Botón", "BTN")]
 for i, (t, k) in enumerate(leg):
     ax.plot([2 + i * 17.5, 6 + i * 17.5], [-1.5, -1.5], color=COL[k], lw=3)
     ax.text(7 + i * 17.5, -1.5, t, va="center", fontsize=8.5)
-fig.savefig("/home/user/sumo-v-ia/atmega328p/img/conexiones_uno.png", dpi=110, bbox_inches="tight")
+fig.savefig("/home/user/sumo-v-ia/atmega328p/img/conexiones_nano.png", dpi=110, bbox_inches="tight")

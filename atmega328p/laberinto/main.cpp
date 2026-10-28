@@ -1,47 +1,17 @@
-#include <Wire.h>
-#include <EEPROM.h>
-#include <VL53L0X.h>
-#include <SSD1306Ascii.h>
-#include <SSD1306AsciiWire.h>
-
-// ---------- Pines ----------
-#define ENA 5
-#define ENB 6
-#define IN1 7
-#define IN2 8
-#define IN3 9
-#define IN4 10
-#define BTN 2
-const uint8_t XSHUT[3] = {A0, A1, A2};   // izq, frente, der
-
-// ---------- Laberinto ----------
-#define N 16
-const uint8_t INI_X = 0, INI_Y = 0, INI_R = 0;   // rumbo 0=N 1=E 2=S 3=O
-const uint8_t META_X = 7, META_Y = 7;            // meta 2x2: (7,7) a (8,8)
-
-// ---------- Calibracion ----------
-const uint16_t T_CELDA = 60;    // ticks de 10 ms por celda de 18 cm
-const uint16_t T_RAPIDA = 40;   // ticks por celda en corridas rapidas
-const uint16_t T_90 = 25;       // ticks por giro de 90 grados
-const uint8_t VEL_EXPLORA = 140, VEL_RAPIDA = 220, VEL_GIRO = 130, VEL_MIN = 80;
-const int AJUSTE_DER = 0;       // suma PWM al motor derecho si se desvia
-const uint16_t PARED = 120;     // mm: lectura menor = hay pared
-const uint16_t D_FRENTE = 55;   // mm al frente con el robot centrado en la celda
-const uint16_t D_LADO = 50;     // mm a una pared lateral con el robot centrado
-const float KC = 0.8;           // ganancia de centrado
-const float OFF_COLOR = 0.2;    // distancia eje->sensor de color, en celdas
-
-// ---------- Colores ----------
-struct Ref { const char* nom; float r, g, b, c; };
-const Ref refs[] = {
-  {"PISO",  0.33, 0.33, 0.33, 900},
-  {"ROJO",  0.58, 0.22, 0.20, 400},
-  {"VERDE", 0.26, 0.46, 0.28, 350},
-  {"AZUL",  0.20, 0.32, 0.48, 300},
-  {"AMAR",  0.42, 0.40, 0.18, 700},
-};
-const uint8_t NCOL = sizeof(refs) / sizeof(refs[0]);
-const float DIST_MAX = 0.02;
+// Robot de laberinto - Arduino Nano (ATmega328P), C++ sin librerias de Arduino
+// Perifericos usados: TWI (I2C), Timer0 (PWM motores), Timer1 (base de tiempo), EEPROM
+#include "config.h"
+#include <avr/eeprom.h>
+#include <avr/pgmspace.h>
+#include <math.h>
+#include <string.h>
+#include <stdlib.h>
+#include "tiempo.h"
+#include "twi.h"
+#include "oled.h"
+#include "tcs.h"
+#include "motores.h"
+#include "VL53L0X.h"
 
 // Cada celda: bits 0-3 paredes (N,E,S,O), bit 4 visitada, bits 5-7 color de marca
 #define VISTO 0x10
@@ -53,79 +23,13 @@ const int8_t DY[4] = {1, 0, -1, 0};
 uint8_t px, py, rumbo, estado;
 const char* const EST[] = {"LISTO", "EXPLORA", "REGRESO", "RAPIDO", "META", "BORRADO"};
 
-SSD1306AsciiWire oled;
-VL53L0X tof[3];
+VL53L0X tof[3];   // izq, frente, der
 uint16_t dist[3] = {9999, 9999, 9999};
 
-// ---------- Timer1: base de tiempo de 10 ms ----------
-volatile uint16_t ticks = 0;
-volatile bool tick = false;
+template <class T> T acota(T v, T a, T b) { return v < a ? a : (v > b ? b : v); }
+float cuad(float x) { return x * x; }
 
-ISR(TIMER1_COMPA_vect) {
-  ticks++;
-  tick = true;
-}
-
-void timer1() {
-  cli();
-  TCCR1A = 0;
-  TCCR1B = (1 << WGM12) | (1 << CS11) | (1 << CS10);   // CTC, prescaler 64
-  OCR1A = 2499;                                        // 16 MHz / 64 / 2500 = 100 Hz
-  TIMSK1 = (1 << OCIE1A);
-  sei();
-}
-
-uint16_t ahora() {
-  cli();
-  uint16_t t = ticks;
-  sei();
-  return t;
-}
-
-bool esperaTick() {
-  if (!tick) return false;
-  tick = false;
-  return true;
-}
-
-// ---------- TCS34725 por I2C directo ----------
-#define TCS 0x29
-
-void tcsW(uint8_t reg, uint8_t v) {
-  Wire.beginTransmission(TCS);
-  Wire.write(0x80 | reg);
-  Wire.write(v);
-  Wire.endTransmission();
-}
-
-bool tcsInit() {
-  Wire.beginTransmission(TCS);
-  Wire.write(0x80 | 0x12);
-  Wire.endTransmission();
-  Wire.requestFrom((uint8_t)TCS, (uint8_t)1);
-  uint8_t id = Wire.read();
-  if (id != 0x44 && id != 0x4D) return false;
-  tcsW(0x01, 0xF6);   // ATIME: 10 ciclos = 24 ms
-  tcsW(0x0F, 0x01);   // ganancia 4x
-  tcsW(0x00, 0x01);   // PON
-  delay(3);
-  tcsW(0x00, 0x03);   // PON + AEN
-  return true;
-}
-
-void tcsLee(uint16_t &c, uint16_t &r, uint16_t &g, uint16_t &b) {
-  uint8_t d[8];
-  Wire.beginTransmission(TCS);
-  Wire.write(0xA0 | 0x14);   // auto-incremento desde CDATAL
-  Wire.endTransmission();
-  Wire.requestFrom((uint8_t)TCS, (uint8_t)8);
-  for (uint8_t i = 0; i < 8; i++) d[i] = Wire.read();
-  c = d[0] | (d[1] << 8);
-  r = d[2] | (d[3] << 8);
-  g = d[4] | (d[5] << 8);
-  b = d[6] | (d[7] << 8);
-}
-
+// ---------- Color ----------
 uint8_t clasifica(uint16_t r, uint16_t g, uint16_t b, uint16_t c) {
   float s = (float)r + g + b + 1;
   float rn = r / s, gn = g / s, bn = b / s;
@@ -133,7 +37,7 @@ uint8_t clasifica(uint16_t r, uint16_t g, uint16_t b, uint16_t c) {
   float dmin = 1e9;
   for (uint8_t i = 0; i < NCOL; i++) {
     float lc = log((c + 1.0) / (refs[i].c + 1.0));
-    float d = sq(rn - refs[i].r) + sq(gn - refs[i].g) + sq(bn - refs[i].b) + 0.01 * sq(lc);
+    float d = cuad(rn - refs[i].r) + cuad(gn - refs[i].g) + cuad(bn - refs[i].b) + 0.01 * cuad(lc);
     if (d < dmin) { dmin = d; mejor = i; }
   }
   return dmin < DIST_MAX ? mejor : 0;
@@ -160,15 +64,14 @@ uint8_t eventoColor() {
 }
 
 // ---------- VL53L0X ----------
+// XSHUT en PC0..PC2: salida en 0 = apagado; entrada = encendido (el modulo tiene pull-up a 2.8 V)
 bool tofInit() {
+  PORTC &= ~0x07;
+  DDRC |= 0x07;
+  esperaMs(10);
   for (uint8_t i = 0; i < 3; i++) {
-    pinMode(XSHUT[i], OUTPUT);
-    digitalWrite(XSHUT[i], LOW);
-  }
-  delay(10);
-  for (uint8_t i = 0; i < 3; i++) {
-    pinMode(XSHUT[i], INPUT);   // el modulo tiene pull-up propio
-    delay(10);
+    DDRC &= ~_BV(i);
+    esperaMs(10);
     // Cambia la direccion antes de init(): en 0x29 tambien contesta el TCS34725
     tof[i].setAddress(0x30 + i);
     tof[i].setTimeout(50);
@@ -189,23 +92,23 @@ void tofLee() {
 
 // ---------- OLED ----------
 void pinta() {
-  oled.setCursor(0, 0);
-  oled.print(F("LABERINTO "));
-  oled.print(EST[estado]);
-  oled.clearToEOL();
+  oledPos(0, 0);
+  oledTextoP(PSTR("LABERINTO "));
+  oledTexto(EST[estado]);
+  oledFinRenglon();
   uint8_t total = 0;
   for (uint8_t i = 1; i < NCOL; i++) {
-    oled.setCursor(0, i + 1);
-    oled.print(refs[i].nom);
-    oled.setCol(70);
-    oled.print(cuenta[i]);
-    oled.clearToEOL();
+    oledPos(0, i + 1);
+    oledTexto(refs[i].nom);
+    oledPos(70, i + 1);
+    oledNum(cuenta[i]);
+    oledFinRenglon();
     total += cuenta[i];
   }
-  oled.setCursor(70, 7);
-  oled.print(F("T: "));
-  oled.print(total);
-  oled.clearToEOL();
+  oledPos(70, 7);
+  oledTextoP(PSTR("T: "));
+  oledNum(total);
+  oledFinRenglon();
 }
 
 // ---------- Mapa ----------
@@ -226,9 +129,12 @@ void bordes() {
   }
 }
 
+#define EE_MARCA ((uint8_t*)0)
+#define EE_MAPA ((uint8_t*)1)
+
 void guardar() {
-  EEPROM.update(0, 0xA5);
-  for (uint16_t i = 0; i < N * N; i++) EEPROM.update(1 + i, celda[i]);
+  eeprom_update_byte(EE_MARCA, 0xA5);
+  eeprom_update_block(celda, EE_MAPA, sizeof(celda));
 }
 
 void borrar() {
@@ -239,12 +145,12 @@ void borrar() {
 }
 
 void cargar() {
-  if (EEPROM.read(0) != 0xA5) {
+  if (eeprom_read_byte(EE_MARCA) != 0xA5) {
     borrar();
     return;
   }
+  eeprom_read_block(celda, EE_MAPA, sizeof(celda));
   for (uint16_t i = 0; i < N * N; i++) {
-    celda[i] = EEPROM.read(1 + i);
     uint8_t c = celda[i] >> 5;
     if (c && c < NCOL) cuenta[c]++;
   }
@@ -283,23 +189,6 @@ void flood(bool inicio, bool solo) {
 }
 
 // ---------- Movimiento ----------
-void motores(int l, int r) {
-  digitalWrite(IN1, l >= 0);
-  digitalWrite(IN2, l < 0);
-  digitalWrite(IN3, r >= 0);
-  digitalWrite(IN4, r < 0);
-  analogWrite(ENA, constrain(abs(l), 0, 255));
-  analogWrite(ENB, constrain(abs(r), 0, 255));
-}
-
-void frena() {
-  digitalWrite(IN1, HIGH); digitalWrite(IN2, HIGH);
-  digitalWrite(IN3, HIGH); digitalWrite(IN4, HIGH);
-  analogWrite(ENA, 255); analogWrite(ENB, 255);
-  delay(60);
-  analogWrite(ENA, 0); analogWrite(ENB, 0);
-}
-
 void registraColor(uint8_t ox, uint8_t oy, float prog) {
   uint8_t c = eventoColor();
   if (!c) return;
@@ -319,7 +208,7 @@ float centrado() {
   if (L && R) e = (int)dist[0] - (int)dist[2];
   else if (L) e = (int)dist[0] - (int)D_LADO;
   else if (R) e = (int)D_LADO - (int)dist[2];
-  return constrain(KC * e, -40, 40) + AJUSTE_DER / 2.0;
+  return acota(KC * e, -40.0f, 40.0f) + AJUSTE_DER / 2.0;
 }
 
 void avanzar(uint8_t n, bool rapido) {
@@ -338,7 +227,7 @@ void avanzar(uint8_t n, bool rapido) {
     if (t >= dur && !(paredF && t < extra)) break;
     uint16_t falta = dur > t ? dur - t : 0;
     float tope = falta < zona ? VEL_MIN + (vmax - VEL_MIN) * falta / (float)zona : vmax;
-    v = min(v + 6.0f, tope);
+    v = v + 6 < tope ? v + 6 : tope;
     float corr = centrado();
     motores(v - corr, v + corr);
   }
@@ -441,91 +330,90 @@ void rapida() {
   }
 }
 
+// ---------- Boton ----------
+// Espera a que se suelte y devuelve cuanto estuvo presionado, en ticks de 10 ms
+uint16_t pulsacion() {
+  uint16_t t0 = ahora();
+  esperaMs(30);
+  while (BTN_ABAJO());
+  return ahora() - t0;
+}
+
 // ---------- Calibracion: encender con el boton presionado ----------
 // Muestra color y distancias. Boton corto: avanza 1 celda. Boton largo: gira 90 grados a la derecha.
 void calibracion() {
-  oled.clear();
-  while (digitalRead(BTN) == LOW);
-  delay(50);
+  oledBorra();
+  while (BTN_ABAJO());
+  esperaMs(50);
   while (true) {
-    if (digitalRead(BTN) == LOW) {
-      uint16_t t0 = ahora();
-      delay(30);
-      while (digitalRead(BTN) == LOW);
-      delay(500);
-      if (ahora() - t0 > 100) girar(1);
+    if (BTN_ABAJO()) {
+      uint16_t t = pulsacion();
+      esperaMs(500);
+      if (t > 100) girar(1);
       else avanzar(1, false);
-      oled.clear();
+      oledBorra();
     }
     uint16_t c, r, g, b;
     tcsLee(c, r, g, b);
     tofLee();
-    float s = (float)r + g + b + 1;
-    oled.setCursor(0, 0);
-    oled.print(F("CALIBRACION"));
-    oled.setCursor(0, 2); oled.print(F("r ")); oled.print(r / s, 2); oled.clearToEOL();
-    oled.setCursor(0, 3); oled.print(F("g ")); oled.print(g / s, 2); oled.clearToEOL();
-    oled.setCursor(0, 4); oled.print(F("b ")); oled.print(b / s, 2); oled.clearToEOL();
-    oled.setCursor(0, 5); oled.print(F("c ")); oled.print(c);
-    oled.print(' '); oled.print(refs[clasifica(r, g, b, c)].nom); oled.clearToEOL();
-    oled.setCursor(0, 7);
-    oled.print(dist[0]); oled.print(' ');
-    oled.print(dist[1]); oled.print(' ');
-    oled.print(dist[2]); oled.clearToEOL();
+    uint32_t s = (uint32_t)r + g + b + 1;
+    oledPos(0, 0);
+    oledTextoP(PSTR("CALIBRACION"));
+    oledPos(0, 2); oledTextoP(PSTR("r ")); oledDec(r * 100UL / s, 2); oledFinRenglon();
+    oledPos(0, 3); oledTextoP(PSTR("g ")); oledDec(g * 100UL / s, 2); oledFinRenglon();
+    oledPos(0, 4); oledTextoP(PSTR("b ")); oledDec(b * 100UL / s, 2); oledFinRenglon();
+    oledPos(0, 5); oledTextoP(PSTR("c ")); oledNum(c);
+    oledLetra(' '); oledTexto(refs[clasifica(r, g, b, c)].nom); oledFinRenglon();
+    oledPos(0, 7);
+    oledNum(dist[0]); oledLetra(' ');
+    oledNum(dist[1]); oledLetra(' ');
+    oledNum(dist[2]); oledFinRenglon();
     uint16_t t1 = ahora();
-    while (ahora() - t1 < 20 && digitalRead(BTN) == HIGH) tofLee();
+    while (ahora() - t1 < 20 && !BTN_ABAJO()) tofLee();
   }
 }
 
-void falla(const __FlashStringHelper* msg) {
-  oled.clear();
-  oled.print(msg);
+void falla(const char* msg) {
+  oledBorra();
+  oledTextoP(msg);
+  motores(0, 0);
   while (true);
 }
 
-void setup() {
-  pinMode(IN1, OUTPUT); pinMode(IN2, OUTPUT);
-  pinMode(IN3, OUTPUT); pinMode(IN4, OUTPUT);
-  pinMode(ENA, OUTPUT); pinMode(ENB, OUTPUT);
-  pinMode(BTN, INPUT_PULLUP);
-  motores(0, 0);
-
-  Wire.begin();
-  Wire.setClock(400000);
-  oled.begin(&Adafruit128x64, 0x3C);
-  oled.setFont(System5x7);
-  oled.clear();
-  if (!tofInit()) falla(F("SIN VL53L0X"));
-  if (!tcsInit()) falla(F("SIN SENSOR COLOR"));
-  timer1();
-  if (digitalRead(BTN) == LOW) calibracion();
+int main() {
+  motoresInit();
+  PORTD |= _BV(PD2);   // boton con pull-up
+  tiempoInit();
+  twiInit();
+  esperaMs(50);
+  oledInit();
+  if (!tofInit()) falla(PSTR("SIN VL53L0X"));
+  if (!tcsInit()) falla(PSTR("SIN SENSOR COLOR"));
+  if (BTN_ABAJO()) calibracion();
   cargar();
   pinta();
-}
 
-void loop() {
-  if (digitalRead(BTN) == HIGH) return;
-  uint16_t t0 = ahora();
-  delay(30);
-  while (digitalRead(BTN) == LOW);
-  if (ahora() - t0 > 200) {   // sostenido mas de 2 s
-    borrar();
-    estado = 5;
+  while (true) {
+    if (!BTN_ABAJO()) continue;
+    if (pulsacion() > 200) {   // sostenido mas de 2 s
+      borrar();
+      estado = 5;
+      pinta();
+      continue;
+    }
+    esperaMs(500);
+    px = INI_X;
+    py = INI_Y;
+    rumbo = INI_R;
+    if (rutaConocida()) {
+      rapida();
+      estado = 4;
+    } else {
+      explorar(false, 1);
+      explorar(true, 2);
+      estado = 0;
+    }
+    guardar();
     pinta();
-    return;
   }
-  delay(500);
-  px = INI_X;
-  py = INI_Y;
-  rumbo = INI_R;
-  if (rutaConocida()) {
-    rapida();
-    estado = 4;
-  } else {
-    explorar(false, 1);
-    explorar(true, 2);
-    estado = 0;
-  }
-  guardar();
-  pinta();
 }
