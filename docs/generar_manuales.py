@@ -1,8 +1,8 @@
 """Genera manual_ensamble.pdf (manual de armado), manual_uso.pdf, bom.csv y cables.csv.
 
 Uso: python3 docs/generar_manuales.py
-Usa las imagenes de chasis/img/ (python3 chasis/renders.py) y la lista de cables que
-chasis.scad imprime con openscad. Si no hay openscad, usa docs/cables.csv.
+Usa las imagenes de chasis/img/ (python3 chasis/renders.py; si falta alguna, dibuja un recuadro gris) y la
+lista de cables que chasis.scad imprime con openscad. Si no hay openscad, usa docs/cables.csv.
 """
 import csv
 import os
@@ -44,6 +44,7 @@ REJILLA = colors.HexColor("#c3c9d2")
 VERIFICA = colors.HexColor("#e8eef9")
 AVISO = colors.HexColor("#fff4e5")
 ANCHO = 176 * mm
+FALTAN = set()   # imágenes que no existían al construir (se dibuja un recuadro gris)
 
 base = getSampleStyleSheet()
 S = {
@@ -129,7 +130,12 @@ def img(ruta, ancho_mm, alto_max_mm=None):
     if not os.path.isabs(ruta):
         ruta = os.path.join(IMG, ruta)
     if not os.path.exists(ruta):
-        return p(f"[falta imagen {os.path.basename(ruta)}]")
+        FALTAN.add(os.path.basename(ruta))
+        t = Table([[Paragraph(f"[falta imagen {os.path.basename(ruta)}]", S["fig"])]], colWidths=[ancho_mm * mm],
+                  rowHeights=[min(alto_max_mm or ancho_mm * 0.6, ancho_mm * 0.6) * mm])
+        t.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#d9dce1")),
+                               ("BOX", (0, 0), (-1, -1), 0.5, REJILLA), ("VALIGN", (0, 0), (-1, -1), "MIDDLE")]))
+        return t
     i = Image(ruta)
     escala = ancho_mm * mm / i.imageWidth
     if alto_max_mm and i.imageHeight * escala > alto_max_mm * mm:
@@ -209,17 +215,23 @@ def construir(nombre, titulo, historia):
 
 
 # ---------- Datos ----------
+# "solo Q" = pieza que solo lleva la versión con UNO Q. El resto es común a las dos versiones.
 BOM_IMP = [
     # pieza, material, proceso, cant
     ["Piso 1 (base, columnas, postes del L298N, soportes de VL53L0X y topes)", "PETG o PLA", "Impresión 3D", "1"],
-    ["Piso 2 (marcos de protoboards y OLED)", "PETG o PLA", "Impresión 3D", "1"],
+    ["Piso 2 (marco del OLED, alojamiento de la placa, botón, interruptor, base del mástil)", "PETG o PLA", "Impresión 3D", "1"],
     ["Cuna de motor", "PETG o PLA", "Impresión 3D", "2"],
     ["Capucha del sensor de color con patín delantero", "PLA negro", "Impresión 3D", "1"],
     ["Patín trasero", "PETG o PLA", "Impresión 3D", "1"],
     ["Pieza de prueba de tolerancias", "El mismo de las demás", "Impresión 3D (primero)", "1"],
+    ["Repisa del hub USB (solo Q)", "PETG o PLA", "Impresión 3D", "1"],
+    ["Cabeza de cámara, provisional (solo Q)", "PETG o PLA", "Impresión 3D", "1"],
+    ["Clip del OLED en el mástil (solo Q)", "PETG o PLA", "Impresión 3D", "1"],
 ]
 BOM_ELEC = [
-    ["Arduino Nano USB-C", "ATmega328P, CH340, con headers soldados; cable USB-C de datos", "1"],
+    ["Arduino UNO R3 (ATmega328P)", "Placa oficial y de respaldo; cable USB-B de datos", "1"],
+    ["Arduino UNO Q (solo Q)", "Placa principal; cable USB-C de datos", "1"],
+    ["Proto Shield comercial", "Con mini protoboard de 170 puntos; va sobre la placa", "1"],
     ["Motorreductor N20", "6 V, 300–500 RPM, sin encoder", "2"],
     ["Rueda para N20", "Ø34 × 20 mm, eje D de 3 mm", "2"],
     ["Puente H L298N", "Módulo rojo 43 × 43 mm con disipador", "1"],
@@ -231,35 +243,42 @@ BOM_ELEC = [
     ["Batería 2S 18650", "7.4 V, 3000 mAh, conector T y balanceo JST-XH", "1"],
     ["Conector T (Deans) hembra", "Con 10 cm de cable calibre 14–16", "1"],
     ["Cargador balanceador 2S", "Entrada JST-XH de 3 pines", "1"],
-    ["Mini protoboard", "170 puntos, 35 × 47 mm, con adhesivo", "2"],
+    ["Fusible de 3 A con portafusible", "En el positivo, después del interruptor", "1"],
     ["Capacitor cerámico", "100 nF (104)", "2"],
     ["Header macho recto", "2.54 mm, tira de 40 (los rectos de siempre)", "1"],
+    ["Cámara USB Arducam UB0234 (solo Q)", "OV2710, 32 × 32 mm, lente M12 de 105°; kit con tornillos M2", "1"],
+    ["Cable USB-C corto en ángulo recto (solo Q)", "Del hub a la entrada USB-C de la UNO Q", "1"],
+    ["Hub USB UGREEN (solo Q)", "El que ya tienes; se mide para la repisa", "1"],
+    ["PTR de 10 o 15 mm, ~10 cm (solo Q)", "Mástil; tamaño pendiente, el modelo es un marcador", "1"],
+    ["Módulo fuente USB-C PD, opcional (solo Q)", "Entrada desde 6 V, salida 5 V / 3 A; solo si falla la prueba sin PD (sección 6.4)", "1"],
 ]
 BOM_CABLES = [
     ["Dupont hembra-macho 30 cm", "VL53L0X (3 × 5), OLED (4), L298N lógica (6) + 2 de repuesto", "27"],
     ["Dupont macho-macho 30 cm", "Se les corta un extremo: TCS34725 (4) y botón (2)", "6"],
-    ["Cable calibre 22 de silicón, rojo, negro, amarillo, blanco y naranja", "Motores, interruptor, batería y Nano", "1 m en total por color"],
-    ["Jumpers rígidos de protoboard", "Puentes del bus y del Nano al bus", "8"],
-    ["Cinchos chicos y termofit de 3 mm", "Ordenar cables y aislar soldaduras", "10 / 30 cm"],
+    ["Cable calibre 22 de silicón, rojo, negro, amarillo, blanco y naranja", "Motores, interruptor, batería y placa", "1 m en total por color"],
+    ["Jumpers rígidos", "Puentes del bus en la protoboard del shield y del bus a la placa", "8"],
+    ["Cinchos chicos y termofit de 3 mm", "Ordenar cables y aislar soldaduras (la Q usa 2 más para el hub)", "12 / 30 cm"],
+    ["Cinta aislante", "Sobre el USB-B del R3, bajo el shield", "1"],
 ]
 BOM_TORN = [
-    ["Inserto de calor M3 (latón)", "16", "Columnas (4) y postes del L298N (4) del piso 1, cunas (4), capucha (2), patín (2)"],
-    ["Tornillo Allen M3 × 8", "12", "L298N (4), piso 2 (4), capucha (2), patín (2)"],
+    ["Inserto de calor M3 (latón)", "20 (+4 solo Q)", "Comunes: columnas (4) y postes del L298N (4) del piso 1, cunas (4), capucha (2), patín (2), placa en el piso 2 (4). Solo Q: repisa (4)"],
+    ["Tornillo Allen M3 × 8", "16 (+4 solo Q)", "Comunes: L298N (4), piso 2 (4), placa (4), capucha (2), patín (2). Solo Q: repisa (4)"],
     ["Tornillo Allen M3 × 12", "4", "Cunas de motor"],
+    ["Tornillo M2 (del kit de la cámara)", "4 (solo Q)", "Cámara en su cabeza"],
     ["Velcro adhesivo 3 × 5 cm", "1", "Bajo la batería"],
-    ["Nota", "—", "Del kit M2–M5 solo se usan Allen M3 de 8 y 12 mm; sin tuercas, rondanas ni separadores"],
+    ["Nota", "—", "Del kit M2–M5 solo se usan Allen M3 de 8 y 12 mm (y M2 para la cámara); sin tuercas, rondanas ni separadores"],
 ]
 HERRAMIENTAS = [
     ["Imprimir", "Bambu Lab A2L o X2D, boquilla de 0.4 mm, PETG o PLA, Bambu Studio"],
     ["Soldar", "Cautín de 30–60 W con punta fina, soldadura 60/40 de 0.8 mm, termofit, encendedor o pistola de calor"],
     ["Cables", "Pinzas de corte, pelacables calibre 22, pinzas de punta"],
     ["Insertos", "El mismo cautín con punta cónica o punta para insertos M3"],
-    ["Armado", "Llave Allen de 2.5 mm (M3), desarmador plano de 2.5 mm (bornes del L298N)"],
+    ["Armado", "Llave Allen de 2.5 mm (M3), desarmador plano de 2.5 mm (bornes del L298N), desarmador Phillips chico (M2)"],
     ["Medir", "Multímetro, vernier"],
-    ["Programar", "Computadora con Microchip Studio 7 y avrdude (manual de uso)"],
+    ["Programar", "R3: Microchip Studio 7 y avrdude. Q: Arduino App Lab (manual de uso y docs/GUIA_PROGRAMACION.md)"],
 ]
 
-TIPO = [  # prefijo del nombre del cable -> tipo y largo a cortar
+TIPO = [  # prefijo del nombre del cable -> tipo
     ("Motor", "Calibre 22 soldado al motor"),
     ("Conector T", "Calibre 22 (viene con el conector T)"),
     ("Interruptor", "Calibre 22 soldado al interruptor"),
@@ -269,36 +288,84 @@ TIPO = [  # prefijo del nombre del cable -> tipo y largo a cortar
     ("OLED", "Dupont hembra-macho 30 cm"),
     ("TCS34725", "Dupont macho-macho 30 cm sin un extremo, soldado"),
     ("Boton", "Dupont macho-macho 30 cm sin un extremo, soldado"),
-    ("Puente", "Jumper rígido de protoboard"),
+    ("Puente", "Jumper rígido"),
 ]
 COLOR_ES = {"red": "rojo", "black": "negro", "orange": "naranja", "yellow": "amarillo", "white": "blanco",
             "cyan": "cian", "royalblue": "azul", "green": "verde", "hotpink": "rosa", "mediumpurple": "morado",
-            "sienna": "café"}
+            "sienna": "café", "dimgray": "gris"}
+SOLO_Q = re.compile(r"USB|C[aá]mara|Hub")
+
+
+def _eco(placa):
+    """Corre openscad con la placa dada y devuelve [(nombre, color, mm)] de los CABLE| del echo."""
+    with tempfile.TemporaryDirectory() as tmp:
+        eco = os.path.join(tmp, "e.echo")
+        subprocess.run(["openscad", "-D", f'PLACA="{placa}"', "-o", eco, SCAD], check=True,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        crudos = [re.match(r'ECHO: "CABLE\|(.*)\|(.*)\|(\d+)"', l) for l in open(eco)]
+    return [(m[1], m[2], int(m[3])) for m in crudos if m]
+
+
+def _unir(crudos):
+    """Une cada tramo '(abajo)' con su cable completo, si existe."""
+    completos = {n: [n, c, mm_] for n, c, mm_ in crudos if not n.endswith(" (abajo)")}
+    for n, c, mm_ in crudos:
+        if n.endswith(" (abajo)"):
+            b = n[:-len(" (abajo)")]
+            dest = completos.get(b) or next((v for k, v in completos.items() if k.startswith(b + " -> ")), None)
+            if dest:
+                dest[2] += mm_
+            else:
+                completos[b] = [b, c, mm_]
+    return list(completos.values())
+
+
+# Puentes del shield (el modelo no los dibuja): de, a, color, largo aprox. (mm)
+PUENTES_SHIELD = [
+    ["Puente bus VCC", "otra mitad de su columna", "rojo", 12], ["Puente bus GND", "otra mitad de su columna", "negro", 12],
+    ["Puente bus SDA", "otra mitad de su columna", "azul", 12], ["Puente bus SCL", "otra mitad de su columna", "cian", 12],
+    ["Puente VCC del bus", "5V (R3) o 3V3 (Q)", "rojo", 20], ["Puente GND del bus", "GND del shield", "negro", 20],
+    ["Puente SDA del bus", "SDA (junto a AREF)", "azul", 20], ["Puente SCL del bus", "SCL (junto a AREF)", "cian", 20],
+]
+
+
+def _destino(n):
+    """Nombre sin tramo '(abajo)' ni ' -> ', y su destino genérico."""
+    de, a = n.split(" -> ") if " -> " in n else (n, "")
+    if not a:
+        if de.startswith("L298N"):
+            a = "placa " + de.split()[-1]
+        elif de.startswith("Boton"):
+            a = "placa " + de.split()[-1]
+        else:
+            a = "bus " + ("VCC" if de.split()[-1] in ("VIN", "VCC") else de.split()[-1])
+    return de, a
 
 
 def leer_cables():
-    """Lista de cables desde chasis.scad (echo de cable()); se guarda en cables.csv."""
+    """Lista de cables desde chasis.scad (echo de cable()); se guarda en cables.csv.
+
+    Se corre con PLACA="unoq" (incluye los USB). El modelo de la UNO Q no dibuja los tramos finales hacia el
+    shield, así que los cables comunes se completan con la corrida del modelo base (mismo chasis)."""
     csv_ruta = os.path.join(AQUI, "cables.csv")
     if shutil.which("openscad"):
-        with tempfile.TemporaryDirectory() as tmp:
-            eco = os.path.join(tmp, "e.echo")
-            subprocess.run(["openscad", "-o", eco, SCAD], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            crudos = [re.match(r'ECHO: "CABLE\|(.*)\|(.*)\|(\d+)"', l) for l in open(eco)]
-        crudos = [(m[1], m[2], int(m[3])) for m in crudos if m]
-        completos = {n: [n, c, mm_] for n, c, mm_ in crudos if not n.endswith(" (abajo)")}
-        for n, c, mm_ in crudos:
-            if n.endswith(" (abajo)"):
-                b = n[:-len(" (abajo)")]
-                dest = completos.get(b) or next(v for k, v in completos.items() if k.startswith(b + " -> "))
-                dest[2] += mm_
-        filas = []
-        for n, c, mm_ in completos.values():
-            de, a = n.split(" -> ") if " -> " in n else (n, "otra mitad de su columna")
-            tipo = next(t for pre, t in TIPO if n.startswith(pre))
-            filas.append([de.replace("Boton", "Botón"), a, COLOR_ES.get(c, c), tipo, mm_])
+        q = _unir(_eco("unoq"))
+        base = _unir(_eco("nano"))
+        todos = [c for c in base if not c[0].startswith("Puente")] + [c for c in q if SOLO_Q.search(c[0])]
+        filas, vistos = [], set()
+        for n, c, mm_ in todos:
+            if n in vistos:
+                continue
+            vistos.add(n)
+            de, a = _destino(n)
+            a = a.replace("Nano", "placa").replace("bus 5V", "bus VCC")
+            de = de.replace("Nano", "placa")
+            tipo = "Cable USB (solo Q)" if SOLO_Q.search(n) else next(t for pre, t in TIPO if n.startswith(pre))
+            filas.append([de.replace("Boton", "Botón").replace("Camara", "Cámara"), a,COLOR_ES.get(c, c), tipo, mm_])
+        filas += [[d, a, c, "Jumper rígido", l] for d, a, c, l in PUENTES_SHIELD]
         orden = ["Motor", "Conector", "Interruptor", "L298N GND", "L298N", "VL53L0X izq", "VL53L0X frente",
-                 "VL53L0X der", "TCS", "OLED", "Botón", "Puente"]
-        filas.sort(key=lambda f: next(i for i, o in enumerate(orden) if f[0].startswith(o)))
+                 "VL53L0X der", "TCS", "OLED", "Botón", "Puente", "Hub", "Cámara", "Camara"]
+        filas.sort(key=lambda f: next((i for i, o in enumerate(orden) if f[0].startswith(o)), 99))
         with open(csv_ruta, "w", newline="", encoding="utf-8") as f:
             w = csv.writer(f)
             w.writerow(["De", "A", "Color", "Tipo", "Largo en el modelo (mm)"])
@@ -324,60 +391,83 @@ def escribir_csv():
 
 
 # ---------- Manual de armado ----------
+MAPA_PINES = [["Señal", "Pin (R3 y Q)"],
+              ["ENA / ENB del L298N", "D5 / D6"],
+              ["IN1, IN2, IN3, IN4", "D7, D8, D9, D10"],
+              ["Botón (el otro lado a GND)", "D2"],
+              ["XSHUT VL53L0X izquierdo / frente / derecho", "A0 / A1 / A2"],
+              ["SDA / SCL (bus I2C)", "Pines SDA y SCL de la cabecera junto a AREF"],
+              ["Interruptor", "VIN"],
+              ["GND del L298N", "GND"]]
+
+
 def manual_ensamble():
     cables = leer_cables()
     H = []
 
     # Portada
     H += [Spacer(1, 22 * mm), Paragraph("Manual de armado", S["t"]),
-          Paragraph("Robot de laberinto — Arduino Nano (ATmega328P), chasis impreso de 120 × 120 mm en dos pisos, "
-                    "sensores I2C deslizables y cableado completo", S["st"]),
-          Spacer(1, 8 * mm), img("iso.png", 150, 120), Spacer(1, 10 * mm),
+          Paragraph("Robot de laberinto — chasis impreso de 120 × 120 mm en dos pisos, modular: Arduino UNO R3 "
+                    "(ATmega328P, respaldo oficial) o Arduino UNO Q (principal, con cámara USB)", S["st"]),
+          Spacer(1, 8 * mm),
+          Table([[img("r3_iso.png", 80, 70), img("q_iso.png", 80, 70)]], colWidths=[88 * mm, 88 * mm],
+                style=[("VALIGN", (0, 0), (-1, -1), "MIDDLE"), ("ALIGN", (0, 0), (-1, -1), "CENTER")]),
+          Paragraph("Izquierda: versión UNO R3. Derecha: versión UNO Q.", S["fig"]), Spacer(1, 8 * mm),
           p("<b>Equipo:</b> ______________________________________________________________"),
           Paragraph("Microcontroladores 2 · Archivos de referencia: <i>chasis/chasis.scad</i>, <i>chasis/stl/</i>, "
-                    "<i>docs/bom.csv</i> y <i>docs/cables.csv</i>", S["pz"]),
+                    "<i>docs/bom.csv</i>, <i>docs/cables.csv</i>, <i>docs/GUIA_PROGRAMACION.md</i> y <i>docs/uno_q.md</i>",
+                    S["pz"]),
           PageBreak()]
 
     # 1. Como funciona
     H += [h1("1. Cómo funciona"),
-          p("Tres VL53L0X miden las paredes a la izquierda, al frente y a la derecha; el Arduino Nano guarda el mapa del "
-            "laberinto y elige el camino con flood-fill. Las dos ruedas con motor N20 las mueve el puente H L298N, con "
-            "PWM del Timer0. Un TCS34725 mira el piso por una capucha y cuenta las marcas de color, que se ven en la "
-            "OLED. Todos los sensores y la OLED comparten un solo bus I2C armado en una mini protoboard. Abajo van "
-            "motores, batería y L298N; arriba, la electrónica de control."),
-          Table([[img("iso.png", 62, 60), img("fig_atras.png", 56, 60), img("fig_lado.png", 52, 60)]],
-                colWidths=[63 * mm, 58 * mm, 55 * mm],
+          p("Tres VL53L0X miden las paredes a la izquierda, al frente y a la derecha. La placa guarda el mapa del "
+            "laberinto y elige el camino con flood-fill. Las dos ruedas con motor N20 las mueve el puente H L298N. "
+            "Un TCS34725 mira el piso por una capucha y cuenta las marcas de color, que se ven en la OLED. Todos los "
+            "sensores y la OLED comparten un bus I2C armado en la protoboard de un Proto Shield. Abajo van motores, "
+            "batería y L298N; arriba, la placa."),
+          p("<b>El chasis y las piezas impresas son las mismas</b> con las dos placas. La <b>UNO R3</b> es la oficial y la "
+            "de respaldo. La <b>UNO Q</b> es la principal y solo <b>agrega</b>: mástil de PTR, cabeza con cámara USB, "
+            "repisa con hub USB, el OLED en un clip del mástil y los cables USB. Se cambia de una a otra sin tocar "
+            "el cableado (sección 5, «Cambio R3 ↔ UNO Q»)."),
+          Table([[img("r3_iso.png", 40, 52), img("r3_atras.png", 40, 52), img("q_iso.png", 40, 52), img("q_lado.png", 40, 52)]],
+                colWidths=[44 * mm] * 4,
                 style=[("VALIGN", (0, 0), (-1, -1), "MIDDLE"), ("ALIGN", (0, 0), (-1, -1), "CENTER")]),
-          fig("Fig. 1. Robot completo con todos sus cables: frente, atrás y lado."),
+          fig("Fig. 1. R3: isométrico y atrás. UNO Q: isométrico y lado."),
           tabla([["Dato", "Valor"],
-                 ["Huella", "120 × 120 mm con ruedas (esquinas de R30 para girar en pasillos de 180 mm)"],
-                 ["Alto", "≈ 95 mm con los dupont parados en las protoboards"],
-                 ["Pisos", "Piso 1 a 22 mm del suelo; piso 2 sobre 4 columnas impresas de 35 mm"],
-                 ["Alimentación", "Batería 2S 18650 (7.4 V) → interruptor → L298N (12V) y VIN del Nano"],
+                 ["Huella", "120 × 120 mm con ruedas (esquinas de R30 para girar en pasillos de 180 mm), igual en las dos"],
+                 ["Pisos", "Piso 1 a 22 mm del suelo; piso 2 sobre 4 columnas impresas de 35 mm; la placa va sobre el piso 2"],
+                 ["Alimentación", "Batería 2S 18650 (7.4 V) → interruptor → L298N (12V) y VIN de la placa"],
                  ["Bus I2C", "VL53L0X × 3 (direcciones 0x30–0x32), TCS34725 (0x29), OLED (0x3C), 400 kHz"],
-                 ["Piezas", "≈ 125 en total: 7 impresas, 16 tornillos, 16 insertos, 85 cables"]], [45, 131]),
+                 ["VCC del bus", "5V con el R3; <b>3V3 con la UNO Q</b>"],
+                 ["Piezas impresas", "6 comunes + 3 solo Q (repisa, cabeza de cámara provisional, clip del OLED)"]], [45, 131]),
+          Spacer(1, 4),
+          h2("Mapa de pines (igual en las dos placas)"),
+          tabla(MAPA_PINES, [88, 88]),
           h1("2. Herramientas"),
           tabla([["Para", "Herramienta"], *HERRAMIENTAS], [30, 146]),
           PageBreak()]
 
     # 3. Lista de piezas
-    H += [h1("3. Lista de piezas"), h2("Piezas a fabricar"),
+    H += [h1("3. Lista de piezas"), p("Lo marcado «solo Q» se agrega únicamente a la versión con UNO Q; lo demás es común."),
+          h2("Piezas a fabricar"),
           tabla([["Pieza", "Material", "Proceso", "Cant."], *BOM_IMP], [85, 35, 42, 14]),
           h2("Componentes comerciales"),
-          tabla([["Componente", "Especificación", "Cant."], *BOM_ELEC], [52, 110, 14]),
+          tabla([["Componente", "Especificación", "Cant."], *BOM_ELEC], [58, 104, 14]),
           h2("Cables"),
           tabla([["Cable", "Para qué", "Cant."], *BOM_CABLES], [70, 80, 26]),
           p("La lista completa, cable por cable, con su color y su largo, está en el <b>Anexo A</b>."),
           h2("Tornillería"),
-          tabla([["Elemento", "Cant.", "Dónde va"], *BOM_TORN], [58, 14, 104]),
+          tabla([["Elemento", "Cant.", "Dónde va"], *BOM_TORN], [50, 24, 102]),
           PageBreak()]
 
     # 4. Preparacion de piezas
     H += [h1("4. Preparación de piezas"), h2("4.1 Impresión 3D"),
           p("Las holguras del modelo están ajustadas para la <b>Bambu Lab A2L</b> (cama móvil, boquilla de 0.4 mm): "
-            "ahí los agujeros salen unos 0.1 mm chicos y las ranuras unos 0.15 mm angostas. Todas las piezas caben "
+            "ahí los agujeros salen unos 0.1 mm chicos y las ranuras unos 0.15 mm angostas. Todas las piezas comunes caben "
             "en una sola placa de <b>256 × 256 mm</b>, la cama de la <b>X2D</b>: archivo "
-            "<i>chasis/stl/placa_x2d.stl</i> (en Bambu Studio: clic derecho → <i>Dividir en objetos</i>)."),
+            "<i>chasis/stl/placa_x2d.stl</i> (en Bambu Studio: clic derecho → <i>Dividir en objetos</i>). Las piezas "
+            "solo Q (repisa, cabeza de cámara y clip del OLED) se imprimen aparte."),
           lado_a_lado([
               tabla([["Ajuste", "Valor"],
                      ["Boquilla / capa", "0.4 mm / 0.2 mm"],
@@ -395,7 +485,9 @@ def manual_ensamble():
                  ["Piso 2", "Plano, marcos hacia arriba", "PETG, 4 paredes, 25 %", "No"],
                  ["Cuna de motor (2)", "Base abajo, hueco del motor arriba", "PETG, 4 paredes, 40 %", "No"],
                  ["Capucha de color", "Orejas sobre la cama, patín arriba", "PLA negro, 4 paredes, 30 %", "No"],
-                 ["Patín trasero", "Barra sobre la cama, domo arriba", "PETG, 4 paredes, 40 %", "No"]], [36, 62, 52, 26]),
+                 ["Patín trasero", "Barra sobre la cama, domo arriba", "PETG, 4 paredes, 40 %", "No"],
+                 ["Repisa, cabeza de cámara, clip OLED (solo Q)", "Cara plana sobre la cama", "PETG, 4 paredes, 40 %", "No"]],
+                [44, 56, 50, 26]),
           *lista([
               "Imprime primero la <b>pieza de prueba</b> (<i>chasis/stl/prueba.stl</i>), sola, con los mismos ajustes.",
               "Agujeros de arriba: M3 de 3.2, 3.4 y 3.6. El tornillo debe pasar libre en el de 3.4.",
@@ -417,8 +509,10 @@ def manual_ensamble():
               "Antes de que enfríe, aplánalo con algo metálico frío para dejarlo parejo.",
               "Piso 1: arriba de las 4 columnas y de los 4 postes del L298N. Cunas: en la cara de las orejas. "
               "Capucha y patín: en la cara que va contra el piso 1.",
+              "Piso 2: 4 insertos para la placa. <b>Solo Q:</b> otros 4 en los postes de la repisa.",
           ], num=True),
-          img("det_insertos.png", 165, 85), fig("Fig. 3. Los 16 insertos (dorados)."),
+          img("det_insertos.png", 165, 85),
+          fig("Fig. 3. Insertos (dorados): 20 comunes, más 4 de la repisa solo con la UNO Q."),
           CondPageBreak(60 * mm),
           h2("4.3 Soldadura"),
           *lista([
@@ -430,23 +524,35 @@ def manual_ensamble():
               "(negro), SCL (cian) y SDA (azul), saliendo hacia el borde de los pines. No lleva header.",
               "<b>Botón:</b> igual, un dupont rosa y uno negro sin un extremo, uno en cada pata.",
               "<b>Interruptor (arnés de potencia):</b> rojo del conector T hembra a una pata exterior; a la pata "
-              "central, dos cables naranjas de 10 cm (uno al L298N y otro al Nano). Termofit en las tres patas.",
+              "central, dos cables naranjas de 10 cm (uno al L298N y otro a la placa). Termofit en las tres patas.",
+              "<b>Fusible:</b> con la UNO Q, pon el portafusible de 3 A en el rojo, entre el conector T y el interruptor.",
               "<b>Conector T hembra:</b> su cable negro va directo al L298N; el rojo es el que se soldó al interruptor.",
           ]),
-          h2("4.4 Preparar cables"),
+          h2("4.4 Preparar cables y shield"),
           *lista([
               "Pela 6 mm de cada cable calibre 22 que va a un borne y estáñalo.",
-              "Para la protoboard, el naranja de VIN y el negro de GND del Nano: pela 8 mm y estáñalos para que entren rectos.",
-              "Respeta los colores de la Fig. 4: así revisar el cableado al final es comparar colores.",
+              "El naranja de VIN y el negro de GND que van a la placa: pela 8 mm y estáñalos para que entren rectos en el header del shield.",
+              "Pega la mini protoboard sobre el Proto Shield y marca cuatro columnas con cinta: <b>VCC, GND, SDA, SCL</b>. "
+              "Cada columna tiene dos mitades de 5 hoyos; únelas con un jumper rígido.",
+              "Respeta los colores de la tabla: así revisar el cableado al final es comparar colores.",
           ]),
-          img(os.path.join(RAIZ, "atmega328p", "img", "conexiones_nano.png"), 170),
-          fig("Fig. 4. Diagrama de conexiones. Los colores son los mismos que los de los cables del modelo."),
+          tabla([["Columna del bus", "Color", "Va a (por jumper rígido)"],
+                 ["VCC", "rojo", "<b>5V con el R3. 3V3 con la UNO Q.</b>"],
+                 ["GND", "negro", "GND del shield"],
+                 ["SDA", "azul", "Pin SDA de la cabecera junto a AREF"],
+                 ["SCL", "cian", "Pin SCL de la cabecera junto a AREF"]], [40, 30, 106]),
+          Spacer(1, 3),
+          caja("<b>Cuidado:</b> con la UNO Q el VCC del bus va a <b>3V3</b>. Con 5V en el bus se pueden dañar los pines "
+               "SDA/SCL de la Q, porque algunos módulos suben esas líneas al VCC del bus."),
+          img("det_shield.png", 150, 90),
+          fig("Fig. 4. Proto Shield con la mini protoboard: columnas del bus y puentes a la placa."),
           PageBreak()]
 
     # 5. Armado paso a paso
     H += [h1("5. Armado paso a paso"),
-          Paragraph("En cada imagen, las piezas en color son las que se agregan en ese paso; lo ya armado aparece en gris.",
-                    S["pz"]), Spacer(1, 2)]
+          Paragraph("Los pasos 1 a 6 y 8 a 10 son iguales con las dos placas. El paso 7 cambia un poco (OLED) y el paso 11 "
+                    "es <b>solo para la UNO Q</b>. En cada imagen, las piezas en color son las que se agregan en ese "
+                    "paso; lo ya armado aparece en gris.", S["pz"]), Spacer(1, 2)]
     H += paso("Paso 1. Motores y cunas",
               "piso 1, 2 cunas de motor con insertos, 2 motores N20 con capacitor y cables, 4 Allen M3×12",
               ["Voltea el piso 1. Mete cada N20 en su cuna con el eje hacia afuera y las terminales hacia el centro.",
@@ -492,7 +598,7 @@ def manual_ensamble():
                "XSHUT verde. GPIO1 queda libre.",
                "Baja cada sensor por las ranuras de su soporte: chip hacia afuera, pines arriba apuntando hacia adentro.",
                "Dobla los cables hacia arriba justo al final del dupont.",
-               "El cable del frente va por debajo del OLED hacia la ranura derecha; los laterales suben derecho."],
+               "Los laterales suben derecho. El del frente va hacia la ranura derecha."],
               "cada sensor tocó el fondo de su soporte y detrás de él quedan ~27 mm libres.",
               "paso5.png")
     H += paso("Paso 6. Cables de lógica del L298N",
@@ -502,16 +608,20 @@ def manual_ensamble():
               "los dupont están en la fila de adelante del header, no en la de 5V.",
               "paso6.png")
     H += paso("Paso 7. Piso 2 en la mesa",
-              "piso 2, 2 mini protoboards, Arduino Nano, 8 jumpers rígidos, OLED con 4 dupont, botón, interruptor con su arnés",
-              ["Pega las protoboards en su marco: izquierda para el Nano, derecha para el bus.",
-               "Clava el Nano con el USB hacia atrás, en las columnas 2 a 16 (contando desde adelante).",
-               "Bus: columna 1 GND, 4 5V, 7 SCL y 10 SDA. Une las dos mitades de cada una con un jumper.",
-               "Jumpers del Nano al bus: GND, 5V, A5 (SCL) y A4 (SDA); no se cruzan.",
-               "Pasa el header del OLED por su ranura (pines hacia atrás) y conecta sus 4 dupont por abajo.",
+              "piso 2, UNO R3 <i>o</i> UNO Q, Proto Shield con su protoboard, 4 Allen M3×8, botón, interruptor con su arnés; "
+              "con el R3, también el OLED con 4 dupont",
+              ["Atornilla la placa (UNO R3 o UNO Q) al piso 2 con 4 M3×8 en sus insertos. Con el R3, USB-B hacia atrás "
+               "y una vuelta de cinta aislante sobre el USB-B, porque el shield queda encima.",
+               "Clava el Proto Shield sobre los headers de la placa.",
+               "Haz los 4 puentes del bus en la protoboard del shield (sección 4.4): VCC, GND, SDA y SCL. "
+               "<b>VCC del bus: 5V con el R3, 3V3 con la UNO Q.</b>",
+               "<b>Solo R3:</b> acuesta el OLED en su marco del piso 2, pines hacia atrás, y conecta sus 4 dupont "
+               "(7.1). Con la UNO Q <b>no</b> va en el marco: va en el mástil (paso 11).",
                "Mete el botón y el interruptor en sus agujeros y apriétalos con su tuerca."],
-              "con el multímetro, cada columna del bus tiene continuidad de punta a punta y no con las demás.",
-              "paso7.png", a_img=165)
-    H += sub("7.1 Pines del OLED",
+              "con el multímetro, cada columna del bus tiene continuidad de punta a punta y no con las demás; el VCC "
+              "del bus no está en 5V si la placa es la Q.",
+              "r3_paso7.png", a_img=165)
+    H += sub("7.1 Pines del OLED (solo R3)",
              ["El plástico del header queda dentro de la ranura del piso 2.",
               "Los 4 pines salen hacia abajo; ahí se conectan los dupont: GND negro, VCC rojo, SCL cian y SDA azul.",
               "Los cables van a la ranura derecha y suben al bus."],
@@ -519,46 +629,81 @@ def manual_ensamble():
     H += sub("8.1 Arnés de potencia",
              ["Acerca el piso 2 por atrás, inclinado, con el arnés colgando.",
               "Naranja corto del interruptor al <b>12V</b> del L298N.",
-              "Negro del conector T y negro largo (al Nano) juntos, torcidos, al <b>GND</b> del L298N.",
+              "Negro del conector T y negro largo (a la placa) juntos, torcidos, al <b>GND</b> del L298N.",
               "Dobla los cables hacia arriba entre la batería y el L298N.",
               "El otro naranja y el negro largo suben por la ranura central del piso 2."],
              "jala cada cable del borne: ninguno sale. El conector T hembra sigue <b>sin conectar</b>.",
              "det_arnes.png", intro="Los bornes quedan bajo el piso 2: se aprietan antes de cerrarlo.")
-    H += paso("Paso 8. Montar el piso 2",
+    H += paso("Paso 8. Montar el piso 2 y el arnés de potencia",
               "conjunto del paso 7, 4 Allen M3×8",
-              ["Baja el piso 2 sobre las 4 columnas pasando los cables: sensores izquierdos y TCS34725 por la ranura "
-               "izquierda; VL53L0X derecho, frontal y OLED por la derecha; L298N, botón y potencia por la central.",
+              ["Haz el arnés de potencia (8.1) con el piso 2 todavía sin bajar.",
+               "Baja el piso 2 sobre las 4 columnas pasando los cables: sensores izquierdos y TCS34725 por la ranura "
+               "izquierda; VL53L0X derecho y frontal por la derecha; L298N, botón y potencia por la central.",
                "Revisa que ningún cable quede pellizcado entre columna y piso.",
                "Atornilla 4 M3×8 a los insertos de las columnas."],
               "el piso 2 asienta plano en las 4 columnas y los cables de abajo no tocan las ruedas.",
-              "paso8.png")
-    H += paso("Paso 9. Conexiones en las protoboards",
+              "r3_paso8.png")
+    H += paso("Paso 9. Conexiones en el shield",
               "los cables que salen por las ranuras",
-              ["Cada sensor va a su hoyo del bus por color: rojo a 5V, negro a GND, azul a SDA y cian a SCL.",
-               "XSHUT verdes: izquierdo a A0, frente a A1 y derecho a A2 (fila de pines A, junto al canal).",
-               "L298N: ENA→D5, ENB→D6, IN1→D7, IN2→D8, IN3→D9, IN4→D10 (fila D, lado de afuera).",
-               "Botón: rosa a D2 y negro a GND de la fila D.",
-               "Naranja rígido a VIN y negro rígido a GND de la fila A del Nano.",
+              ["Cada sensor va a su columna del bus por color: rojo a VCC, negro a GND, azul a SDA y cian a SCL.",
+               "XSHUT verdes en los headers del shield: izquierdo a A0, frente a A1 y derecho a A2.",
+               "L298N: ENA→D5, ENB→D6, IN1→D7, IN2→D8, IN3→D9, IN4→D10.",
+               "Botón: rosa a D2 y negro a GND del shield.",
+               "Naranja del interruptor a VIN y negro del L298N a GND, en los headers de potencia del shield.",
                "Agrupa con cinchos los cables de cada sensor; usa el Anexo A como lista de revisión."],
-              "compara cable por cable con la Fig. 4 y el Anexo A antes de seguir.",
-              "paso9.png")
-    H += paso("Paso 10. Primera conexión de la batería",
+              "compara cable por cable con el mapa de pines (sección 1) y el Anexo A antes de seguir.",
+              "r3_paso9.png")
+    H += paso("Paso 10. Conector T y primera conexión",
               "conector T",
               ["Haz todas las revisiones de la sección 6.1.",
                "Pon el interruptor en OFF y levanta el robot para que las ruedas giren en el aire.",
                "Une el conector T macho de la batería con la hembra del robot y acuéstalo sobre la batería.",
-               "Enciende: la OLED debe decir LABERINTO LISTO."],
+               "Con el R3, enciende: la OLED debe decir LABERINTO LISTO. Con la Q, termina el paso 11 antes de encender."],
               "nada se calienta en el primer minuto. Si algo huele o se calienta, apaga y desconecta el T.",
-              "paso10.png")
-    H.append(PageBreak())
+              "r3_paso10.png")
+    H += [h2("Paso 11. Solo UNO Q: mástil, cámara, hub y OLED")]
+    H += sub("11.1 Mástil y cabeza de cámara",
+             ["Mete el PTR (10 o 15 mm, ~10 cm) en su base del piso 2. El tamaño está pendiente: la base del modelo es "
+              "un marcador, confirma que el PTR entre sin juego.",
+              "Atornilla la cámara USB a la cabeza con 4 M2 del kit (agujeros a 28 mm), lente al frente.",
+              "Pon la cabeza en la punta del mástil (la cabeza es provisional)."],
+             None, "q_paso11.png", alto_img=95, intro="Parte solo de la versión con UNO Q.")
+    H += sub("11.2 Repisa, hub y OLED",
+             ["Atornilla la repisa a sus 4 postes del piso 2 con 4 M3×8.",
+              "Pon el hub sobre la repisa y sujétalo con 2 cinchos por las ranuras.",
+              "Sujeta el clip del OLED al mástil, con el OLED mirando hacia atrás. Conecta sus 4 dupont al bus "
+              "(el VCC del bus sigue en 3V3)."],
+             None, "det_q_usb.png", alto_img=85)
+    H += [fig("Fig. 5. Hub, repisa y cables USB de la UNO Q."),
+          *lista(["<b>Cables USB:</b> el cable USB-C corto en ángulo recto va del hub a la entrada USB-C de la UNO Q. "
+                  "El cable de la cámara va al hub.",
+                  "La placa se alimenta por VIN con la batería. Si la cámara no aparece en la Q así, prueba el módulo PD "
+                  "de la sección 6.4."], num=True),
+          verifica("el VCC del bus está en 3V3, el hub no se mueve al tocarlo y los cables USB no rozan las ruedas ni el mástil."),
+          Spacer(1, 4), raya(), Spacer(1, 2)]
+    H += [h2("Cambio R3 ↔ UNO Q"),
+          p("El cableado vive en el shield: se cambia de placa sin tocar los dupont."),
+          *lista([
+              "Desconecta el conector T de la batería.",
+              "Quita el <b>Proto Shield completo</b> con todos sus dupont conectados, jalándolo parejo hacia arriba.",
+              "Quita los 4 M3×8 de la placa, cambia R3 por Q (o al revés) y vuelve a poner los 4 tornillos.",
+              "Pon el shield otra vez sobre los headers.",
+              "<b>Mueve el jumper VCC del bus:</b> 5V para el R3, 3V3 para la Q.",
+              "Pasa de R3 a Q: agrega mástil, cabeza con cámara, repisa con hub, el OLED en el clip del mástil y los "
+              "cables USB (paso 11). Quita el OLED del marco.",
+              "Pasa de Q a R3: quita esas piezas y pon el OLED en su marco (7.1); con el R3, cinta aislante sobre el USB-B.",
+          ], num=True),
+          caja("<b>Revisa antes de conectar la batería:</b> con la UNO Q el VCC del bus <b>nunca</b> va a 5V."),
+          PageBreak()]
 
     # 6. Ajustes y pruebas
     H += [h1("6. Ajustes y pruebas"), h2("6.1 Antes de conectar la batería"),
           tabla([["", "Revisión"],
-                 ["☐", "Continuidad (batería desconectada): no hay pitido entre 12V y GND del L298N ni entre 5V y GND del Nano."],
+                 ["☐", "Continuidad (batería desconectada): no hay pitido entre 12V y GND del L298N ni entre VIN y GND de la placa."],
                  ["☐", "El interruptor en ON une el rojo del T con los dos naranjas; en OFF, no."],
                  ["☐", "Los jumpers ENA y ENB del L298N están quitados; el de 5V-EN está puesto."],
                  ["☐", "Nada usa la salida de 5V del L298N."],
+                 ["☐", "El VCC del bus está en 5V (R3) o en 3V3 (Q)."],
                  ["☐", "Las ruedas giran libres y ningún cable las toca."],
                  ["☐", "El robot mide 120 × 120 mm o menos con las ruedas."]], [10, 166]),
           h2("6.2 Primer encendido"),
@@ -574,15 +719,25 @@ def manual_ensamble():
                  ["Allen M3 en inserto (todos)", "Firme con el lado corto de la llave; si el inserto gira, cambió de agujero: reponlo"],
                  ["Bornes del L298N", "Firme; jalar cada cable para comprobar"],
                  ["Tuercas del botón y del interruptor", "Con los dedos y un cuarto de vuelta con pinzas"]], [80, 96]),
+          h2("6.4 Solo UNO Q: alimentación y cámara"),
+          *lista([
+              "La Q recibe 7–24 V por VIN. Con la batería por debajo de 7 V queda fuera de rango: recarga a 7.2 V o más.",
+              "Prueba <b>sin módulo PD</b>: batería → interruptor → fusible → VIN. Revisa en App Lab que la cámara aparezca.",
+              "Si no aparece (la Q arranca como dispositivo USB), usa el módulo PD opcional: batería → interruptor → "
+              "fusible de 3 A → módulo (entrada desde 6 V, salida USB-C 5 V / 3 A) → USB-C de la Q. Ver docs/uno_q.md, sección 7.",
+              "No uses módulos «trigger», «decoy» o «señuelo»: consumen en vez de dar energía.",
+          ]),
           h1("7. Solución de problemas"),
           tabla([["Síntoma", "Causa probable", "Qué hacer"],
                  ["La OLED no prende", "Interruptor, VIN o bus I2C", "Mide 7–8 V en VIN; revisa los puentes del bus"],
                  ["SIN SENSOR COLOR", "Cable del TCS34725 suelto", "Revisa sus 4 soldaduras y su hoyo en el bus"],
-                 ["SIN VL53L0X", "XSHUT o VIN de un sensor", "Revisa A0/A1/A2 y que el dupont siga en el pin"],
-                 ["El Nano se reinicia al arrancar", "Ruido de motores o batería baja", "Capacitores de 100 nF; carga la batería"],
+                 ["SIN VL53L0X", "XSHUT o VCC de un sensor", "Revisa A0/A1/A2 y que el dupont siga en el pin"],
+                 ["La placa se reinicia al arrancar", "Ruido de motores o batería baja", "Capacitores de 100 nF; carga la batería"],
                  ["Un motor no gira", "Borne flojo o ENA/ENB", "Aprieta OUT y revisa D5/D6"],
                  ["Una rueda roza", "Cable de motor o rueda muy adentro", "Acomoda el cable; saca la rueda 1 mm"],
-                 ["El sensor de color baila", "Ranura grande", "Calza con cinta; reimprime con RANURA menor"]],
+                 ["El sensor de color baila", "Ranura grande", "Calza con cinta; reimprime con RANURA menor"],
+                 ["Q: no aparece la cámara", "Q en modo dispositivo con VIN, hub o cable USB", "Revisa los cables USB; prueba el módulo PD (6.4)"],
+                 ["Q: I2C no responde o se calienta", "VCC del bus en 5V", "Apaga, pasa el jumper a 3V3 y revisa los pines SDA/SCL"]],
                 [48, 56, 72]),
           h1("8. Uso seguro"),
           *lista([
@@ -595,8 +750,9 @@ def manual_ensamble():
 
     # Anexo A
     H += [h1("Anexo A. Lista de cables"),
-          p("Sale del modelo 3D (chasis.scad): cada cable tiene una ruta y este es su largo, sin contar los conectores. Los dupont de "
-            "30 cm alcanzan para todos con holgura (el más largo mide 22 cm). Para los cables de calibre 22, corta el largo de la tabla más 30 mm."),
+          p("Sale del modelo 3D (chasis.scad): cada cable tiene una ruta y este es su largo aproximado, sin contar los conectores. "
+            "Los dupont de 30 cm alcanzan para todos con holgura. Para los cables de calibre 22, corta el largo de la tabla más "
+            "30 mm. «Placa» es la UNO R3 o la UNO Q; el VCC del bus es 5V (R3) o 3V3 (Q). Los cables USB son solo Q."),
           tabla([["De", "A", "Color", "Tipo", "Largo (mm)"], *[[c[0], c[1], c[2], c[3], c[4]] for c in cables]],
                 [44, 32, 18, 62, 20])]
     construir("manual_ensamble.pdf", "Manual de armado", H)
@@ -606,11 +762,11 @@ def manual_ensamble():
 def manual_uso():
     H = []
     H += [Spacer(1, 30 * mm), Paragraph("Manual de uso", S["t"]),
-          Paragraph("Robot de laberinto · Arduino Nano (ATmega328P)", S["st"]), Spacer(1, 10 * mm),
-          img("iso.png", 130, 110), Spacer(1, 8 * mm),
+          Paragraph("Robot de laberinto · Arduino UNO R3 (ATmega328P) y Arduino UNO Q", S["st"]), Spacer(1, 10 * mm),
+          img("r3_iso.png", 130, 110), Spacer(1, 8 * mm),
           tabla([["Sección", "Contenido"],
                  ["1. Cómo funciona", "Qué hace el robot y cómo cuenta las marcas"],
-                 ["2. Programarlo", "Microchip Studio y carga con avrdude"],
+                 ["2. Programarlo", "R3: Microchip Studio y avrdude. Q: App Lab"],
                  ["3. Controles", "Interruptor, botón y pantalla"],
                  ["4. Calibración", "Colores, distancias y tiempos, con hoja para llenar"],
                  ["5. En la competencia", "Paso a paso de cada corrida"],
@@ -641,22 +797,34 @@ def manual_uso():
           PageBreak()]
 
     H += [h1("2. Programarlo"),
-          p("El código está en C++ sin librerías de Arduino, en <b>atmega328p/laberinto/</b>. Maneja el ATmega328P "
-            "por registros: TWI (I2C) en twi.cpp, Timer0 (PWM de motores) en motores.cpp y Timer1 (base de tiempo "
-            "por interrupción) en tiempo.cpp. Se compila en Microchip Studio y se carga por USB con avrdude, "
-            "usando el bootloader que ya trae el Nano."),
+          p("Hay dos placas con el mismo cableado. Los pasos completos, para quien nunca ha programado, están en "
+            "<b>docs/GUIA_PROGRAMACION.md</b>; los datos de la UNO Q, en <b>docs/uno_q.md</b>."),
+          tabla([["Placa", "Código", "Cómo se carga"],
+                 ["UNO R3 (respaldo oficial)", "atmega328p/laberinto/ (C++ sin librerías de Arduino)",
+                  "Microchip Studio + avrdude por USB-B"],
+                 ["UNO Q (principal)", "uno_q/ (sketch.ino y python/main.py)", "Arduino App Lab"]], [45, 75, 50]),
+          h2("UNO Q: Arduino App Lab"),
+          *lista([
+              "Instala <b>Arduino App Lab</b> y conecta la Q a la computadora por USB-C.",
+              "Abre la app de la carpeta <b>uno_q/</b> y pulsa Run: sube el sketch al microcontrolador y arranca el "
+              "programa de Python en Linux.",
+              "Antes de conectar la batería revisa que el VCC del bus esté en <b>3V3</b>.",
+          ], num=True),
+          h2("UNO R3: Microchip Studio y avrdude"),
+          p("El código maneja el ATmega328P por registros: TWI (I2C) en twi.cpp, Timer0 (PWM de motores) en "
+            "motores.cpp y Timer1 (base de tiempo por interrupción) en tiempo.cpp. Se compila en Microchip Studio y "
+            "se carga por USB-B con avrdude, usando el bootloader que ya trae el R3."),
           h2("Una sola vez"),
           *lista([
               "Instala <b>Microchip Studio 7</b> y <b>Arduino IDE 2</b> (solo para tener avrdude). En Arduino IDE "
               "instala una vez la placa Arduino AVR Boards.",
-              "Instala el driver <b>CH340</b> si Windows no reconoce el Nano. En el Administrador de dispositivos anota "
-              "el puerto (por ejemplo COM5).",
+              "Conecta el R3 por USB-B. En el Administrador de dispositivos anota el puerto (por ejemplo COM5).",
               "Microchip Studio: File → New → Project → <b>GCC C++ Executable Project</b>, nombre <b>laberinto</b>, "
               "dispositivo <b>ATmega328P</b>.",
               "Borra el main.cpp que crea. Clic derecho en el proyecto → Add → Existing Item… y agrega todos los "
               ".cpp y .h de atmega328p/laberinto/.",
               "Arriba elige la configuración <b>Release</b> (optimiza a -Os).",
-              "Tools → External Tools… → Add. Title: <b>Cargar Nano</b>. Command: la ruta de avrdude.exe, por ejemplo "
+              "Tools → External Tools… → Add. Title: <b>Cargar R3</b>. Command: la ruta de avrdude.exe, por ejemplo "
               "<font face='Courier' size='8'>%LOCALAPPDATA%\\Arduino15\\packages\\arduino\\tools\\avrdude\\"
               "6.3.0-arduino17\\bin\\avrdude.exe</font>. Arguments:",
           ], num=True),
@@ -667,11 +835,12 @@ def manual_uso():
           *lista([
               "Edita el valor en <b>config.h</b> (pines, laberinto y calibración están ahí).",
               "Build → Build Solution (F7). Debe terminar sin errores; usa unos 14 KB de flash y 1 KB de RAM.",
-              "Conecta el Nano por USB-C con el interruptor del robot <b>apagado</b> y usa Tools → Cargar Nano.",
+              "Conecta el R3 por USB-B con el interruptor del robot <b>apagado</b> y usa Tools → Cargar R3.",
           ], num=True),
-          caja("Si avrdude dice <b>not in sync</b>, tu Nano tiene el bootloader viejo: cambia -b 115200 por "
-               "<b>-b 57600</b>. Desde Linux o Mac también sirve el Makefile: <font face='Courier'>make cargar "
-               "PUERTO=/dev/ttyUSB0</font>."),
+          caja("Desde la terminal: <font face='Courier' size='8'>avrdude -p atmega328p -c arduino -P COM5 -b 115200 "
+               "-U flash:w:laberinto.hex:i</font>. En Linux o Mac también sirve el Makefile: "
+               "<font face='Courier'>make cargar PUERTO=/dev/ttyACM0</font>. Si dice <b>not in sync</b>, revisa el "
+               "puerto y que ningún otro programa lo tenga abierto."),
           caja("Al subir código nuevo no se borra el mapa: está en la EEPROM. Para borrarlo usa el botón sostenido "
                "(sección 3)."),
           h2("Dónde poner el laberinto en el código (config.h)"),
@@ -790,7 +959,7 @@ def manual_uso():
           h1("7. Problemas"),
           tabla([["Síntoma", "Causa probable", "Solución"],
                  ["Pantalla apagada", "Batería, interruptor o I2C", "Mide voltaje en VIN; revisa SDA/SCL de la OLED"],
-                 ["avrdude: not in sync", "Bootloader viejo o puerto mal", "Usa -b 57600; revisa el COM y el driver CH340"],
+                 ["avrdude: not in sync", "Puerto equivocado u ocupado (R3)", "Revisa el COM, que el cable USB-B sea de datos y usa -b 115200"],
                  ["SIN SENSOR COLOR", "TCS34725 sin conexión", "Revisa sus cables y que esté metido hasta el fondo de la capucha"],
                  ["SIN VL53L0X", "Un VL53L0X sin alimentación o XSHUT", "Revisa VCC y XSHUT de cada uno (A0, A1, A2) y que su dupont no se haya salido"],
                  ["Una rueda gira al revés", "Cables del motor invertidos", "Intercambia sus 2 cables en el L298N"],
@@ -810,6 +979,8 @@ if __name__ == "__main__":
     escribir_csv()
     manual_ensamble()
     manual_uso()
+    if FALTAN:
+        print("Imágenes faltantes:", ", ".join(sorted(FALTAN)))
     for f in os.listdir(AQUI):
         if f.startswith(".tmp_"):
             os.remove(os.path.join(AQUI, f))

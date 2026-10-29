@@ -1,10 +1,15 @@
 // Chasis robot laberinto (Arduino Nano / ATmega328P) - 120 x 120 mm con ruedas
 // Origen: centro del eje de las ruedas, a nivel del piso. X derecha, Y adelante, Z arriba.
 //
+// PLACA: "uno_r3" (por defecto), "unoq" (UNO Q) o "nano" (version vieja). Con UNO R3 y UNO Q todas las piezas
+//        impresas son las mismas; la Q solo AGREGA mastil + camara, repisa + hub y el clip del OLED.
 // PIEZA: "ensamble", "piso1", "piso2", "cuna_motor", "capucha_color", "patin", "prueba",
-//        "placa" (todas las piezas acomodadas en la cama de la X2D), "placa_vista" (igual, con la cama),
-//        "sub_piso2" (piso 2 armado en la mesa), "det_insertos", "det_motor", "det_l298", "marca" (esfera en MARCA)
-// PASO:  1-10 muestra el ensamble hasta ese paso; lo de pasos anteriores sale en gris. 0 = completo a color
+//        "placa" (piezas comunes acomodadas en la cama de la X2D), "placa_vista" (igual, con la cama),
+//        "repisa", "cabeza_camara", "clip_oled", "placa_q" (piezas solo de la Q en la cama), "placa_q_vista",
+//        "sub_piso2" (piso 2 armado en la mesa), "det_insertos", "det_motor", "det_l298", "det_shield",
+//        "det_q_usb", "marca" (esfera en MARCA)
+// PASO:  1-11 muestra el ensamble hasta ese paso; lo de pasos anteriores sale en gris. 0 = completo a color
+//        (UNO: 7 piso 2 en la mesa, 8 montaje + potencia, 9 cableado en el shield, 10 conector T, 11 solo Q)
 //
 // Los sensores se insertan sin tornillos:
 //   VL53L0X: header recto, pines hacia adentro; bajan por las ranuras de su soporte en el piso 1.
@@ -16,6 +21,7 @@
 
 PIEZA = "ensamble";
 PASO = 0;
+PLACA = "uno_r3";        // "uno_r3", "unoq" (UNO Q + camara USB) o "nano" (version vieja)
 MARCA = [0, 0, 0];
 UNIDO = false;           // det_arnes: conector T unido
 
@@ -23,7 +29,7 @@ $fn = 48;
 $gris = false;
 $col = "orange";         // color de las piezas impresas
 function en(x, l) = len([for (e = l) if (e == x) 1]) > 0;
-$ins = !en(PIEZA, ["piso1", "piso2", "cuna_motor", "capucha_color", "patin", "prueba", "placa"]);   // dibuja insertos
+$ins = !en(PIEZA, ["piso1", "piso2", "cuna_motor", "capucha_color", "patin", "prueba", "placa", "repisa", "cabeza_camara", "clip_oled", "placa_q"]);   // dibuja insertos
 
 // ---------- Tolerancias: Bambu Lab A2L, boquilla 0.4, capa 0.2, PLA/PETG ----------
 // En la A2L (cama movil) los agujeros salen ~0.1 mm chicos y las ranuras ~0.15 mm angostas;
@@ -62,7 +68,7 @@ POZO_Y = 19;
 Z1 = EJE_Z + MOT_H / 2;                  // fondo del piso 1 (toca el motor)
 SEP = 35;                                // columnas impresas del piso 1, con inserto arriba
 Z2 = Z1 + ESP + SEP;                     // fondo del piso 2
-POSTES = [[42, 50], [-42, 50], [44, -46], [-44, -46]];
+POSTES = [[42, 50], [-42, 50], [48, -40], [-48, -40]];   // los de atras dejan libre el jack y el USB-B del R3
 
 // Componentes
 BAT = [65, 37, 19];      // 2S 18650 acostada a lo ancho (X, Y, Z)
@@ -98,6 +104,48 @@ CABLE_POT = 1.8;         // calibre 22 con forro de silicon (bateria, interrupto
 RAN2_X = 26.5;           // ranuras laterales de cables del piso 2 (centro X)
 T_CON = [13, 12.7, 7];   // conector T (Deans): cada mitad (X, Y, Z)
 T_POS = [-25, 10, Z1 + ESP + BAT[2]];    // conector T acostado sobre la bateria (borde izq, centro Y, fondo)
+
+// UNO R3 / UNO Q (mismo tamano y agujeros). USB a la izquierda (-X), header digital al frente
+UNO = [68.58, 53.34];
+UNO_Y0 = -58;                            // borde de atras de la placa
+UNO_AG = [[13.97, 2.54], [15.24, 50.8], [66.04, 7.62], [66.04, 35.56]];   // agujeros (medidas del plano de Arduino)
+UNO_POSTE = 6;                           // bajo el UNO Q van sus conectores JMEDIA/JMISC
+UNO_USB_Y = 38.1;                        // centro del USB sobre el borde izquierdo (medir el de la Q)
+function uno(p) = [p[0] - UNO[0] / 2, p[1] + UNO_Y0];
+UNO_Z = Z2 + ESP + UNO_POSTE;            // cara de abajo del PCB
+ZS = Z2 + ESP;                           // cara de arriba del piso 2
+
+// Headers del UNO (medidas del plano de Arduino; medir los de su placa). x: desde el borde del USB, y: desde el borde de atras.
+// Digital al frente (SCL SDA AREF GND D13..D8, hueco de 4.06, D7..D0); potencia y analogos atras.
+function idx(l, x) = let(r = [for (i = [0 : len(l) - 1]) if (l[i] == x) i]) len(r) > 0 ? r[0] : -1;
+UNO_H = [["SCL", "SDA", "AREF", "GND", "D13", "D12", "D11", "D10", "D9", "D8"],
+         ["D7", "D6", "D5", "D4", "D3", "D2", "D1", "D0"],
+         ["NC", "IOREF", "RESET", "3V3", "5V", "GND2", "GND3", "VIN"],      // GND2 y GND3: los dos GND de potencia
+         ["A0", "A1", "A2", "A3", "A4", "A5"]];
+UNO_HX = [19.05, 19.05 + 9 * 2.54 + 4.064, 27.94, 50.8];     // x del primer pin de cada header
+UNO_HY = [50.8, 50.8, 2.54, 2.54];
+function uno_h(n) = [for (h = [0 : 3]) if (idx(UNO_H[h], n) >= 0) h][0];
+function uno_pin(n) = uno([UNO_HX[uno_h(n)] + idx(UNO_H[uno_h(n)], n) * PASO_PIN, UNO_HY[uno_h(n)]]);
+
+// Camara USB en mastil de PTR (concepto: el PTR y su anclaje se definen cuando haya medida oficial)
+MASTIL = 15;             // 10 o 15 mm, pendiente
+MASTIL_XY = [0, 10.5];   // al centro, entre el UNO y el OLED
+CAM_Z = 150;             // altura del lente sobre el suelo
+CAM_INCL = 25;           // grados hacia abajo
+CAM_FOV = [100, 75];     // lente M12 gran angular (horizontal, vertical)
+CAM_PCB = 32;            // modulo UVC de 32 x 32 mm, agujeros M2 a 28 mm
+// OLED en la cara de atras del mastil (solo Q): header acodado de 4 pines hacia ARRIBA (el OLED va de cabeza; en el
+// codigo se gira la pantalla 180 grados), sujeto por un clip impreso. Asi sus cables salen por arriba, sin cruzar los del shield.
+OLED_MZ = 108;                                   // borde de abajo del OLED sobre el suelo
+CLIP_YB = MASTIL_XY[1] - (MASTIL + 6) / 2;       // cara de atras del collar y de la manga de la camara
+CLIP_Z0 = 100;                                   // abajo del clip (el collar mide 12)
+
+// Hub USB en una repisa al frente del piso 2 (el mismo piso 2 sirve al R3: ahi la repisa no se pone)
+HUB = [95, 30, 12];      // medir el suyo
+REPISA_Z = 82;           // cara de abajo de la repisa: libra los dupont que suben por las ranuras
+REPISA_ESP = 2.5;
+REPISA_POSTES = [[52, 26], [-52, 26], [52, 44], [-52, 44]];
+HUB_Y = 39.5;
 
 OLED_PINES_Y = OLED_Y - OLED[1] / 2 + 2.5;
 TOF_PIN_Z = TOF[1] - 1.3;                // fila de pines del VL53L0X, medida desde su borde de abajo
@@ -220,7 +268,7 @@ module piso2() {
       cuadrado_redondo(L, R_ESQ, ESP);
       translate([0, 0, ESP]) {
         // marco para dos protoboards (Nano a la izquierda, bus I2C a la derecha)
-        translate([0, PROTO_Y, 2]) difference() {
+        if (PLACA == "nano") translate([0, PROTO_Y, 2]) difference() {
           cube([2 * ap + 3 * 1.6, lp + 3.2, 4], center = true);
           for (s = [-1, 1]) translate([s * (ap / 2 + 0.8), 0, 0]) cube([ap, lp, 6], center = true);
           translate([-(ap / 2 + 0.8), -lp / 2, 0]) cube([12, 6, 6], center = true);   // salida del USB
@@ -230,7 +278,15 @@ module piso2() {
           cube([ao[0] + 3.2, ao[1] + 3.2, 3], center = true);
           cube([ao[0], ao[1], 4], center = true);
         }
+        if (PLACA != "nano") {
+          for (a = UNO_AG) translate(uno(a)) cylinder(d = 6.5, h = UNO_POSTE);
+          for (p = REPISA_POSTES) translate(p) cylinder(d = 8, h = REPISA_Z - Z2 - ESP);
+        }
       }
+    }
+    if (PLACA != "nano") {
+      for (a = UNO_AG) translate(concat(uno(a), ESP + UNO_POSTE)) ag_inserto(8);
+      for (p = REPISA_POSTES) translate(concat(p, REPISA_Z - Z2)) ag_inserto(8);
     }
     for (p = POSTES) translate([p[0], p[1], 0]) agujero(M3_PASO, ESP);
     translate([0, OLED_PINES_Y, ESP / 2]) cube([13, 4.5, ESP + 2], center = true);               // pines del OLED
@@ -239,6 +295,10 @@ module piso2() {
     for (s = [-1, 1]) translate([s * RAN2_X, TOF_LADO[1], ESP / 2]) cube([16, 22, ESP + 2], center = true); // cables de sensores
     translate([BOTON_XY[0], BOTON_XY[1], 0]) agujero(D_BOTON, ESP);
     translate([SWITCH_XY[0], SWITCH_XY[1], 0]) agujero(D_SWITCH, ESP);
+  }
+  if ($ins && PLACA != "nano") {
+    for (a = UNO_AG) translate(concat(uno(a), ESP + UNO_POSTE)) inserto();
+    for (p = REPISA_POSTES) translate(concat(p, REPISA_Z - Z2)) inserto();
   }
 }
 
@@ -325,6 +385,13 @@ module placa() {
   for (i = [0 : 1]) translate([m + 12 + i * 24, y2, 0]) cuna_motor();
   translate([85, y2 + 6, Z1 - 2]) rotate([180, 0, 0]) capucha_color();
   translate([150, y2, Z1]) rotate([180, 0, 0]) patin();
+}
+
+// Piezas solo de la UNO Q (repisa, cabeza de la camara, clip del OLED) en la cama, en su orientacion de impresion
+module placa_q() {
+  translate([CAMA / 2, MARGEN + 2, 0]) translate([0, -22, 0]) repisa();
+  translate([60, 80, -(CAM_Z - 26)]) translate([-MASTIL_XY[0], -MASTIL_XY[1], 0]) cabeza_camara();
+  translate([160, 80, -CLIP_Z0]) translate([-MASTIL_XY[0], -CLIP_YB + 5.5, 0]) clip_oled();
 }
 
 // ---------- Componentes comprados (solo para el ensamble) ----------
@@ -595,10 +662,10 @@ module arnes_potencia(unido = true) {
         "Interruptor -> L298N 12V");
   // interruptor -> VIN del Nano (sube por la ranura central)
   cable([SW_PIN, [34, SW_PIN[1] - 2, SW_PIN[2] + 3], [27, -3, Z2 - 8], [27, -3, Z2 + ESP + 2]], "orange", CABLE_POT,
-        "Interruptor -> Nano VIN (abajo)");
+        str("Interruptor -> ", PLACA == "nano" ? "Nano" : "UNO", " VIN (abajo)"));
   // GND del L298N -> GND del Nano
   cable([[13.8, L298_Y + 21.5, BORNE_Z], [13.8, -15, BORNE_Z], [13.8, -13.8, BORNE_Z + 2.5], [13.8, -13.8, zt + 1],
-         [13.5, -3, Z2 - 8], [13.5, -3, Z2 + ESP + 2]], "black", CABLE_POT, "L298N GND -> Nano GND (abajo)");
+         [13.5, -3, Z2 - 8], [13.5, -3, Z2 + ESP + 2]], "black", CABLE_POT, str("L298N GND -> ", PLACA == "nano" ? "Nano" : "UNO", " GND (abajo)"));
 }
 
 // Cables del header de logica del L298N: suben por la ranura central del piso 2
@@ -708,7 +775,348 @@ module cables_arriba() {
   arriba([13.5, -3, zs + 2], [hx(-XP, 4), pin_nano(13)], "black", -1, zs + 1.5, ZP + 4.5, "L298N GND -> Nano GND", false);
 }
 
+// ---------- UNO R3 / UNO Q: placa, shield, cableado ----------
+// El mismo piso 2 sirve a las dos placas: se cambia el UNO (y, en la Q, se agrega repisa + mastil + camara)
+// sin tocar ninguna pieza impresa comun. El shield con su mini protoboard se saca y se vuelve a clavar.
+
+// Tira hembra de los headers del UNO / del shield (h = indice en UNO_H); z = 0 es la cara del PCB
+module tira_hembra(h, alto = 8.5) {
+  color(k("black")) translate(concat(uno([UNO_HX[h] - PASO_PIN / 2, UNO_HY[h] - PASO_PIN / 2]), 0))
+    cube([len(UNO_H[h]) * PASO_PIN, PASO_PIN, alto]);
+}
+
+module uno_placa() {
+  q = PLACA == "unoq";
+  translate([0, 0, UNO_Z]) {
+    color(k(q ? "slategray" : "teal")) difference() {
+      translate(uno([0, 0])) cube([UNO[0], UNO[1], 1.6]);
+      for (a = UNO_AG) translate(uno(a)) agujero(3.2, 1.6);
+    }
+    for (h = [0 : 3]) translate([0, 0, 1.6]) tira_hembra(h);        // headers hembra: digital al frente, potencia + analogos atras
+    if (q) {
+      color(k("silver")) translate(concat(uno([-1, UNO_USB_Y - 4.5]), 1.6)) cube([7.5, 9, 3.2]);          // USB-C
+      color(k("black")) translate(concat(uno([30, 20]), 1.6)) cube([22, 14, 0.6]);                    // matriz 8 x 13
+      for (i = [0 : 12]) for (j = [0 : 7]) color(k("deepskyblue"))
+        translate(concat(uno([31 + i * 1.6, 21 + j * 1.6]), 2.2)) cube([0.8, 0.8, 0.1]);
+      color(k("dimgray")) translate(concat(uno([8, 15]), 1.6)) cube([14, 14, 1.5]);                   // QRB2210
+      color(k("white")) translate(concat(uno([60, 15]), 1.6)) cube([4.5, 6, 3]);                      // Qwiic
+      color(k("dimgray")) for (y = [12, 30]) translate(concat(uno([20, y]), -4)) cube([30, 6, 4]);     // JMEDIA / JMISC
+    } else {
+      color(k("silver")) translate(concat(uno([-6.3, UNO_USB_Y - 6]), 1.6)) cube([16, 12, 11]);         // USB-B
+      color(k("black")) translate(concat(uno([-1.8, 3.3]), 1.6)) cube([13.7, 9, 11]);                  // jack
+      color(k("black")) translate(concat(uno([33, 8]), 1.6)) cube([35, 7.5, 4]);                       // ATmega328P DIP
+    }
+  }
+  for (a = UNO_AG) translate(concat(uno(a), UNO_Z + 1.6)) tornillo(8);
+}
+
+CAM_Y = MASTIL_XY[1] + MASTIL / 2 + 12;  // lente, adelante del mastil
+CAM_USB_X = MASTIL_XY[0] + MASTIL / 2 + 5.5;   // el cable USB de la camara baja afuera del collar del clip
+
+// Proto Shield comercial con mini protoboard de 170 puntos: aqui va el bus I2C y la alimentacion de sensores.
+// Sus pines macho entran al UNO y en su cara de arriba lleva tiras hembra (stacking) donde se clavan los dupont.
+SHIELD_Z = UNO_Z + 1.6 + (PLACA == "uno_r3" ? 11.5 : 8.5);   // sobre los headers; con el R3, sobre su USB-B (cinta aislante encima)
+MINI = [45.7, 34.5, 9.5];                // mini protoboard 170 (17 columnas x 10 filas)
+ZHD = SHIELD_Z + 1.6 + 8.5;              // cara de arriba de las tiras hembra del shield
+ZBB = SHIELD_Z + 1.6 + MINI[2];          // cara de arriba de la mini protoboard
+MINI_C = uno([UNO[0] / 2, UNO[1] / 2]);  // centro de la mini protoboard (centro del shield)
+function mini_x(i) = MINI_C[0] + (i - 8) * PASO_PIN;                                   // columna i (0..16, de atras USB a la derecha)
+function mini_y(j) = MINI_C[1] + (j < 5 ? -(3.81 + (4 - j) * PASO_PIN) : 3.81 + (j - 5) * PASO_PIN);   // fila j (0..4 atras, 5..9 adelante)
+
+// Bus I2C: 4 columnas contiguas, en el orden de los headers de los sensores (VCC GND SCL SDA).
+// Cada columna tiene dos mitades de 5 hoyos; un puente las une (8 hoyos libres por linea).
+UBUS_I = [6, 7, 8, 9];
+UBUS_NOM = ["VCC", "GND", "SCL", "SDA"];
+UBUS_COL = ["red", "black", "cyan", "royalblue"];
+VCC_PIN = PLACA == "unoq" ? "3V3" : "5V";                // el jumper de VCC va a 3V3 con la Q y a 5V con el R3
+UBUS_PIN = [VCC_PIN, "GND3", "SCL", "SDA"];              // pin del UNO al que va cada linea
+function hoyo(j, l) = [mini_x(UBUS_I[l]), mini_y(j)];   // hoyo de la fila j en la linea l del bus
+
+module proto_shield() {
+  translate([0, 0, SHIELD_Z]) {
+    color(k("royalblue")) translate(uno([0, 0])) cube([UNO[0], UNO[1], 1.6]);
+    for (h = [0 : 3]) {
+      for (i = [0 : len(UNO_H[h]) - 1])                                                    // pines macho que entran al UNO
+        color(k("gold")) translate(concat(uno([UNO_HX[h] + i * PASO_PIN, UNO_HY[h]]), -6)) translate([-0.32, -0.32, 0]) cube([0.64, 0.64, 6]);
+      translate([0, 0, 1.6]) tira_hembra(h);                                              // tira hembra de arriba
+    }
+    translate([MINI_C[0], MINI_C[1], 1.6]) {
+      color(k("white")) difference() {
+        translate([-MINI[0] / 2, -MINI[1] / 2, 0]) cube(MINI);
+        translate([-MINI[0] / 2 - 1, -0.9, MINI[2] - 1]) cube([MINI[0] + 2, 1.8, 2]);      // canal central
+      }
+      for (i = [0 : 16]) for (j = [0 : 9]) color(k("dimgray"))
+        translate([(i - 8) * PASO_PIN - 0.4, mini_y(j) - MINI_C[1] - 0.4, MINI[2] - 0.05]) cube([0.8, 0.8, 0.1]);
+      // marca de las 4 columnas del bus
+      for (b = [0 : 3]) for (m = [0, 1]) color(k(UBUS_COL[b]))
+        translate([mini_x(UBUS_I[b]) - MINI_C[0] - 0.4, mini_y(m * 5) - MINI_C[1] - 1.27, MINI[2] - 0.05]) cube([0.8, 4 * PASO_PIN + 2.54, 0.1]);
+    }
+  }
+}
+
+// Puentes del bus: unen las dos mitades de cada columna (sobre el canal central de la mini protoboard)
+module puentes_bus() {
+  for (l = [0 : 3]) {
+    x = mini_x(UBUS_I[l]);
+    cable([[x, mini_y(5), ZBB + 0.4], [x, mini_y(5), ZBB + 2.5], [x, mini_y(4), ZBB + 2.5], [x, mini_y(4), ZBB + 0.4]],
+          UBUS_COL[l], 0.8, str("Puente bus ", UBUS_NOM[l]));
+  }
+}
+
+// Dupont macho con su carcasa apoyada en z (cara de arriba del header o de la protoboard) y el pin hacia abajo
+module enchufe(x, y, z) {
+  color(k("black")) translate([x - DUPONT[0] / 2, y - DUPONT[0] / 2, z]) cube([DUPONT[0], DUPONT[0], DUPONT[1]]);
+  color(k("gold")) translate([x - 0.32, y - 0.32, z - 6]) cube([0.64, 0.64, 6]);
+}
+
+// ---------- Cables de arriba (UNO): de las ranuras del piso 2 a las tiras hembra y a la mini protoboard ----------
+TOF_NOM = ["izq", "frente", "der"];
+UNO_DIG_L298 = ["D5", "D7", "D8", "D9", "D10", "D6"];    // ENA IN1 IN2 IN3 IN4 ENB
+FILA_TOF = [7, 8, 9];                                    // fila de la mini protoboard de cada VL53L0X (izq, frente, der)
+FILA_TCS = 6;
+FILA_OLED = 3;
+FILA_ALIM = 2;                                           // enchufes de los 4 cables del bus al UNO
+function xk(i) = (i - 2.5) * PASO_PIN;
+// extremo de arriba del tramo de abajo de cada cable del VL53L0X (sale de la ranura del piso 2)
+function p_tof(t, i) = t == 0 ? [-TOF_LADO[0] + TOF_ATRAS + 4, TOF_LADO[1] + xk(i), ZS + 4]
+                     : t == 2 ? [TOF_LADO[0] - TOF_ATRAS - 4, TOF_LADO[1] - xk(i), ZS + 4]
+                     : [23 + (i - 2.5) * 1.5, TOF_FRENTE_Y - TOF_ATRAS - 4, Z1 + ESP + TOF_PIN_Z + TOF_SUBE + i * 1.5 + 14];
+// OLED del mastil: 4 dupont parados sobre su header acodado; el cable sale por arriba de la carcasa
+OLED_YH = CLIP_YB - 2 - 1.6 - 1.25;                      // eje de los pines (delante de la cara del PCB)
+function oled_x(i) = MASTIL_XY[0] + (i - 1.5) * PASO_PIN; // GND VCC SCL SDA (OLED de cabeza, visto desde atras)
+OLED_ZSAL = OLED_MZ + OLED[1] - 1.25 + DUPONT[1] + 0.75;   // z donde sale el cable del OLED (arriba de la carcasa)
+function oled_def() = [for (i = [0 : 3]) let(l = [1, 0, 2, 3][i])
+  [str("OLED ", SEN_OLED[i], " -> bus ", UBUS_NOM[l]), COL_OLED[i],
+   PLACA == "unoq" ? [oled_x(i), OLED_YH, OLED_ZSAL] : [20 + i * 1.5, OLED_PINES_Y, ZS + 4],
+   hoyo(FILA_OLED, l), ZBB, 0]];
+
+// Cada cable: [nombre, color, origen, destino xy, z de la cara donde se enchufa, tipo]
+//   tipo 0: dupont macho en el destino; 1: calibre 22 directo al header (sin carcasa); 2: dupont macho en los dos extremos
+// Los 33 primeros son comunes a R3 y Q; los 4 ultimos son los del OLED (R3: salen de la ranura; Q: del mastil).
+function cables_uno_def() = concat(
+  [for (n = [0 : 5]) let(c = L298_LOG[n])
+    [str("L298N ", c[1], " -> ", UNO_DIG_L298[n]), c[2], [c[0], -3, ZS + 2], uno_pin(UNO_DIG_L298[n]), ZHD, 0]],
+  [for (i = [0 : 1]) let(p = i == 0 ? "D2" : "GND")
+    [str("Boton ", p, " -> ", p), i == 0 ? "hotpink" : "black", [-28.5 + i * 1.5, -3, ZS + 2], uno_pin(p), ZHD, 0]],
+  [["Interruptor -> UNO VIN", "orange", [27, -3, ZS + 2], uno_pin("VIN"), ZHD, 1],
+   ["L298N GND -> UNO GND", "black", [13.5, -3, ZS + 2], uno_pin("GND2"), ZHD, 1]],
+  [for (t = [0 : 2]) [str("VL53L0X ", TOF_NOM[t], " XSHUT -> A", t), "green", p_tof(t, 5), uno_pin(str("A", t)), ZHD, 0]],
+  [for (l = [0 : 3]) let(h = hoyo(FILA_ALIM, l))
+    [str("Bus ", UBUS_NOM[l], " -> UNO ", UBUS_PIN[l] == "GND3" ? "GND" : UBUS_PIN[l]), UBUS_COL[l],
+     [h[0], h[1], ZBB + DUPONT[1] + 0.75], uno_pin(UBUS_PIN[l]), ZHD, 2]],
+  [for (t = [0 : 2]) for (i = [0 : 3])
+    [str("VL53L0X ", TOF_NOM[t], " ", SEN_TOF[i], " -> bus ", UBUS_NOM[i]), COL_TOF[i], p_tof(t, i), hoyo(FILA_TOF[t], i), ZBB, 0]],
+  [for (i = [0 : 3])
+    [str("TCS34725 ", SEN_TCS[i], " -> bus ", UBUS_NOM[i]), COL_TCS[i], [-20 - i * 1.5, COLOR_Y - 4.5, ZS + 4], hoyo(FILA_TCS, i), ZBB, 0]],
+  oled_def());
+CABLES_UNO = cables_uno_def();
+
+// Ruta: sube a za, va de lado a la columna xa, avanza a yb, sube a la altura de carril zl = ZBB + prm[3],
+// corre hasta el carril ye (prm[4]), va a la columna del enchufe y llega a el por arriba.
+function ruta_uno(p0, pd, zfin, prm) =
+  let(za = prm[0], xa = prm[1], yb = prm[2], zl = ZBB + prm[3], ye = prm[4])
+  [p0, [p0[0], p0[1], za], [xa, p0[1], za], [xa, yb, za], [xa, yb, zl], [xa, ye, zl], [pd[0], ye, zl], [pd[0], pd[1], zl],
+   [pd[0], pd[1], zfin]];
+
+// Un cable (n = su lugar en CABLES_UNO) con sus enchufes; hilo / enchufes se pueden dibujar por separado (pruebas de choque)
+module cable_uno(n, hilo = true, enchufes = true) {
+  c = CABLES_UNO[n];
+  zd = c[4] + (c[5] == 1 ? 1.2 : DUPONT[1] + 0.75);
+  if (hilo) cable(ruta_uno(c[2], c[3], zd, PRM_UNO[n]), c[1], c[5] == 1 ? CABLE_POT : CABLE, c[0]);
+  if (enchufes) {
+    if (c[5] != 1) enchufe(c[3][0], c[3][1], c[4]);
+    if (c[5] == 2) enchufe(c[2][0], c[2][1], c[2][2] - DUPONT[1] - 0.75);
+  }
+}
+
+// grupo: "base" (33 cables comunes), "oled" (los 4 del OLED), "todo"
+module cables_uno(grupo = "todo") {
+  for (n = [0 : len(CABLES_UNO) - 1]) if (grupo == "todo" || (grupo == "oled") == (n >= len(CABLES_UNO) - 4)) cable_uno(n);
+}
+
+// RUTAS_INICIO
+// [za, xa, yb, dz, ye] por cable, en el orden de CABLES_UNO (generado con un buscador de rutas sin choques)
+PRM_BASE = [
+  [70.5, 15.8, -3, 15.4, -9.6], [72.5, 10.2, -3, 15.4, -3], [77.5, 7, -3, 15.4, -5],
+  [80, -4.2, -3, 15.4, -5], [67.5, -10.2, -3, 15.4, -9.4], [79, -17.4, -3, 15.4, -13],
+  [76, -29, -3, 19.9, -10.6], [73, -26.6, -3, 18.4, -11], [76, 28.6, -3, 21.4, -43.6],
+  [67, 23.4, -3, 22.4, -39.6], [75, -33, 15.5, 18.9, -52.4], [72, 26.9, 17.5, 31.4, -32.8],
+  [75.5, 29.7, 17.5, 28.9, -42], [110.45, -5.08, -40.22, 21.9, -47.6], [109.45, -2.54, -40.22, 15.4, -46],
+  [114.45, 0, -40.22, 30.9, -42], [119.95, 2.54, -40.22, 26.4, -44], [78, -21.8, 15.5, 29.4, -19.6],
+  [77.5, -17.4, 8, 23.4, -32.4], [75.5, -24.6, 8, 34.9, -10], [67, -26.6, 5, 28.9, -24.2],
+  [77, 17.3, 17.5, 27.4, -15.8], [80.5, 18.9, 15.5, 23.4, -8.6], [80.5, 24.1, 5, 27.4, -18.4],
+  [74, 32.9, 17.5, 16.9, -16.4], [75.5, 16.9, 10.5, 23.9, -6.6], [78.5, 18.9, 2, 17.4, -12.2],
+  [72.5, 17.3, 2, 21.9, -14], [72, 32.1, 8, 15.4, -16.2], [72.5, -19.4, 2, 16.9, -24.2],
+  [74, -19, 19.3, 21.4, -27.4], [70.5, -23, 10.5, 15.4, -26.8], [72, -25, -2.5, 16.9, -28]
+];   // 33 cables comunes a R3 y Q
+PRM_OLED_R3 = [
+  [73.5, 20.5, 8, 30.4, -14.8], [71, 22.1, 17.5, 24.9, -25.4], [69, 26.9, 2, 27.9, -33.2],
+  [67, 26.1, -1, 19.9, -26.2]
+];   // OLED en el piso 2 (R3)
+PRM_OLED_Q = [
+  [155.8, -4.31, -9, 57.4, -17.6], [157.3, -2.77, -13, 34.4, -17], [152.8, 4.27, -8, 59.4, -32.2],
+  [149.8, 6.31, -9, 32.4, -29]
+];   // OLED en el mastil (Q)
+// RUTAS_FIN
+PRM_UNO = concat(PRM_BASE, PLACA == "unoq" ? PRM_OLED_Q : PRM_OLED_R3);
+
+// ---------- Solo UNO Q: mastil, camara, repisa, hub, OLED del mastil ----------
+
+module mastil() {
+  // provisional: solo marca el lugar; el PTR, su anclaje y el hueco se disenan con la medida oficial
+  color("silver", 0.45) translate([MASTIL_XY[0] - MASTIL / 2, MASTIL_XY[1] - MASTIL / 2, Z2 + ESP])
+    cube([MASTIL, MASTIL, CAM_Z - 14 - Z2 - ESP]);
+}
+
+// Cabeza de la camara (pieza impresa, provisional): manga sobre el PTR, brazo y placa inclinada CAM_INCL hacia abajo
+module cabeza_camara() {
+  m = MASTIL + 6;
+  color(k($col)) {
+    difference() {
+      translate([MASTIL_XY[0] - m / 2, MASTIL_XY[1] - m / 2, CAM_Z - 26]) cube([m, m, 26]);
+      translate([MASTIL_XY[0] - MASTIL / 2 - 0.2, MASTIL_XY[1] - MASTIL / 2 - 0.2, CAM_Z - 27]) cube([MASTIL + 0.4, MASTIL + 0.4, 21]);
+    }
+    translate([MASTIL_XY[0], CAM_Y, CAM_Z]) rotate([-CAM_INCL, 0, 0]) difference() {                  // placa porta camara
+      translate([-CAM_PCB / 2 - 2, -10.6, -CAM_PCB / 2 - 2]) cube([CAM_PCB + 4, 3, CAM_PCB + 4]);
+      translate([-8, -11, -8]) cube([16, 4, 16]);
+    }
+    translate([MASTIL_XY[0] - 5, MASTIL_XY[1] + m / 2 - 1, CAM_Z - 26]) cube([10, CAM_Y - MASTIL_XY[1] - m / 2 - 6, 12]);   // brazo
+  }
+}
+
+// Camara UVC con su cabeza impresa
+module camara(fov = true) {
+  cabeza_camara();
+  translate([MASTIL_XY[0], CAM_Y, CAM_Z]) rotate([-CAM_INCL, 0, 0]) {
+    color(k("darkgreen")) translate([-CAM_PCB / 2, -7.6, -CAM_PCB / 2]) cube([CAM_PCB, 1.6, CAM_PCB]);
+    color(k("black")) translate([-7, -6, -7]) cube([14, 6, 14]);                                       // porta lente M12
+    color(k("black")) rotate([-90, 0, 0]) cylinder(d = 14, h = 8);                                    // lente
+    for (x = [-1, 1]) for (z = [-1, 1]) color(k("dimgray")) translate([x * 14, -6, z * 14]) rotate([90, 0, 0]) cylinder(d = 3.8, h = 6); // M2
+    if (fov) intersection() {
+      color("yellow", 0.18) hull() {
+        sphere(0.1);
+        translate([0, 400, 0]) cube([2 * 400 * tan(CAM_FOV[0] / 2), 0.1, 2 * 400 * tan(CAM_FOV[1] / 2)], center = true);
+      }
+      rotate([CAM_INCL, 0, 0]) translate([-500, -500, -CAM_Z]) cube([1000, 1000, 1000]);
+    }
+  }
+}
+
+// Repisa del hub: sigue el contorno del robot; ranuras para 2 cinchos
+module repisa() {
+  color(k($col)) difference() {
+    intersection() {
+      translate([-56, 22, 0]) cube([112, 38, REPISA_ESP]);
+      cuadrado_redondo(L, R_ESQ, REPISA_ESP);
+    }
+    for (p = REPISA_POSTES) translate(p) agujero(M3_PASO, REPISA_ESP);
+    for (x = [-1, 1]) for (y = [-1, 1]) translate([x * 25 - 2, HUB_Y + y * (HUB[1] / 2 + 3) - 1.5, -1]) cube([4, 3, 5]);
+  }
+}
+
+module hub() {
+  translate([0, HUB_Y, REPISA_Z + REPISA_ESP]) {
+    color(k("darkslategray")) translate([-HUB[0] / 2, -HUB[1] / 2, 0]) cube(HUB);
+    for (i = [0 : 3]) color(k("royalblue")) translate([-30 + i * 20, HUB[1] / 2 - 0.5, 3]) cube([13, 1, 5]);   // puertos A
+    color(k("silver")) translate([HUB[0] / 2 - 0.5, -4.5, 4]) cube([1, 9, 3.2]);                           // entrada PD
+    for (x = [-1, 1]) color(k("black")) translate([x * 25 - 1.5, -HUB[1] / 2 - 0.5, 0]) cube([3, HUB[1] + 1, HUB[2] + 0.5]); // cinchos
+  }
+}
+
+// Cables: hub -> USB-C del UNO Q (en angulo) y camara -> hub
+module cables_usb() {
+  u = uno([0, UNO_USB_Y]);
+  zu = UNO_Z + 1.6 + 1.6;
+  zh = REPISA_Z + REPISA_ESP + HUB[2] / 2;
+  color(k("dimgray")) translate([u[0] - 9, u[1] - 4.5, zu - 3]) cube([9, 9, 6]);                      // USB-C en angulo
+  cable([[-HUB[0] / 2 - 1.75, HUB_Y, zh], [-HUB[0] / 2 - 4, HUB_Y, zh], [-HUB[0] / 2 - 4, 19, zh], [-44, 8, zh - 8],
+         [u[0] - 5, 0, zu + 6], [u[0] - 5, u[1], zu + 6], [u[0] - 5, u[1], zu + 3]], "dimgray", 3.5, "Hub -> UNO Q USB-C");
+  // camara -> hub: baja junto al collar, pasa por encima del hub y entra por su cara de atras
+  xm = CAM_USB_X;
+  zc = REPISA_Z + REPISA_ESP + HUB[2] + 6;
+  cable([[xm, MASTIL_XY[1], CAM_Z - 22], [xm, MASTIL_XY[1], zc], [xm, HUB_Y + HUB[1] / 2 + 4, zc],
+         [xm, HUB_Y + HUB[1] / 2 + 4, REPISA_Z + REPISA_ESP + 6], [xm, HUB_Y + HUB[1] / 2 + 1.75, REPISA_Z + REPISA_ESP + 6]],
+        "dimgray", 3.5, "Camara -> hub");
+}
+
+// Clip del OLED (pieza impresa solo de la Q): collar sobre el mastil (MASTIL) y placa con dos rieles; el OLED entra
+// de lado (por +X) con su header acodado hacia abajo. Provisional como el mastil: la fijacion al PTR se define con la medida oficial.
+CLIP_OW = OLED[0] + 0.4;                 // ancho de la ranura
+CLIP_ZT = OLED_MZ + OLED[1];             // borde de arriba del OLED
+module clip_oled() {
+  yb = CLIP_YB;
+  mx = MASTIL_XY[0];
+  my = MASTIL_XY[1];
+  w = CLIP_OW / 2 + 2;                   // mitad del ancho de la placa
+  color(k($col)) difference() {
+    union() {
+      // collar sobre el mastil (paredes de 3 mm, como la manga de la camara)
+      translate([mx - MASTIL / 2 - 3, yb, CLIP_Z0]) cube([MASTIL + 6, my - yb + MASTIL / 2 + 3, 12]);
+      // placa de atras, del collar al borde de arriba del OLED (no pasa de yb: arriba queda pegada a la manga de la camara)
+      translate([mx - w, yb - 2, CLIP_Z0]) cube([2 * w, 2, CLIP_ZT + 1.2 - CLIP_Z0]);
+      translate([mx - w, yb, CLIP_Z0]) cube([2 * w, 0.5, 12]);
+      // riel de abajo: labio al frente del PCB y piso que lo une a la placa
+      translate([mx - w, yb - 5.5, OLED_MZ - 1.2]) cube([2 * w, 3.5 + 0.5, 3.2]);
+      // rieles de arriba, a los lados de los pines (header acodado hacia arriba)
+      for (s = [-1, 1]) translate([mx + (s < 0 ? -w : 7), yb - 5.5, CLIP_ZT - 2]) cube([w - 7, 3.5 + 0.5, 3.2]);
+      // tope de la izquierda (el OLED entra por +X)
+      translate([mx - w, yb - 5.5, OLED_MZ - 1.2]) cube([2, 3.5 + 0.5, OLED[1] + 2.4]);
+    }
+    // hueco del mastil
+    translate([mx - MASTIL / 2 - 0.2, my - MASTIL / 2 - 0.2, CLIP_Z0 - 1]) cube([MASTIL + 0.4, MASTIL + 0.4, 14]);
+    // ranura del PCB (1.6 + 0.4) entre la placa y los labios, abierta por +X
+    translate([mx - CLIP_OW / 2, yb - 4, OLED_MZ - 0.2]) cube([CLIP_OW / 2 + w + 1, RANURA, OLED[1] + 0.4]);
+  }
+}
+
+// OLED en la cara de atras del mastil, de cabeza: PCB, vidrio, header acodado (pines hacia arriba) y sus 4 carcasas dupont
+module oled_mastil() {
+  translate([MASTIL_XY[0], CLIP_YB - 2, OLED_MZ]) rotate([90, 0, 0]) {       // z local -> -Y, y local -> +Z
+    color(k("navy")) translate([-OLED[0] / 2, 0, 0]) cube([OLED[0], OLED[1], 1.6]);
+    color(k("black")) translate([-13, 2.4, 1.6]) cube([26, 19, 1.4]);
+    color(k("dimgray")) translate([-2 * PASO_PIN, OLED[1] - 3.75, 1.6]) cube([4 * PASO_PIN, 2.5, 2.5]);   // plastico del header
+    for (i = [0 : 3]) {
+      x = (i - 1.5) * PASO_PIN;
+      color(k("black")) translate([x - DUPONT[0] / 2, OLED[1] - 1.25, 2.85 - DUPONT[0] / 2]) cube([DUPONT[0], DUPONT[1], DUPONT[0]]);
+    }
+  }
+}
+
+// Todo lo de la Q que se agrega al chasis comun (paso 11)
+module q_extra(fov = true) {
+  mastil();
+  camara(fov);
+  clip_oled();
+  oled_mastil();
+  translate([0, 0, REPISA_Z]) repisa();
+  for (p = REPISA_POSTES) translate(concat(p, REPISA_Z + REPISA_ESP)) tornillo(8);
+  hub();
+  cables_usb();
+  cables_uno("oled");
+}
+
+// Piso 2 armado en la mesa (paso 7 del manual), en su posicion dentro del robot.
+// eco = true: los cables que lleva imprimen su linea CABLE| (el ensamble los dibuja una sola vez)
+module sub_piso2(eco = false) {
+  color(k("lightsteelblue")) translate([0, 0, Z2]) piso2();
+  for (p = POSTES) translate([p[0], p[1], Z2 + ESP]) tornillo(8);
+  if (PLACA == "nano") {
+    protoboards();
+    nano();
+    puentes();
+    translate([0, 0, ZS]) oled_modulo(eco ? "OLED" : "");
+  } else {
+    uno_placa();
+    proto_shield();
+    puentes_bus();
+    if (PLACA == "uno_r3") translate([0, 0, ZS]) oled_modulo(eco ? "OLED" : "");
+  }
+  translate([BOTON_XY[0], BOTON_XY[1], ZS]) boton();
+  translate([SWITCH_XY[0], SWITCH_XY[1], ZS]) interruptor();
+}
+
 module ensamble() {
+  es_uno = PLACA != "nano";
   paso(1) {
     translate([0, 0, Z1]) piso1($col = "lightsteelblue");
     for (s = [-1, 1]) {
@@ -742,34 +1150,17 @@ module ensamble() {
       tof_modulo(Z2 + 7 - Z1 - ESP - TOF_PIN_Z, 0, 0, s < 0 ? "VL53L0X izq" : "VL53L0X der");
   }
   paso(6) cables_l298_logica();
-  // paso 7 del manual: el piso 2 se arma en la mesa (PIEZA = "sub_piso2")
+  // paso 7: el piso 2 se arma en la mesa (PIEZA = "sub_piso2"); aqui se ve levantado sobre el chasis
+  if (es_uno && PASO == 7) translate([0, 0, 55]) sub_piso2();
   paso(8) {
-    color(k("lightsteelblue")) translate([0, 0, Z2]) piso2();
-    for (p = POSTES) translate([p[0], p[1], Z2 + ESP]) tornillo(8);
-    protoboards();
-    nano();
-    puentes();
-    translate([0, 0, Z2 + ESP]) oled_modulo("OLED");
-    translate([BOTON_XY[0], BOTON_XY[1], Z2 + ESP]) boton();
-    translate([SWITCH_XY[0], SWITCH_XY[1], Z2 + ESP]) interruptor();
+    sub_piso2(true);
     cables_boton();
     if (PASO == 8 || PASO == 9) conector_t(false, true, false);
     arnes_potencia(PASO == 0 || PASO >= 10);
   }
-  paso(9) cables_arriba();
+  paso(9) if (es_uno) cables_uno(PLACA == "uno_r3" ? "todo" : "base"); else cables_arriba();
   paso(10) conector_t(false, true, true);
-}
-
-// Piso 2 armado en la mesa (paso 7 del manual), en su posicion dentro del robot
-module sub_piso2() {
-  color("lightsteelblue") translate([0, 0, Z2]) piso2();
-  for (p = POSTES) translate([p[0], p[1], Z2 + ESP]) tornillo(8);
-  protoboards();
-  nano();
-  puentes();
-  translate([0, 0, Z2 + ESP]) oled_modulo();
-  translate([BOTON_XY[0], BOTON_XY[1], Z2 + ESP]) boton();
-  translate([SWITCH_XY[0], SWITCH_XY[1], Z2 + ESP]) interruptor();
+  if (PLACA == "unoq") paso(11) q_extra();
 }
 
 if (PIEZA == "ensamble") ensamble();
@@ -785,6 +1176,26 @@ else if (PIEZA == "placa_vista") {
   color("dimgray") translate([0, 0, -1.01]) cube([CAMA, CAMA, 1]);
 }
 else if (PIEZA == "sub_piso2") sub_piso2();
+else if (PIEZA == "repisa") repisa();
+else if (PIEZA == "cabeza_camara") translate([0, 0, -(CAM_Z - 26)]) cabeza_camara();
+else if (PIEZA == "clip_oled") translate([0, 0, -CLIP_Z0]) clip_oled();
+else if (PIEZA == "placa_q") placa_q();
+else if (PIEZA == "placa_q_vista") {
+  color("orange") placa_q();
+  color("dimgray") translate([0, 0, -1.01]) cube([CAMA, CAMA, 1]);
+}
+// shield visto desde arriba: piso 2 y UNO en gris, shield y enchufes a color (sin los hilos)
+else if (PIEZA == "det_shield") {
+  gris() { translate([0, 0, Z2]) piso2(); uno_placa(); }
+  proto_shield();
+  puentes_bus();
+  for (n = [0 : len(CABLES_UNO) - 1]) cable_uno(n, false, true);      // solo los enchufes: se ve a donde va cada cable
+}
+// camino USB de la Q: repisa, hub, camara y cables
+else if (PIEZA == "det_q_usb") {
+  gris() { translate([0, 0, Z2]) piso2(); uno_placa(); proto_shield(); }
+  q_extra(false);
+}
 else if (PIEZA == "det_insertos") {
   $col = "lightsteelblue";
   piso1();

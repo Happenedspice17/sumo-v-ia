@@ -6,20 +6,20 @@ El STM32 mueve los motores, lee los sensores y maneja la OLED (`sketch/`). Linux
 
 | Componente | Pin del módulo | UNO Q |
 |---|---|---|
-| L298N | ENA (quitar jumper) | D9 |
-| L298N | IN1 / IN2 | D4 / D5 |
-| L298N | ENB (quitar jumper) | D10 |
-| L298N | IN3 / IN4 | D7 / D8 |
+| L298N | ENA (quitar jumper) | D5 |
+| L298N | IN1 / IN2 | D7 / D8 |
+| L298N | ENB (quitar jumper) | D6 |
+| L298N | IN3 / IN4 | D9 / D10 |
 | L298N | 12V / GND | Batería + / GND |
 | VL53L0X izq / frente / der | XSHUT | A0 / A1 / A2 |
 | VL53L0X ×3, TCS34725, OLED | SDA / SCL | SDA / SCL |
 | VL53L0X ×3 (VCC), TCS34725 (VIN), OLED | VCC / GND | 3.3V / GND |
 | TCS34725 (morado) | LED / INT | sin conectar (LED siempre encendido) |
-| Botón de arranque | a GND | D12 |
+| Botón de arranque | a GND | D2 |
 | Batería 2S 18650 (conector T) | + | interruptor → VIN |
 | Cámara USB | | hub USB‑C |
 
-5V, GND, SDA y SCL se reparten en la mini protoboard de 170 puntos del piso 3: columnas 1, 4, 7 y 10, cada una con un puente entre sus dos mitades.
+VCC (3.3V), GND, SDA y SCL se reparten en la mini protoboard del Proto Shield: columnas VCC, GND, SDA, SCL. Con la Q el puente de VCC va a 3V3 (con el R3 va a 5V). Los pines son los mismos que en el R3 (`../atmega328p/`): para cambiar de placa se saca el shield con sus dupont. Ver `../docs/uno_q.md`.
 
 GND común entre todo. No alimentes el UNO Q con el regulador de 5 V del L298N. La posición física de cada pieza está en `../chasis/chasis.pdf`.
 

@@ -6,44 +6,46 @@ Motor der,OUT4,blanco,Calibre 22 soldado al motor,73
 Conector T rojo,interruptor,rojo,Calibre 22 (viene con el conector T),38
 Conector T negro,L298N GND,negro,Calibre 22 (viene con el conector T),40
 Interruptor,L298N 12V,naranja,Calibre 22 soldado al interruptor,44
-Interruptor,Nano VIN,naranja,Calibre 22 soldado al interruptor,96
-L298N GND,Nano GND,negro,Calibre 22,96
-L298N ENA,Nano D5,morado,Dupont hembra-macho 30 cm,115
-L298N IN1,Nano D7,café,Dupont hembra-macho 30 cm,121
-L298N IN2,Nano D8,café,Dupont hembra-macho 30 cm,124
-L298N IN3,Nano D9,café,Dupont hembra-macho 30 cm,128
-L298N IN4,Nano D10,café,Dupont hembra-macho 30 cm,131
-L298N ENB,Nano D6,morado,Dupont hembra-macho 30 cm,122
-VL53L0X izq VIN,bus 5V,rojo,Dupont hembra-macho 30 cm,151
+Interruptor,placa VIN,naranja,Calibre 22 soldado al interruptor,96
+L298N GND,placa GND,negro,Calibre 22,96
+L298N ENA,placa D5,morado,Dupont hembra-macho 30 cm,115
+L298N IN1,placa D7,café,Dupont hembra-macho 30 cm,121
+L298N IN2,placa D8,café,Dupont hembra-macho 30 cm,124
+L298N IN3,placa D9,café,Dupont hembra-macho 30 cm,128
+L298N IN4,placa D10,café,Dupont hembra-macho 30 cm,131
+L298N ENB,placa D6,morado,Dupont hembra-macho 30 cm,122
+VL53L0X izq VIN,bus VCC,rojo,Dupont hembra-macho 30 cm,151
 VL53L0X izq GND,bus GND,negro,Dupont hembra-macho 30 cm,143
 VL53L0X izq SCL,bus SCL,cian,Dupont hembra-macho 30 cm,168
 VL53L0X izq SDA,bus SDA,azul,Dupont hembra-macho 30 cm,181
-VL53L0X izq XSHUT,Nano A0,verde,Dupont hembra-macho 30 cm,166
-VL53L0X frente VIN,bus 5V,rojo,Dupont hembra-macho 30 cm,147
+VL53L0X izq XSHUT,placa A0,verde,Dupont hembra-macho 30 cm,166
+VL53L0X frente VIN,bus VCC,rojo,Dupont hembra-macho 30 cm,147
 VL53L0X frente GND,bus GND,negro,Dupont hembra-macho 30 cm,133
 VL53L0X frente SCL,bus SCL,cian,Dupont hembra-macho 30 cm,153
 VL53L0X frente SDA,bus SDA,azul,Dupont hembra-macho 30 cm,161
-VL53L0X frente XSHUT,Nano A1,verde,Dupont hembra-macho 30 cm,192
-VL53L0X der VIN,bus 5V,rojo,Dupont hembra-macho 30 cm,124
+VL53L0X frente XSHUT,placa A1,verde,Dupont hembra-macho 30 cm,192
+VL53L0X der VIN,bus VCC,rojo,Dupont hembra-macho 30 cm,124
 VL53L0X der GND,bus GND,negro,Dupont hembra-macho 30 cm,111
 VL53L0X der SCL,bus SCL,cian,Dupont hembra-macho 30 cm,130
 VL53L0X der SDA,bus SDA,azul,Dupont hembra-macho 30 cm,139
-VL53L0X der XSHUT,Nano A2,verde,Dupont hembra-macho 30 cm,170
-TCS34725 VIN,bus 5V,rojo,"Dupont macho-macho 30 cm sin un extremo, soldado",183
+VL53L0X der XSHUT,placa A2,verde,Dupont hembra-macho 30 cm,170
+TCS34725 VIN,bus VCC,rojo,"Dupont macho-macho 30 cm sin un extremo, soldado",183
 TCS34725 GND,bus GND,negro,"Dupont macho-macho 30 cm sin un extremo, soldado",177
 TCS34725 SCL,bus SCL,cian,"Dupont macho-macho 30 cm sin un extremo, soldado",205
 TCS34725 SDA,bus SDA,azul,"Dupont macho-macho 30 cm sin un extremo, soldado",222
 OLED GND,bus GND,negro,Dupont hembra-macho 30 cm,127
-OLED VCC,bus 5V,rojo,Dupont hembra-macho 30 cm,141
+OLED VCC,bus VCC,rojo,Dupont hembra-macho 30 cm,141
 OLED SCL,bus SCL,cian,Dupont hembra-macho 30 cm,157
 OLED SDA,bus SDA,azul,Dupont hembra-macho 30 cm,171
-Botón D2,Nano D2,rosa,"Dupont macho-macho 30 cm sin un extremo, soldado",83
-Botón GND,Nano GND,negro,"Dupont macho-macho 30 cm sin un extremo, soldado",83
-Puente bus 5V,otra mitad de su columna,rojo,Jumper rígido de protoboard,12
-Puente Nano 5V,bus 5V,rojo,Jumper rígido de protoboard,19
-Puente bus GND,otra mitad de su columna,negro,Jumper rígido de protoboard,12
-Puente Nano GND,bus GND,negro,Jumper rígido de protoboard,19
-Puente bus SDA,otra mitad de su columna,azul,Jumper rígido de protoboard,12
-Puente Nano A4,bus SDA,azul,Jumper rígido de protoboard,19
-Puente bus SCL,otra mitad de su columna,cian,Jumper rígido de protoboard,12
-Puente Nano A5,bus SCL,cian,Jumper rígido de protoboard,19
+Botón D2,placa D2,rosa,"Dupont macho-macho 30 cm sin un extremo, soldado",83
+Botón GND,placa GND,negro,"Dupont macho-macho 30 cm sin un extremo, soldado",83
+Puente bus VCC,otra mitad de su columna,rojo,Jumper rígido,12
+Puente bus GND,otra mitad de su columna,negro,Jumper rígido,12
+Puente bus SDA,otra mitad de su columna,azul,Jumper rígido,12
+Puente bus SCL,otra mitad de su columna,cian,Jumper rígido,12
+Puente VCC del bus,5V (R3) o 3V3 (Q),rojo,Jumper rígido,20
+Puente GND del bus,GND del shield,negro,Jumper rígido,20
+Puente SDA del bus,SDA (junto a AREF),azul,Jumper rígido,20
+Puente SCL del bus,SCL (junto a AREF),cian,Jumper rígido,20
+Hub,UNO Q USB-C,gris,Cable USB (solo Q),71
+Cámara,hub,gris,Cable USB (solo Q),88

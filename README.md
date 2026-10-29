@@ -1,5 +1,7 @@
 # Robot de laberinto – Microcontroladores 2
 
+> Guía de programación paso a paso para principiantes: [`docs/GUIA_PROGRAMACION.md`](docs/GUIA_PROGRAMACION.md)
+
 Robot de 120 × 120 mm con Arduino Nano (ATmega328P) que resuelve un laberinto con flood-fill y cuenta marcas de color.
 
 | Carpeta | Qué hay |
