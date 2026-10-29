@@ -151,14 +151,16 @@ VISTAS = {
     "unoq_iso": ({"PLACA": "unoq"}, (300, -330, 330, 0, 5, 85), [
         ("Arduino UNO Q\n(4 M3×8 a insertos)", (10, -31, 72), (-250, 150)),
         ("Cámara UVC 32 × 32\nlente M12 gran angular", (0, 30, 165), (-260, -60)),
-        ("Mástil PTR 10 o 15\n(medida pendiente)", (7.5, 10.5, 110), (-260, 40)),
+        ("Mástil PTR 10 o 15\n(medida pendiente)", (7.5, 10.5, 115), (-260, 40)),
+        ("Hub USB en repisa\n(4 M3×8 a insertos)", (20, 39.5, 96.5), (240, -40)),
+        ("OLED atrás del mástil", (0, 1, 100), (-240, -20)),
         ("USB-C en ángulo", (-38, -20, 74), (-220, 60)),
-        ("OLED", (0, 39.4, 66), (230, 60)),
     ]),
     "unoq_lado": ({"PLACA": "unoq"}, (-520, 70, 150, 0, 90, 85), [
         ("Lente a 150 mm,\n25° hacia abajo", (0, 30, 150), (220, -120)),
         ("Campo de visión\n≈ 100° × 75°", (0, 139, 99), (-200, -160)),
         ("El piso se ve desde\n≈ 3 cm frente al robot", (0, 92, 0), (-200, 60)),
+        ("Hub: queda bajo\nel campo de visión", (0, 54, 96), (230, 120)),
     ]),
     "uno_r3": ({"PLACA": "uno_r3"}, (300, -330, 300, 0, 0, 55), [
         ("UNO R3 en los mismos\n4 postes", (10, -31, 72), (-250, 150)),

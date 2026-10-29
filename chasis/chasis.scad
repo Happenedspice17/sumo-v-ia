@@ -117,6 +117,13 @@ CAM_INCL = 25;           // grados hacia abajo
 CAM_FOV = [100, 75];     // lente M12 gran angular (horizontal, vertical)
 CAM_PCB = 32;            // modulo UVC de 32 x 32 mm, agujeros M2 a 28 mm
 
+// Hub USB en una repisa al frente del piso 2 (el mismo piso 2 sirve al R3: ahi la repisa no se pone)
+HUB = [95, 30, 12];      // medir el suyo
+REPISA_Z = 82;           // cara de abajo de la repisa: libra los dupont que suben por las ranuras
+REPISA_ESP = 2.5;
+REPISA_POSTES = [[52, 26], [-52, 26], [52, 44], [-52, 44]];
+HUB_Y = 39.5;
+
 OLED_PINES_Y = OLED_Y - OLED[1] / 2 + 2.5;
 TOF_PIN_Z = TOF[1] - 1.3;                // fila de pines del VL53L0X, medida desde su borde de abajo
 TOF_ATRAS = 0.3 + HEADER[0] + DUPONT[1]; // del centro de la ranura al final del dupont (16.8)
@@ -248,10 +255,16 @@ module piso2() {
           cube([ao[0] + 3.2, ao[1] + 3.2, 3], center = true);
           cube([ao[0], ao[1], 4], center = true);
         }
-        if (PLACA != "nano") for (a = UNO_AG) translate(uno(a)) cylinder(d = 6.5, h = UNO_POSTE);
+        if (PLACA != "nano") {
+          for (a = UNO_AG) translate(uno(a)) cylinder(d = 6.5, h = UNO_POSTE);
+          for (p = REPISA_POSTES) translate(p) cylinder(d = 8, h = REPISA_Z - Z2 - ESP);
+        }
       }
     }
-    if (PLACA != "nano") for (a = UNO_AG) translate(concat(uno(a), ESP + UNO_POSTE)) ag_inserto(8);
+    if (PLACA != "nano") {
+      for (a = UNO_AG) translate(concat(uno(a), ESP + UNO_POSTE)) ag_inserto(8);
+      for (p = REPISA_POSTES) translate(concat(p, REPISA_Z - Z2)) ag_inserto(8);
+    }
     for (p = POSTES) translate([p[0], p[1], 0]) agujero(M3_PASO, ESP);
     translate([0, OLED_PINES_Y, ESP / 2]) cube([13, 4.5, ESP + 2], center = true);               // pines del OLED
     translate([0, OLED_Y + 3, ESP / 2]) cube([20, 14, ESP + 2], center = true);                  // aligera
@@ -260,7 +273,10 @@ module piso2() {
     translate([BOTON_XY[0], BOTON_XY[1], 0]) agujero(D_BOTON, ESP);
     translate([SWITCH_XY[0], SWITCH_XY[1], 0]) agujero(D_SWITCH, ESP);
   }
-  if ($ins && PLACA != "nano") for (a = UNO_AG) translate(concat(uno(a), ESP + UNO_POSTE)) inserto();
+  if ($ins && PLACA != "nano") {
+    for (a = UNO_AG) translate(concat(uno(a), ESP + UNO_POSTE)) inserto();
+    for (p = REPISA_POSTES) translate(concat(p, REPISA_Z - Z2)) inserto();
+  }
 }
 
 module cuna_motor() {
@@ -849,25 +865,62 @@ module camara(fov = true) {
   color(k("orange")) translate([MASTIL_XY[0] - 5, MASTIL_XY[1] + m / 2 - 1, CAM_Z - 26]) cube([10, CAM_Y - MASTIL_XY[1] - m / 2 - 6, 12]);
 }
 
-// Cable de la camara: conector 4 pines -> USB-C en angulo, al borde izquierdo del UNO Q
-module cable_camara() {
+// Repisa del hub: sigue el contorno del robot; ranuras para 2 cinchos
+module repisa() {
+  color(k($col)) difference() {
+    intersection() {
+      translate([-56, 22, 0]) cube([112, 38, REPISA_ESP]);
+      cuadrado_redondo(L, R_ESQ, REPISA_ESP);
+    }
+    for (p = REPISA_POSTES) translate(p) agujero(M3_PASO, REPISA_ESP);
+    for (x = [-1, 1]) for (y = [-1, 1]) translate([x * 25 - 2, HUB_Y + y * (HUB[1] / 2 + 3) - 1.5, -1]) cube([4, 3, 5]);
+  }
+}
+
+module hub() {
+  translate([0, HUB_Y, REPISA_Z + REPISA_ESP]) {
+    color(k("darkslategray")) translate([-HUB[0] / 2, -HUB[1] / 2, 0]) cube(HUB);
+    for (i = [0 : 3]) color(k("royalblue")) translate([-30 + i * 20, HUB[1] / 2 - 0.5, 3]) cube([13, 1, 5]);   // puertos A
+    color(k("silver")) translate([HUB[0] / 2 - 0.5, -4.5, 4]) cube([1, 9, 3.2]);                           // entrada PD
+    for (x = [-1, 1]) color(k("black")) translate([x * 25 - 1.5, -HUB[1] / 2 - 0.5, -0.5]) cube([3, HUB[1] + 1, HUB[2] + 1]); // cinchos
+  }
+}
+
+// Cables: hub -> USB-C del UNO Q (en angulo) y camara -> hub
+module cables_usb() {
   u = uno([0, UNO_USB_Y]);
   zu = UNO_Z + 1.6 + 1.6;
+  zh = REPISA_Z + REPISA_ESP + HUB[2] / 2;
   color(k("dimgray")) translate([u[0] - 9, u[1] - 4.5, zu - 3]) cube([9, 9, 6]);                      // USB-C en angulo
-  cable([[u[0] - 5, u[1], zu + 3], [u[0] - 5, u[1], zu + 8], [u[0] - 5, MASTIL_XY[1] - MASTIL / 2 - 2, zu + 8],
-         [MASTIL_XY[0] - MASTIL / 2 - 2, MASTIL_XY[1] - MASTIL / 2 - 2, zu + 8],
-         [MASTIL_XY[0] - MASTIL / 2 - 2, MASTIL_XY[1] - MASTIL / 2 - 2, CAM_Z - 26]], "dimgray", 3.5, "Camara -> UNO Q USB-C");
+  cable([[-HUB[0] / 2, HUB_Y, zh], [-HUB[0] / 2 - 4, HUB_Y, zh], [-HUB[0] / 2 - 4, 20, zh - 4],
+         [u[0] - 5, 0, zu + 6], [u[0] - 5, u[1], zu + 6], [u[0] - 5, u[1], zu + 3]], "dimgray", 3.5, "Hub -> UNO Q USB-C");
+  xm = MASTIL_XY[0] + MASTIL / 2 + 2;
+  cable([[xm, MASTIL_XY[1], CAM_Z - 26], [xm, MASTIL_XY[1], REPISA_Z + REPISA_ESP + HUB[2] + 6],
+         [xm, HUB_Y + HUB[1] / 2 + 4, REPISA_Z + REPISA_ESP + 6], [xm, HUB_Y + HUB[1] / 2, REPISA_Z + REPISA_ESP + 5.5]],
+        "dimgray", 3.5, "Camara -> hub");
+}
+
+// OLED en la cara de atras del mastil (con la repisa encima ya no se veria en el piso 2)
+module oled_mastil() {
+  translate([MASTIL_XY[0], MASTIL_XY[1] - MASTIL / 2, 100]) rotate([90, 0, 0]) {
+    color(k("navy")) translate([-OLED[0] / 2, -OLED[1] / 2, 0]) cube([OLED[0], OLED[1], 1.6]);
+    color(k("black")) translate([-13, -7.5, 1.6]) cube([26, 19, 1.4]);
+  }
 }
 
 module concepto_uno() {
   color(k("lightsteelblue")) translate([0, 0, Z2]) piso2();
   for (p = POSTES) translate([p[0], p[1], Z2 + ESP]) tornillo(8);
   uno_placa();
-  translate([0, 0, Z2 + ESP]) oled_modulo();
   translate([BOTON_XY[0], BOTON_XY[1], Z2 + ESP]) boton();
   translate([SWITCH_XY[0], SWITCH_XY[1], Z2 + ESP]) interruptor();
   cables_boton();
-  if (PLACA == "unoq") { mastil(); camara(); cable_camara(); }
+  if (PLACA == "unoq") {
+    mastil(); camara(); oled_mastil();
+    translate([0, 0, REPISA_Z]) repisa();
+    for (p = REPISA_POSTES) translate(concat(p, REPISA_Z + REPISA_ESP)) tornillo(8);
+    hub(); cables_usb();
+  } else translate([0, 0, Z2 + ESP]) oled_modulo();
 }
 
 // Piso 2 armado en la mesa (paso 7 del manual), en su posicion dentro del robot
