@@ -102,7 +102,7 @@ VISTAS = {
         ("Cables hacia arriba", (23, 33.2, 62), (250, -150)),
     ]),
     "paso6": ({"PASO": 6}, ATRAS, [
-        ("Columna impresa\n(inserto arriba)", (44, -46, 45), (220, 60)),
+        ("Columna impresa\n(inserto arriba)", (48, -40, 45), (220, 60)),
         ("Dupont en ENA … ENB", (-5, -19, 47), (-200, -220)),
         ("Cables hacia arriba", (-5, -3, 62), (120, -230)),
     ]),
@@ -142,11 +142,28 @@ VISTAS = {
         ("Interruptor en OFF", (38, 5, 60), (220, 40)),
     ]),
     "det_insertos": ({"PIEZA": "det_insertos"}, (230, -260, 300, 40, 0, 10), [
-        ("Columnas: 4", (44, -46, 38), (-200, -120)),
+        ("Columnas: 4", (48, -40, 38), (-200, -120)),
         ("Postes del L298N: 4", (-18.5, -56, 8), (-220, 60)),
         ("Cunas: 2 c/u", (80, 39, 11.7), (200, -150)),
         ("Capucha: 2", (107, 60, 20), (200, -40)),
         ("Patín: 2", (116, -50, 22), (200, 80)),
+    ]),
+    "unoq_iso": ({"PLACA": "unoq"}, (300, -330, 330, 0, 5, 85), [
+        ("Arduino UNO Q\n(4 M3×8 a insertos)", (10, -31, 72), (-250, 150)),
+        ("Cámara UVC 32 × 32\nlente M12 gran angular", (0, 30, 165), (-260, -60)),
+        ("Mástil PTR 10 o 15\n(medida pendiente)", (7.5, 10.5, 110), (-260, 40)),
+        ("USB-C en ángulo", (-38, -20, 74), (-220, 60)),
+        ("OLED", (0, 39.4, 66), (230, 60)),
+    ]),
+    "unoq_lado": ({"PLACA": "unoq"}, (-520, 70, 150, 0, 90, 85), [
+        ("Lente a 150 mm,\n25° hacia abajo", (0, 30, 150), (220, -120)),
+        ("Campo de visión\n≈ 100° × 75°", (0, 139, 99), (-200, -160)),
+        ("El piso se ve desde\n≈ 3 cm frente al robot", (0, 92, 0), (-200, 60)),
+    ]),
+    "uno_r3": ({"PLACA": "uno_r3"}, (300, -330, 300, 0, 0, 55), [
+        ("UNO R3 en los mismos\n4 postes", (10, -31, 72), (-250, 150)),
+        ("USB-B y jack salen\n6 mm por la izquierda", (-38, -20, 76), (-230, -60)),
+        ("Columnas movidas a\n(±48, −40)", (48, -40, 45), (230, 60)),
     ]),
     "placa_x2d": ({"PIEZA": "placa_vista"}, (128, 127, 720, 128, 128, 0), []),
 }
