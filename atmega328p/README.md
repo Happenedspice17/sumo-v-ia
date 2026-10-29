@@ -1,6 +1,6 @@
-# Robot de laberinto – Arduino Nano (ATmega328P)
+# Robot de laberinto – Arduino UNO R3 (ATmega328P)
 
-Firmware en C++ sin librerías de Arduino, para Microchip Studio 7. Maneja los periféricos por registros:
+Firmware en C++ sin librerías de Arduino, para Microchip Studio 7 o `make`. Maneja los periféricos por registros:
 
 | Archivo | Qué hace |
 |---|---|
@@ -15,23 +15,41 @@ Firmware en C++ sin librerías de Arduino, para Microchip Studio 7. Maneja los p
 
 Uso: 13.8 KB de flash (42%) y 1.0 KB de RAM (50%).
 
-## Conexiones
+## Alimentación
+
+- Batería 2S (7.4 V nominal) → interruptor → **VIN** del UNO R3.
+- VIN necesita al menos 7 V: recarga la batería al llegar a **7.2 V**.
+
+## Bus I2C
+
+- El bus va en una mini protoboard con cuatro columnas, contando desde adelante: **1 VCC, 4 GND, 7 SDA, 10 SCL**. Cada columna tiene un puente entre sus dos mitades.
+- El jumper VCC del proto shield va en **5V** con el UNO R3.
+- **Aviso:** con el UNO Q el jumper debe ir en **3V3**; a 5 V se dañan sus pines I2C.
+
+## Cableado
+
+Diagrama de la versión Nano (los pines son los mismos):
 
 ![Diagrama de conexiones](img/conexiones_nano.png)
 
-| Componente | Pin del módulo | Nano |
+| Componente | Pin del módulo | UNO R3 |
 |---|---|---|
 | L298N | ENA / ENB (quitar jumpers) | D5 / D6 |
 | L298N | IN1 / IN2 / IN3 / IN4 | D7 / D8 / D9 / D10 |
 | L298N | 12V / GND | Batería + (tras el interruptor) / GND |
 | VL53L0X izq / frente / der | XSHUT | A0 / A1 / A2 |
-| VL53L0X ×3, TCS34725, OLED | SDA / SCL | A4 / A5 |
+| VL53L0X ×3, TCS34725, OLED | SDA / SCL | A4 / A5 (cabecera junto a AREF) |
 | VL53L0X ×3 (VCC), TCS34725 (VIN), OLED | VCC / GND | 5V / GND |
 | TCS34725 | LED / INT | sin conectar (LED siempre encendido) |
 | Botón de arranque | a GND | D2 |
 | Batería 2S | + | interruptor → VIN |
 
-El Nano va en una mini protoboard; la otra es el bus I2C: columnas 1 (GND), 4 (5V), 7 (SCL) y 10 (SDA), contando desde adelante (mismo orden que los pines del Nano), cada una con un puente entre sus dos mitades.
+## Cambio R3 ↔ UNO Q
+
+1. Desconecta todos los dupont y retira el proto shield.
+2. Desatornilla los 4 tornillos M3×8 y cambia la placa.
+3. Vuelve a montar el proto shield y reconecta los dupont según la tabla.
+4. Mueve el jumper VCC del bus: **5V** para el R3, **3V3** para el UNO Q.
 
 ## Programar con Microchip Studio
 
@@ -41,10 +59,19 @@ El Nano va en una mini protoboard; la otra es el bus I2C: columnas 1 (GND), 4 (5
 4. Carga con avrdude como herramienta externa (Tools → External Tools):
 
 ```
--C "<ruta>\etc\avrdude.conf" -p atmega328p -c arduino -P COM5 -b 115200 -U flash:w:"$(TargetDir)$(TargetName).hex":i
+-C "<ruta>\etc\avrdude.conf" -p m328p -c arduino -P COM5 -b 115200 -U flash:w:"$(TargetDir)$(TargetName).hex":i
 ```
 
-Con bootloader viejo usa `-b 57600`. Fuera de Windows: `make` y `make cargar PUERTO=/dev/ttyUSB0`.
+Fuera de Windows, desde `laberinto/`:
+
+```
+make
+make cargar PUERTO=/dev/ttyACM0
+```
+
+o directamente: `avrdude -c arduino -p m328p -P /dev/ttyACM0 -b 115200 -U flash:w:laberinto.hex`
+
+Nano con bootloader viejo: usa `-b 57600` (o `make cargar BAUD=57600`).
 
 El paso a paso completo está en `docs/manual_uso.pdf`.
 

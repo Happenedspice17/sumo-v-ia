@@ -5,10 +5,10 @@
 #include <avr/io.h>
 #include <stdint.h>
 
-// ---------- Pines (Arduino Nano) ----------
+// ---------- Pines (Arduino UNO R3) ----------
 // ENA D5=PD5 (OC0B)  ENB D6=PD6 (OC0A)
 // IN1 D7=PD7  IN2 D8=PB0  IN3 D9=PB1  IN4 D10=PB2
-// Boton D2=PD2  XSHUT A0..A2=PC0..PC2  I2C A4=SDA A5=SCL
+// Boton D2=PD2  XSHUT A0..A2=PC0..PC2  I2C A4=SDA A5=SCL (cabecera SDA/SCL junto a AREF)
 #define BTN_ABAJO() (!(PIND & _BV(PD2)))
 
 // ---------- Laberinto ----------
