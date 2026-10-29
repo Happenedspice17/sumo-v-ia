@@ -1,8 +1,7 @@
 #include <Arduino_RouterBridge.h>
 #include <Wire.h>
 #include <VL53L0X.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
+#include "oled.h"
 #include <Adafruit_TCS34725.h>
 
 // ---------- Pines ----------
@@ -46,7 +45,7 @@ Ref refs[] = {
 const int NCOL = sizeof(refs) / sizeof(refs[0]);
 const float DIST_MAX = 0.02;
 
-Adafruit_SSD1306 oled(128, 64, &Wire, -1);
+Oled oled(128, 64, &Wire, -1);
 Adafruit_TCS34725 tcs(TCS34725_INTEGRATIONTIME_24MS, TCS34725_GAIN_4X);
 VL53L0X tof[3];
 int dist[3] = {9999, 9999, 9999};
@@ -332,7 +331,7 @@ void setup() {
 
   Wire.begin();
   Wire.setClock(400000);
-  oled.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+  oled.begin(SSD1306_SWITCHCAPVCC, 0x3C, true);  // va de cabeza en el mastil
   oled.setTextColor(SSD1306_WHITE);
   tofOk = tofInit();
   if (!tofOk) falla("SIN VL53L0X");

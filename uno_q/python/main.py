@@ -5,6 +5,8 @@ import json
 import os
 import time
 
+print("Python OK, cv2", cv2.__version__)
+
 # ---------- Laberinto ----------
 N = 16                                   # 3 m / 18 cm
 INICIO = (0, 0)
