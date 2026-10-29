@@ -47,5 +47,5 @@ Puente VCC del bus,5V (R3) o 3V3 (Q),rojo,Jumper rígido,20
 Puente GND del bus,GND del shield,negro,Jumper rígido,20
 Puente SDA del bus,SDA (junto a AREF),azul,Jumper rígido,20
 Puente SCL del bus,SCL (junto a AREF),cian,Jumper rígido,20
-Hub,UNO Q USB-C,gris,Cable USB (solo Q),72
-Cámara,hub,gris,Cable USB (solo Q),75
+Hub,UNO Q USB-C,gris,Cable USB (solo Q),71
+Cámara,hub,gris,Cable USB (solo Q),88
