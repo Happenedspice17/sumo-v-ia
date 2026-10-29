@@ -831,6 +831,31 @@ module uno_placa() {
 
 CAM_Y = MASTIL_XY[1] + MASTIL / 2 + 12;  // lente, adelante del mastil
 
+// Proto Shield comercial con mini protoboard de 170 puntos: aqui va el bus I2C y la alimentacion de sensores.
+// Se cambia de placa sin tocar un dupont: se saca el shield, se cambia el UNO y se vuelve a clavar.
+SHIELD_Z = UNO_Z + 1.6 + (PLACA == "uno_r3" ? 11.5 : 8.5);   // sobre los headers; con el R3, sobre su USB-B (cinta aislante encima)
+MINI = [45.7, 34.5, 9.5];                // mini protoboard 170 (17 columnas x 10 filas)
+
+module proto_shield() {
+  translate([0, 0, SHIELD_Z]) {
+    color(k("royalblue")) translate(uno([0, 0])) cube([UNO[0], UNO[1], 1.6]);
+    // pines macho que entran al UNO
+    color(k("gold")) for (x = [0 : 17]) translate(concat(uno([18.4 + x * 2.54, 50.8]), -6)) cube([0.64, 0.64, 6]);
+    color(k("gold")) for (x = [0 : 14]) translate(concat(uno([27.3 + x * 2.54, 2.54]), -6)) cube([0.64, 0.64, 6]);
+    translate([uno([UNO[0] / 2, UNO[1] / 2])[0], uno([UNO[0] / 2, UNO[1] / 2])[1], 1.6]) {
+      color(k("white")) difference() {
+        translate([-MINI[0] / 2, -MINI[1] / 2, 0]) cube(MINI);
+        translate([-MINI[0] / 2 - 1, -0.9, MINI[2] - 1]) cube([MINI[0] + 2, 1.8, 2]);   // canal central
+      }
+      for (i = [0 : 16]) for (j = [0 : 9]) color(k("dimgray"))
+        translate([(i - 8) * 2.54 - 0.4, (j < 5 ? -3.81 - (4 - j) * 2.54 : 3.81 + (j - 5) * 2.54) - 0.4, MINI[2] - 0.05]) cube([0.8, 0.8, 0.1]);
+      // bus: 4 columnas puenteadas (VCC, GND, SDA, SCL); VCC sale de 3V3 con la Q o de 5V con el R3
+      for (b = [0 : 3]) color(k(["red", "black", "royalblue", "cyan"][b]))
+        translate([(4 + b * 1.5) * 2.54 - 0.4, -3.81, MINI[2]]) cube([0.8, 7.62, 0.8]);
+    }
+  }
+}
+
 module mastil() {
   // provisional: solo marca el lugar; el PTR, su anclaje y el hueco se disenan con la medida oficial
   color("silver", 0.45) translate([MASTIL_XY[0] - MASTIL / 2, MASTIL_XY[1] - MASTIL / 2, Z2 + ESP])
@@ -912,6 +937,7 @@ module concepto_uno() {
   color(k("lightsteelblue")) translate([0, 0, Z2]) piso2();
   for (p = POSTES) translate([p[0], p[1], Z2 + ESP]) tornillo(8);
   uno_placa();
+  proto_shield();
   translate([BOTON_XY[0], BOTON_XY[1], Z2 + ESP]) boton();
   translate([SWITCH_XY[0], SWITCH_XY[1], Z2 + ESP]) interruptor();
   cables_boton();

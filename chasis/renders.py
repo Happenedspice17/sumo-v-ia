@@ -149,7 +149,8 @@ VISTAS = {
         ("Patín: 2", (116, -50, 22), (200, 80)),
     ]),
     "unoq_iso": ({"PLACA": "unoq"}, (300, -330, 330, 0, 5, 85), [
-        ("Arduino UNO Q\n(4 M3×8 a insertos)", (10, -31, 72), (-250, 150)),
+        ("Arduino UNO Q\n(4 M3×8 a insertos)", (30, -50, 72), (-250, 150)),
+        ("Proto Shield con mini\nprotoboard: bus I2C", (-15, -31, 91), (230, 140)),
         ("Cámara UVC 32 × 32\nlente M12 gran angular", (0, 30, 165), (-260, -60)),
         ("Mástil PTR 10 o 15\n(medida pendiente)", (7.5, 10.5, 115), (-260, 40)),
         ("Hub USB en repisa\n(4 M3×8 a insertos)", (20, 39.5, 96.5), (240, -40)),
@@ -163,8 +164,8 @@ VISTAS = {
         ("Hub: queda bajo\nel campo de visión", (0, 54, 96), (230, 120)),
     ]),
     "uno_r3": ({"PLACA": "uno_r3"}, (300, -330, 300, 0, 0, 55), [
-        ("UNO R3 en los mismos\n4 postes", (10, -31, 72), (-250, 150)),
-        ("USB-B y jack salen\n6 mm por la izquierda", (-38, -20, 76), (-230, -60)),
+        ("UNO R3 en los mismos\n4 postes", (30, -50, 72), (-250, 150)),
+        ("Proto Shield con mini\nprotoboard: bus I2C", (0, -31, 91), (-250, -60)),
         ("Columnas movidas a\n(±48, −40)", (48, -40, 45), (230, 60)),
     ]),
     "placa_x2d": ({"PIEZA": "placa_vista"}, (128, 127, 720, 128, 128, 0), []),
