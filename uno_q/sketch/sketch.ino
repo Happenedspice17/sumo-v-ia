@@ -6,13 +6,14 @@
 #include <Adafruit_TCS34725.h>
 
 // ---------- Pines ----------
-#define ENA 9
-#define IN1 4
-#define IN2 5
-#define ENB 10
-#define IN3 7
-#define IN4 8
-#define BTN 12
+// Mismo mapa que el R3: se cambia de placa sin mover un dupont
+#define ENA 5
+#define ENB 6
+#define IN1 7
+#define IN2 8
+#define IN3 9
+#define IN4 10
+#define BTN 2
 const uint8_t XSHUT[3] = {A0, A1, A2};   // izq, frente, der
 
 // ---------- Calibracion ----------
