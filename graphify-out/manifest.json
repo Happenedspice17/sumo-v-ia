@@ -1,0 +1,380 @@
+{
+  "atmega328p/img/diagrama.py": {
+    "mtime": 1793195270.1118827,
+    "seen": 1793512601.3264554,
+    "ast_hash": "ecf4e43bc513fa2a66b911b7eeeb97fb",
+    "semantic_hash": ""
+  },
+  "atmega328p/laberinto/VL53L0X.cpp": {
+    "mtime": 1793194763.4911933,
+    "seen": 1793512601.3264644,
+    "ast_hash": "b66147bb2305e8539d0a94c891b2b670",
+    "semantic_hash": ""
+  },
+  "atmega328p/laberinto/VL53L0X.h": {
+    "mtime": 1793194763.491157,
+    "seen": 1793512601.326468,
+    "ast_hash": "c66888136b692ca9f7e079d8f23e459f",
+    "semantic_hash": ""
+  },
+  "atmega328p/laberinto/config.h": {
+    "mtime": 1793243114.0487742,
+    "seen": 1793512601.32647,
+    "ast_hash": "ad7cfb7f253ba024e18c8cc88067d03c",
+    "semantic_hash": ""
+  },
+  "atmega328p/laberinto/fuente.h": {
+    "mtime": 1793194718.659629,
+    "seen": 1793512601.3264716,
+    "ast_hash": "95dfbf2c3c8d40bbf2a55a824dde5911",
+    "semantic_hash": ""
+  },
+  "atmega328p/laberinto/main.cpp": {
+    "mtime": 1793194833.1914046,
+    "seen": 1793512601.326473,
+    "ast_hash": "ff759384df12602ea7f072073add7237",
+    "semantic_hash": ""
+  },
+  "atmega328p/laberinto/motores.cpp": {
+    "mtime": 1793194788.8514018,
+    "seen": 1793512601.3264744,
+    "ast_hash": "34e39eb7e9d73fd090b5a12879ac8cad",
+    "semantic_hash": ""
+  },
+  "atmega328p/laberinto/motores.h": {
+    "mtime": 1793194782.9674015,
+    "seen": 1793512601.3264759,
+    "ast_hash": "e4321f1e4f4d47484df18536e0cb2979",
+    "semantic_hash": ""
+  },
+  "atmega328p/laberinto/oled.cpp": {
+    "mtime": 1793195949.889614,
+    "seen": 1793512601.3264773,
+    "ast_hash": "341eb574334e15bd2797315553f951a5",
+    "semantic_hash": ""
+  },
+  "atmega328p/laberinto/oled.h": {
+    "mtime": 1793194767.6594007,
+    "seen": 1793512601.326479,
+    "ast_hash": "cdd5b916364b4605850fc1dd30063b63",
+    "semantic_hash": ""
+  },
+  "atmega328p/laberinto/tcs.cpp": {
+    "mtime": 1793194781.4714015,
+    "seen": 1793512601.3264802,
+    "ast_hash": "e6e428b4382e5aff6c8c156ac3fa040d",
+    "semantic_hash": ""
+  },
+  "atmega328p/laberinto/tcs.h": {
+    "mtime": 1793194777.8114011,
+    "seen": 1793512601.3264813,
+    "ast_hash": "a91b2b9e2818725f58c0db89294578bd",
+    "semantic_hash": ""
+  },
+  "atmega328p/laberinto/tiempo.cpp": {
+    "mtime": 1793194732.7913985,
+    "seen": 1793512601.3264828,
+    "ast_hash": "f8cb90cfa008a7c35750e10c76255e04",
+    "semantic_hash": ""
+  },
+  "atmega328p/laberinto/tiempo.h": {
+    "mtime": 1793194728.6913984,
+    "seen": 1793512601.3264837,
+    "ast_hash": "480ad28f386b66c9d6aa939eb499b806",
+    "semantic_hash": ""
+  },
+  "atmega328p/laberinto/twi.cpp": {
+    "mtime": 1793194750.8713996,
+    "seen": 1793512601.326485,
+    "ast_hash": "72acbc45e539510f47afa4285b312084",
+    "semantic_hash": ""
+  },
+  "atmega328p/laberinto/twi.h": {
+    "mtime": 1793194750.8728917,
+    "seen": 1793512601.3264863,
+    "ast_hash": "04a5f63b7f57ddb56e922c70c3e6a0ec",
+    "semantic_hash": ""
+  },
+  "chasis/generar_pdf.py": {
+    "mtime": 1793240065.8173656,
+    "seen": 1793512601.3264875,
+    "ast_hash": "75cd5a25455d51df94e403fabec4c803",
+    "semantic_hash": ""
+  },
+  "chasis/renders.py": {
+    "mtime": 1793251927.3555982,
+    "seen": 1793512601.3264897,
+    "ast_hash": "2fb32a54e14fe56140f8e78beee755b1",
+    "semantic_hash": ""
+  },
+  "docs/generar_manuales.py": {
+    "mtime": 1793246926.3588395,
+    "seen": 1793512601.3264909,
+    "ast_hash": "3cede5a58209711ac470d7ccd8a4c085",
+    "semantic_hash": ""
+  },
+  "uno_q/app.yaml": {
+    "mtime": 1792421715.2623916,
+    "seen": 1793512601.326492,
+    "ast_hash": "369cec5ee1e2df59b639a5b80e58bae5",
+    "semantic_hash": ""
+  },
+  "uno_q/python/main.py": {
+    "mtime": 1793254736.5444643,
+    "seen": 1793512601.3264933,
+    "ast_hash": "4ff05d60c8a103257a5d34955660835e",
+    "semantic_hash": ""
+  },
+  "uno_q/sketch/oled.h": {
+    "mtime": 1793253649.492748,
+    "seen": 1793512601.326494,
+    "ast_hash": "53d98f80e389965a2eeef41a0e0da17f",
+    "semantic_hash": ""
+  },
+  "CLAUDE.md": {
+    "mtime": 1793512582.4891999,
+    "seen": 1793512601.3264954,
+    "ast_hash": "67d88e9d0760c3ba54c75dfd9551c1c5",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1793243513.248798,
+    "seen": 1793512601.3264968,
+    "ast_hash": "b2481be59836fe8d253e659ca2713682",
+    "semantic_hash": ""
+  },
+  "atmega328p/README.md": {
+    "mtime": 1793243114.0487742,
+    "seen": 1793512601.3264978,
+    "ast_hash": "3909859f0f9d36f5b82b062b59c38cee",
+    "semantic_hash": ""
+  },
+  "atmega328p/laberinto/LICENCIA_VL53L0X.txt": {
+    "mtime": 1793194763.499953,
+    "seen": 1793512601.3264987,
+    "ast_hash": "41dd677cee907656c5d2e97845b04405",
+    "semantic_hash": ""
+  },
+  "docs/GUIA_PROGRAMACION.md": {
+    "mtime": 1793243513.2527978,
+    "seen": 1793512601.3265007,
+    "ast_hash": "cf6e3e5e639e94be612f67834a456e5f",
+    "semantic_hash": ""
+  },
+  "docs/uno_q.md": {
+    "mtime": 1793243103.0927734,
+    "seen": 1793512601.3265026,
+    "ast_hash": "1537c122fb8e77934b04d53fb7bf9b44",
+    "semantic_hash": ""
+  },
+  "uno_q/README.md": {
+    "mtime": 1793243134.2115543,
+    "seen": 1793512601.3265042,
+    "ast_hash": "4abd6a1d1581911da7b4e7953cb535ab",
+    "semantic_hash": ""
+  },
+  "uno_q/python/requirements.txt": {
+    "mtime": 1793254383.256353,
+    "seen": 1793512601.3265057,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "chasis/chasis.pdf": {
+    "mtime": 1793251932.2092984,
+    "seen": 1793512601.3265073,
+    "ast_hash": "2b815128684155516cb258f0eb2817f9",
+    "semantic_hash": ""
+  },
+  "docs/manual_ensamble.pdf": {
+    "mtime": 1793251930.6812983,
+    "seen": 1793512601.3265088,
+    "ast_hash": "bb1e275d61c124cffe0f6d5f4b425fe8",
+    "semantic_hash": ""
+  },
+  "docs/manual_uso.pdf": {
+    "mtime": 1793251930.8412983,
+    "seen": 1793512601.3265107,
+    "ast_hash": "bc940e7507f27855e0bf03284dbf0eb0",
+    "semantic_hash": ""
+  },
+  "atmega328p/img/conexiones_nano.png": {
+    "mtime": 1793195271.4514306,
+    "seen": 1793512601.3265119,
+    "ast_hash": "57e58e403aa8d8d25527a28c415475d6",
+    "semantic_hash": ""
+  },
+  "chasis/img/det_arnes.png": {
+    "mtime": 1793240106.5545208,
+    "seen": 1793512601.326513,
+    "ast_hash": "bc08711b3c816d3e44cbf858af10ad80",
+    "semantic_hash": ""
+  },
+  "chasis/img/det_insertos.png": {
+    "mtime": 1793240115.0865214,
+    "seen": 1793512601.3265145,
+    "ast_hash": "bd6964d032d6aad3efbaab3524d43c58",
+    "semantic_hash": ""
+  },
+  "chasis/img/det_l298.png": {
+    "mtime": 1793240094.01852,
+    "seen": 1793512601.3265157,
+    "ast_hash": "bdd120ba4302752b3e1ff9a6e2dd7717",
+    "semantic_hash": ""
+  },
+  "chasis/img/det_q_usb.png": {
+    "mtime": 1793251927.346389,
+    "seen": 1793512601.326517,
+    "ast_hash": "a06660e6decc6eb8e9847b1b9e8e5246",
+    "semantic_hash": ""
+  },
+  "chasis/img/det_shield.png": {
+    "mtime": 1793251927.3470933,
+    "seen": 1793512601.3265183,
+    "ast_hash": "7ccb4682274485feb4dbade387994fd3",
+    "semantic_hash": ""
+  },
+  "chasis/img/detalle_oled.png": {
+    "mtime": 1793198960.1530178,
+    "seen": 1793512601.3265195,
+    "ast_hash": "08e13060497a9374c349cbbd88c56a03",
+    "semantic_hash": ""
+  },
+  "chasis/img/fig_atras.png": {
+    "mtime": 1793240082.3585193,
+    "seen": 1793512601.326521,
+    "ast_hash": "f24206f5341a5a784395ce03f6105a34",
+    "semantic_hash": ""
+  },
+  "chasis/img/fig_lado.png": {
+    "mtime": 1793240082.3585193,
+    "seen": 1793512601.3265224,
+    "ast_hash": "60f9a690f59959911e88db3cf7b8f4ca",
+    "semantic_hash": ""
+  },
+  "chasis/img/iso.png": {
+    "mtime": 1793240082.5585194,
+    "seen": 1793512601.3265235,
+    "ast_hash": "0226dab10d0d247fcffcc063483d3836",
+    "semantic_hash": ""
+  },
+  "chasis/img/paso1.png": {
+    "mtime": 1793240084.6265194,
+    "seen": 1793512601.3265276,
+    "ast_hash": "850e361c856d73be8f3befa14f830da2",
+    "semantic_hash": ""
+  },
+  "chasis/img/paso10.png": {
+    "mtime": 1793240107.086521,
+    "seen": 1793512601.3265285,
+    "ast_hash": "804a5071c8f6cd39a89a4c492489055a",
+    "semantic_hash": ""
+  },
+  "chasis/img/paso2.png": {
+    "mtime": 1793240090.7785199,
+    "seen": 1793512601.3265297,
+    "ast_hash": "ac0c6dd66ffea0ac779bb64073dfc56b",
+    "semantic_hash": ""
+  },
+  "chasis/img/paso3.png": {
+    "mtime": 1793240090.45852,
+    "seen": 1793512601.3265312,
+    "ast_hash": "16e3c9017d2f180854cd75db742ce5a9",
+    "semantic_hash": ""
+  },
+  "chasis/img/paso4.png": {
+    "mtime": 1793240092.33052,
+    "seen": 1793512601.326532,
+    "ast_hash": "17885fc92012a665aa51c8951cdb76e7",
+    "semantic_hash": ""
+  },
+  "chasis/img/paso5.png": {
+    "mtime": 1793240099.2545204,
+    "seen": 1793512601.3265333,
+    "ast_hash": "27607d3527dbbf0be99ef2f261412583",
+    "semantic_hash": ""
+  },
+  "chasis/img/paso6.png": {
+    "mtime": 1793240097.0825202,
+    "seen": 1793512601.3265345,
+    "ast_hash": "fddfd6e16a00d8297037e7d8c8dca2bb",
+    "semantic_hash": ""
+  },
+  "chasis/img/paso7.png": {
+    "mtime": 1793240106.0225208,
+    "seen": 1793512601.326536,
+    "ast_hash": "649a52298adb773af606ff3376184065",
+    "semantic_hash": ""
+  },
+  "chasis/img/paso8.png": {
+    "mtime": 1793240100.6145205,
+    "seen": 1793512601.3265371,
+    "ast_hash": "d906226f88b167b81e416852b9ff6968",
+    "semantic_hash": ""
+  },
+  "chasis/img/paso9.png": {
+    "mtime": 1793240108.394521,
+    "seen": 1793512601.3265386,
+    "ast_hash": "2c9a2661b80f1d812adc2c47442d6321",
+    "semantic_hash": ""
+  },
+  "chasis/img/placa_x2d.png": {
+    "mtime": 1793251927.3470933,
+    "seen": 1793512601.3265398,
+    "ast_hash": "aa6e78ce16864fac792304500038e6ea",
+    "semantic_hash": ""
+  },
+  "chasis/img/q_iso.png": {
+    "mtime": 1793251927.3482292,
+    "seen": 1793512601.3265414,
+    "ast_hash": "016c80c948774c72d49f4aa2143b1960",
+    "semantic_hash": ""
+  },
+  "chasis/img/q_lado.png": {
+    "mtime": 1793251927.3494263,
+    "seen": 1793512601.326543,
+    "ast_hash": "367befe68fc9cb2bac32a9442dcf42a0",
+    "semantic_hash": ""
+  },
+  "chasis/img/q_paso11.png": {
+    "mtime": 1793251927.350097,
+    "seen": 1793512601.326544,
+    "ast_hash": "b25736ec07ca717909acfc5b8a46eaf7",
+    "semantic_hash": ""
+  },
+  "chasis/img/r3_atras.png": {
+    "mtime": 1793251927.351129,
+    "seen": 1793512601.3265452,
+    "ast_hash": "f4956b6217623207529dd2762b1d20aa",
+    "semantic_hash": ""
+  },
+  "chasis/img/r3_iso.png": {
+    "mtime": 1793251927.3520255,
+    "seen": 1793512601.3265464,
+    "ast_hash": "b2caa3094c567ea0d556f9e4b82a0ab6",
+    "semantic_hash": ""
+  },
+  "chasis/img/r3_paso10.png": {
+    "mtime": 1793251927.3531873,
+    "seen": 1793512601.3265486,
+    "ast_hash": "906aeca81c636f2d2d458e110881f9ed",
+    "semantic_hash": ""
+  },
+  "chasis/img/r3_paso7.png": {
+    "mtime": 1793251927.3537757,
+    "seen": 1793512601.32655,
+    "ast_hash": "91653354946715220cf40ccdf6ac6a81",
+    "semantic_hash": ""
+  },
+  "chasis/img/r3_paso8.png": {
+    "mtime": 1793251927.354586,
+    "seen": 1793512601.3265512,
+    "ast_hash": "fc57250b45213686de918be5d8d9b466",
+    "semantic_hash": ""
+  },
+  "chasis/img/r3_paso9.png": {
+    "mtime": 1793251927.3555982,
+    "seen": 1793512601.3265526,
+    "ast_hash": "12ca94f7b768b67524d22db070d1a4cf",
+    "semantic_hash": ""
+  }
+}
