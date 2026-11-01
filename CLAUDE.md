@@ -1,3 +1,7 @@
+## ponytail
+
+Al iniciar cada sesion activa el skill `ponytail` (nivel full) y usalo en todas las tareas.
+
 ## graphify
 
 This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
