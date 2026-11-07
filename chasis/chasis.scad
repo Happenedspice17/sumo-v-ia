@@ -3,7 +3,7 @@
 //
 // PLACA: "uno_r3" (por defecto), "unoq" (UNO Q) o "nano" (version vieja). Con UNO R3 y UNO Q todas las piezas
 //        impresas son las mismas; la Q solo AGREGA mastil + camara, repisa + hub y el clip del OLED.
-// PIEZA: "ensamble", "piso1", "piso2", "cuna_motor", "capucha_color", "patin", "prueba",
+// PIEZA: "ensamble", "piso1", "piso2", "cuna_motor", "capucha_color", "patin", "soporte_tof" (x3), "prueba",
 //        "placa" (piezas comunes acomodadas en la cama de la X2D), "placa_vista" (igual, con la cama),
 //        "repisa", "cabeza_camara", "clip_oled", "placa_q" (piezas solo de la Q en la cama), "placa_q_vista",
 //        "sub_piso2" (piso 2 armado en la mesa), "det_insertos", "det_motor", "det_l298", "det_shield",
@@ -29,13 +29,14 @@ $fn = 48;
 $gris = false;
 $col = "orange";         // color de las piezas impresas
 function en(x, l) = len([for (e = l) if (e == x) 1]) > 0;
-$ins = !en(PIEZA, ["piso1", "piso2", "cuna_motor", "capucha_color", "patin", "prueba", "placa", "repisa", "cabeza_camara", "clip_oled", "placa_q"]);   // dibuja insertos
+$ins = !en(PIEZA, ["piso1", "piso2", "cuna_motor", "capucha_color", "patin", "prueba", "placa", "soporte_tof", "repisa", "cabeza_camara", "clip_oled", "placa_q"]);   // dibuja insertos
 
 // ---------- Tolerancias: Bambu Lab A2L, boquilla 0.4, capa 0.2, PLA/PETG ----------
 // En la A2L (cama movil) los agujeros salen ~0.1 mm chicos y las ranuras ~0.15 mm angostas;
 // las medidas de abajo ya lo compensan. Antes de imprimir todo, imprime PIEZA="prueba".
 HOLGURA = 0.2;                 // juego por lado entre pieza impresa y componente
 RANURA = 1.6 + 0.4;            // ranura para un PCB de 1.6 mm
+RAN_TOF = 1.6 + 0.2;           // ranura justa del VL53L0X (con 0.4 bailaba)
 M3_PASO = 3.4;                 // M3 pasante
 INSERTO = [4.0, 5.7];          // inserto de calor M3: agujero y largo (medir el suyo; ver PIEZA="prueba")
 D_BOTON = 7 + 2 * 0.15;        // boton de panel de 7 mm
@@ -51,27 +52,27 @@ R_ESQ = 30;         // radio de esquinas (deja girar en un pasillo de 180)
 ESP = 3;            // espesor de pisos
 
 // Ruedas y motores N20
-D_RUEDA = 34;
-A_RUEDA = 20;
-MOT_L = 24;         // caja + motor
+D_RUEDA = 45;       // medida real
+A_RUEDA = 17;       // goma; la maza (7) no sobresale
+MOT_L = 26.11;      // caja + motor, sin eje (eje centrado, sale 7)
 MOT_A = 12;         // ancho (Y)
-MOT_H = 10;         // alto (Z)
+MOT_H = 11;         // alto (Z)
 EJE_Z = D_RUEDA / 2;
 X_RUEDA_INT = L / 2 - A_RUEDA;           // 40
 X_MOT_EXT = X_RUEDA_INT - 1.5;           // cara de la caja de engranes
 X_MOT = X_MOT_EXT - MOT_L / 2;           // centro del motor
 X_MOT_INT = X_MOT_EXT - MOT_L;           // cara de las terminales (14.5)
 POZO_X = X_RUEDA_INT - 2;                // hueco de la rueda en el piso 1
-POZO_Y = 19;
+POZO_Y = sqrt(pow(D_RUEDA / 2, 2) - pow(MOT_H / 2, 2)) + 1.5;   // media cuerda de la rueda en el fondo del piso 1 + juego
 
 // Pisos
 Z1 = EJE_Z + MOT_H / 2;                  // fondo del piso 1 (toca el motor)
 SEP = 35;                                // columnas impresas del piso 1, con inserto arriba
 Z2 = Z1 + ESP + SEP;                     // fondo del piso 2
-POSTES = [[42, 50], [-42, 50], [48, -40], [-48, -40]];   // los de atras dejan libre el jack y el USB-B del R3
+POSTES = [[32, 55.5], [-32, 55.5], [48, -40], [-48, -40]];   // los de atras dejan libre el jack y el USB-B del R3
 
 // Componentes
-BAT = [65, 37, 19];      // 2S 18650 acostada a lo ancho (X, Y, Z)
+BAT = [70, 37, 19];      // 2S 18650 acostada a lo ancho (X, Y, Z)
 BAT_Y = 7;               // sobre el eje: deja libres los pasillos de los conectores de los VL53L0X
 BAT_PARED = 8;           // alto de los topes que la sujetan
 L298 = [43, 43, 27];
@@ -80,9 +81,12 @@ L298_AG = 37;            // separacion de agujeros del L298N (medir el suyo)
 L298_POSTE = 5;          // postes impresos del L298N, con inserto
 L298_Z = Z1 + ESP + L298_POSTE;          // cara de abajo de su PCB
 BORNE_Z = L298_Z + 1.6 + 4;              // altura de entrada de los cables a los bornes
-TOF = [25, 10.7];        // VL53L0X CJVL53L0XV2 (ancho, alto)
+TOF = [25, 11];          // VL53L0X CJVL53L0XV2 (ancho, alto), medido
+TOF_AG = [20, TOF[1] - 5.5];   // agujeros del VL53L0X (pasa M3): separacion y altura del centro (5.5 medido desde el borde de los pines)
 TOF_FRENTE_Y = 54;
-TOF_LADO = [50, 34.5];   // (X, Y) de los soportes laterales
+TOF_BASE = 7;            // base del soporte con inserto; el VL53L0X queda esta altura sobre el piso 1
+TOF_FIJ = [8, -1];       // insertos de la base del soporte (X a cada lado, Y)
+TOF_LADO = [43, 40];     // (X, Y) de los soportes laterales: delante de la rueda y dentro de la esquina
 HEADER = [2.5, 6, 1.4];  // header recto: plastico, pin largo, punta corta que sale del lado del chip
 COLOR_MOD = 20.5;        // TCS34725 morado (medir el suyo)
 COLOR_Y = 34;
@@ -102,6 +106,7 @@ DUPONT = [2.5, 14];      // conector dupont (lado, largo)
 CABLE = 1.4;             // diametro del cable dupont
 CABLE_POT = 1.8;         // calibre 22 con forro de silicon (bateria, interruptor, motores)
 RAN2_X = 26.5;           // ranuras laterales de cables del piso 2 (centro X)
+RAN2_Y = 34.5;           // y su centro Y (como el piso 2 ya impreso; los cables suben en Y 36-44)
 T_CON = [13, 12.7, 7];   // conector T (Deans): cada mitad (X, Y, Z)
 T_POS = [-25, 10, Z1 + ESP + BAT[2]];    // conector T acostado sobre la bateria (borde izq, centro Y, fondo)
 
@@ -142,7 +147,7 @@ CLIP_Z0 = 100;                                   // abajo del clip (el collar mi
 
 // Hub USB en una repisa al frente del piso 2 (el mismo piso 2 sirve al R3: ahi la repisa no se pone)
 HUB = [95, 30, 12];      // medir el suyo
-REPISA_Z = 82;           // cara de abajo de la repisa: libra los dupont que suben por las ranuras
+REPISA_Z = Z2 + ESP + 19;   // cara de abajo de la repisa: postes de 19 mm (como el piso 2 ya impreso)
 REPISA_ESP = 2.5;
 REPISA_POSTES = [[52, 26], [-52, 26], [52, 44], [-52, 44]];
 HUB_Y = 39.5;
@@ -150,7 +155,7 @@ HUB_Y = 39.5;
 OLED_PINES_Y = OLED_Y - OLED[1] / 2 + 2.5;
 TOF_PIN_Z = TOF[1] - 1.3;                // fila de pines del VL53L0X, medida desde su borde de abajo
 TOF_ATRAS = 0.3 + HEADER[0] + DUPONT[1]; // del centro de la ranura al final del dupont (16.8)
-TOF_SUBE = 50 - Z1 - ESP - TOF_PIN_Z;    // el cable frontal sube a 50 mm y va a la ranura derecha
+TOF_SUBE = 56 - Z1 - ESP - TOF_BASE - TOF_PIN_Z;   // el cable frontal sube a 56 mm y va a la ranura derecha
 
 // Protoboards: tiras de 5 hoyos a lo ancho (X), 17 columnas a lo largo (Y)
 XP = PROTO[0] / 2 + 1.1;                 // centro X de cada protoboard (Nano en -XP, bus en +XP)
@@ -204,23 +209,37 @@ module cable(pts, col, d = CABLE, nombre = "") {
 
 // ---------- Piezas impresas ----------
 
-// Soporte de VL53L0X: dos postes y un canal abajo, todo con ranura; el modulo baja desde arriba
-// con el chip a +Y. Entre los postes queda libre el header recto (atras, arriba).
+// Soporte de VL53L0X, pieza aparte: base con 2 insertos (M3x8 desde abajo del piso 1), dos postes y un
+// canal, todo con ranura; el modulo baja desde arriba con el chip a +Y. Entre los postes queda libre el header.
 module soporte_tof() {
   a = TOF[0] + 2 * HOLGURA;
-  h = TOF[1] + 1.5;
-  difference() {
+  h = TOF_BASE + TOF[1] + 1.5;
+  color(k($col)) difference() {
     union() {
-      for (s = [-1, 1]) translate([s * (a / 2 + 0.5) - 2, -2.5, 0]) cube([4, 5, h]);
-      translate([-a / 2 - 1.5, -2.5, 0]) cube([a + 3, 5, 2]);                 // canal del borde de abajo
+      for (s = [-1, 1]) translate([s > 0 ? a / 2 - 4 : -a / 2 - 2, -5.5, 0]) cube([6, 9, h]);   // abrazan 4 mm de cada oreja
+      translate([-a / 2 - 2, -5.5, 0]) cube([a + 4, 9, TOF_BASE + 2]);       // base y canal del borde de abajo
     }
-    translate([-a / 2, 0.5 - RANURA / 2, -1]) cube([a, RANURA, 20]);
+    translate([-a / 2, 0.5 - RAN_TOF / 2, TOF_BASE]) cube([a, RAN_TOF, 20]);
+    for (x = [-1, 1]) translate([x * TOF_FIJ[0], TOF_FIJ[1], 0]) mirror([0, 0, 1]) ag_inserto(INSERTO[1]);
+    // M3 x 8 desde el frente: pasa libre por el poste de enfrente y la oreja, rosca en el plastico del de atras
+    // (sin inserto: en los laterales la columna del piso 2 tapa la cara de atras)
+    for (s = [-1, 1]) translate([s * TOF_AG[0] / 2, 0, TOF_BASE + TOF_AG[1]]) rotate([90, 0, 0]) {
+      translate([0, 0, -4]) cylinder(d = M3_PASO, h = 4, $fn = 24);
+      cylinder(d = 2.5, h = 5, $fn = 24);
+    }
     // entrada abocinada arriba
     hull() {
-      translate([-a / 2, 0.5 - RANURA / 2, h - 1.5]) cube([a, RANURA, 0.01]);
-      translate([-a / 2 - 0.8, 0.5 - RANURA / 2 - 0.8, h]) cube([a + 1.6, RANURA + 1.6, 0.01]);
+      translate([-a / 2, 0.5 - RAN_TOF / 2, h - 1.5]) cube([a, RAN_TOF, 0.01]);
+      translate([-a / 2 - 0.8, 0.5 - RAN_TOF / 2 - 0.8, h]) cube([a + 1.6, RAN_TOF + 1.6, 0.01]);
     }
   }
+  if ($ins) for (x = [-1, 1]) translate([x * TOF_FIJ[0], TOF_FIJ[1], 0]) mirror([0, 0, 1]) inserto();
+}
+
+// Lugares de los 3 soportes de VL53L0X sobre el piso 1: frente, izquierdo y derecho
+module tof_lugares() {
+  translate([0, TOF_FRENTE_Y, 0]) children();
+  for (s = [-1, 1]) translate([s * TOF_LADO[0], TOF_LADO[1], 0]) rotate([0, 0, -s * 90]) children();
 }
 
 module piso1() {
@@ -228,8 +247,6 @@ module piso1() {
     union() {
       cuadrado_redondo(L, R_ESQ, ESP);
       translate([0, 0, ESP]) {
-        translate([0, TOF_FRENTE_Y, 0]) soporte_tof();
-        for (s = [-1, 1]) translate([s * TOF_LADO[0], TOF_LADO[1], 0]) rotate([0, 0, -s * 90]) soporte_tof();
         // topes de la bateria; fuera de los pasillos de los conectores y de los bornes del L298N
         xb = BAT[0] / 2 + HOLGURA + 1;
         yb = BAT[1] / 2 + HOLGURA + 1;
@@ -252,6 +269,7 @@ module piso1() {
     for (s = [-1, 1]) for (y = CUNA_Y) translate([s * X_MOT, y, 0]) agujero(M3_PASO, ESP);
     for (x = [-1, 1]) translate([x * PATIN_X, PATIN_Y, 0]) agujero(M3_PASO, ESP);
     for (x = [-1, 1]) translate([x * 17, COLOR_Y, 0]) agujero(M3_PASO, ESP);
+    tof_lugares() for (x = [-1, 1]) translate([x * TOF_FIJ[0], TOF_FIJ[1], 0]) agujero(M3_PASO, ESP);
   }
   if ($ins) {
     for (p = POSTES) translate([p[0], p[1], ESP + SEP]) inserto();
@@ -292,7 +310,7 @@ module piso2() {
     translate([0, OLED_PINES_Y, ESP / 2]) cube([13, 4.5, ESP + 2], center = true);               // pines del OLED
     translate([0, OLED_Y + 3, ESP / 2]) cube([20, 14, ESP + 2], center = true);                  // aligera
     translate([0, -3, ESP / 2]) cube([60, 6, ESP + 2], center = true);                           // cables de abajo
-    for (s = [-1, 1]) translate([s * RAN2_X, TOF_LADO[1], ESP / 2]) cube([16, 22, ESP + 2], center = true); // cables de sensores
+    for (s = [-1, 1]) translate([s * RAN2_X, RAN2_Y, ESP / 2]) cube([16, 22, ESP + 2], center = true); // cables de sensores
     translate([BOTON_XY[0], BOTON_XY[1], 0]) agujero(D_BOTON, ESP);
     translate([SWITCH_XY[0], SWITCH_XY[1], 0]) agujero(D_SWITCH, ESP);
   }
@@ -385,6 +403,7 @@ module placa() {
   for (i = [0 : 1]) translate([m + 12 + i * 24, y2, 0]) cuna_motor();
   translate([85, y2 + 6, Z1 - 2]) rotate([180, 0, 0]) capucha_color();
   translate([150, y2, Z1]) rotate([180, 0, 0]) patin();
+  for (i = [0 : 2]) translate([220, y2 + i * 16, 0]) soporte_tof();
 }
 
 // Piezas solo de la UNO Q (repisa, cabeza de la camara, clip del OLED) en la cama, en su orientacion de impresion
@@ -740,7 +759,7 @@ module cables_arriba() {
     xk = (i - 2.5) * PASO_PIN;
     p = t == 0 ? [-TOF_LADO[0] + TOF_ATRAS + 4, TOF_LADO[1] + xk, zs + 4]
       : t == 2 ? [TOF_LADO[0] - TOF_ATRAS - 4, TOF_LADO[1] - xk, zs + 4]
-      : [23 + (i - 2.5) * 1.5, TOF_FRENTE_Y - TOF_ATRAS - 4, Z1 + ESP + TOF_PIN_Z + TOF_SUBE + i * 1.5 + 14];
+      : [23 + (i - 2.5) * 1.5, TOF_FRENTE_Y - TOF_ATRAS - 4, Z1 + ESP + TOF_BASE + TOF_PIN_Z + TOF_SUBE + i * 1.5 + 14];
     w = i == 5 ? 4 : i;
     nom = str("VL53L0X ", ["izq", "frente", "der"][t], " ", SEN_TOF[i]);
     ly = [16, 16, 8][t] + w * 1.6;
@@ -880,7 +899,7 @@ function xk(i) = (i - 2.5) * PASO_PIN;
 // extremo de arriba del tramo de abajo de cada cable del VL53L0X (sale de la ranura del piso 2)
 function p_tof(t, i) = t == 0 ? [-TOF_LADO[0] + TOF_ATRAS + 4, TOF_LADO[1] + xk(i), ZS + 4]
                      : t == 2 ? [TOF_LADO[0] - TOF_ATRAS - 4, TOF_LADO[1] - xk(i), ZS + 4]
-                     : [23 + (i - 2.5) * 1.5, TOF_FRENTE_Y - TOF_ATRAS - 4, Z1 + ESP + TOF_PIN_Z + TOF_SUBE + i * 1.5 + 14];
+                     : [23 + (i - 2.5) * 1.5, TOF_FRENTE_Y - TOF_ATRAS - 4, Z1 + ESP + TOF_BASE + TOF_PIN_Z + TOF_SUBE + i * 1.5 + 14];
 // OLED del mastil: 4 dupont parados sobre su header acodado; el cable sale por arriba de la carcasa
 OLED_YH = CLIP_YB - 2 - 1.6 - 1.25;                      // eje de los pines (delante de la cara del PCB)
 function oled_x(i) = MASTIL_XY[0] + (i - 1.5) * PASO_PIN; // GND VCC SCL SDA (OLED de cabeza, visto desde atras)
@@ -1145,9 +1164,11 @@ module ensamble() {
     conector_t(true, false);
   }
   paso(5) {
-    translate([0, TOF_FRENTE_Y, Z1 + ESP]) tof_modulo(TOF_SUBE, 23, 14, "VL53L0X frente");
-    for (s = [-1, 1]) translate([s * TOF_LADO[0], TOF_LADO[1], Z1 + ESP]) rotate([0, 0, -s * 90])
-      tof_modulo(Z2 + 7 - Z1 - ESP - TOF_PIN_Z, 0, 0, s < 0 ? "VL53L0X izq" : "VL53L0X der");
+    translate([0, 0, Z1 + ESP]) tof_lugares() soporte_tof($col = "lightsteelblue");
+    translate([0, 0, Z1]) tof_lugares() for (x = [-1, 1]) translate([x * TOF_FIJ[0], TOF_FIJ[1], 0]) mirror([0, 0, 1]) tornillo(8);
+    translate([0, TOF_FRENTE_Y, Z1 + ESP + TOF_BASE]) tof_modulo(TOF_SUBE, 23, 14, "VL53L0X frente");
+    for (s = [-1, 1]) translate([s * TOF_LADO[0], TOF_LADO[1], Z1 + ESP + TOF_BASE]) rotate([0, 0, -s * 90])
+      tof_modulo(Z2 + 7 - Z1 - ESP - TOF_BASE - TOF_PIN_Z, 0, 0, s < 0 ? "VL53L0X izq" : "VL53L0X der");
   }
   paso(6) cables_l298_logica();
   // paso 7: el piso 2 se arma en la mesa (PIEZA = "sub_piso2"); aqui se ve levantado sobre el chasis
@@ -1168,6 +1189,7 @@ else if (PIEZA == "piso1") piso1();
 else if (PIEZA == "piso2") piso2();
 else if (PIEZA == "cuna_motor") cuna_motor();
 else if (PIEZA == "capucha_color") translate([0, 0, Z1 - 2]) rotate([180, 0, 0]) capucha_color();
+else if (PIEZA == "soporte_tof") soporte_tof();
 else if (PIEZA == "patin") translate([0, 0, Z1]) rotate([180, 0, 0]) patin();
 else if (PIEZA == "prueba") prueba();
 else if (PIEZA == "placa") placa();

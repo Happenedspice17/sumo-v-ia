@@ -1,8 +1,8 @@
 De,A,Color,Tipo,Largo en el modelo (mm)
-Motor izq,OUT1,amarillo,Calibre 22 soldado al motor,69
-Motor izq,OUT2,blanco,Calibre 22 soldado al motor,73
-Motor der,OUT3,amarillo,Calibre 22 soldado al motor,69
-Motor der,OUT4,blanco,Calibre 22 soldado al motor,73
+Motor izq,OUT1,amarillo,Calibre 22 soldado al motor,79
+Motor izq,OUT2,blanco,Calibre 22 soldado al motor,82
+Motor der,OUT3,amarillo,Calibre 22 soldado al motor,79
+Motor der,OUT4,blanco,Calibre 22 soldado al motor,82
 Conector T rojo,interruptor,rojo,Calibre 22 (viene con el conector T),38
 Conector T negro,L298N GND,negro,Calibre 22 (viene con el conector T),40
 Interruptor,L298N 12V,naranja,Calibre 22 soldado al interruptor,44
@@ -14,25 +14,25 @@ L298N IN2,placa D8,café,Dupont hembra-macho 30 cm,124
 L298N IN3,placa D9,café,Dupont hembra-macho 30 cm,128
 L298N IN4,placa D10,café,Dupont hembra-macho 30 cm,131
 L298N ENB,placa D6,morado,Dupont hembra-macho 30 cm,122
-VL53L0X izq VIN,bus VCC,rojo,Dupont hembra-macho 30 cm,151
-VL53L0X izq GND,bus GND,negro,Dupont hembra-macho 30 cm,143
-VL53L0X izq SCL,bus SCL,cian,Dupont hembra-macho 30 cm,168
-VL53L0X izq SDA,bus SDA,azul,Dupont hembra-macho 30 cm,181
-VL53L0X izq XSHUT,placa A0,verde,Dupont hembra-macho 30 cm,166
-VL53L0X frente VIN,bus VCC,rojo,Dupont hembra-macho 30 cm,147
-VL53L0X frente GND,bus GND,negro,Dupont hembra-macho 30 cm,133
-VL53L0X frente SCL,bus SCL,cian,Dupont hembra-macho 30 cm,153
-VL53L0X frente SDA,bus SDA,azul,Dupont hembra-macho 30 cm,161
-VL53L0X frente XSHUT,placa A1,verde,Dupont hembra-macho 30 cm,192
-VL53L0X der VIN,bus VCC,rojo,Dupont hembra-macho 30 cm,124
-VL53L0X der GND,bus GND,negro,Dupont hembra-macho 30 cm,111
-VL53L0X der SCL,bus SCL,cian,Dupont hembra-macho 30 cm,130
-VL53L0X der SDA,bus SDA,azul,Dupont hembra-macho 30 cm,139
-VL53L0X der XSHUT,placa A2,verde,Dupont hembra-macho 30 cm,170
-TCS34725 VIN,bus VCC,rojo,"Dupont macho-macho 30 cm sin un extremo, soldado",183
-TCS34725 GND,bus GND,negro,"Dupont macho-macho 30 cm sin un extremo, soldado",177
-TCS34725 SCL,bus SCL,cian,"Dupont macho-macho 30 cm sin un extremo, soldado",205
-TCS34725 SDA,bus SDA,azul,"Dupont macho-macho 30 cm sin un extremo, soldado",222
+VL53L0X izq VIN,bus VCC,rojo,Dupont hembra-macho 30 cm,143
+VL53L0X izq GND,bus GND,negro,Dupont hembra-macho 30 cm,134
+VL53L0X izq SCL,bus SCL,cian,Dupont hembra-macho 30 cm,159
+VL53L0X izq SDA,bus SDA,azul,Dupont hembra-macho 30 cm,173
+VL53L0X izq XSHUT,placa A0,verde,Dupont hembra-macho 30 cm,158
+VL53L0X frente VIN,bus VCC,rojo,Dupont hembra-macho 30 cm,139
+VL53L0X frente GND,bus GND,negro,Dupont hembra-macho 30 cm,126
+VL53L0X frente SCL,bus SCL,cian,Dupont hembra-macho 30 cm,145
+VL53L0X frente SDA,bus SDA,azul,Dupont hembra-macho 30 cm,154
+VL53L0X frente XSHUT,placa A1,verde,Dupont hembra-macho 30 cm,185
+VL53L0X der VIN,bus VCC,rojo,Dupont hembra-macho 30 cm,126
+VL53L0X der GND,bus GND,negro,Dupont hembra-macho 30 cm,113
+VL53L0X der SCL,bus SCL,cian,Dupont hembra-macho 30 cm,132
+VL53L0X der SDA,bus SDA,azul,Dupont hembra-macho 30 cm,141
+VL53L0X der XSHUT,placa A2,verde,Dupont hembra-macho 30 cm,161
+TCS34725 VIN,bus VCC,rojo,"Dupont macho-macho 30 cm sin un extremo, soldado",190
+TCS34725 GND,bus GND,negro,"Dupont macho-macho 30 cm sin un extremo, soldado",184
+TCS34725 SCL,bus SCL,cian,"Dupont macho-macho 30 cm sin un extremo, soldado",212
+TCS34725 SDA,bus SDA,azul,"Dupont macho-macho 30 cm sin un extremo, soldado",229
 OLED GND,bus GND,negro,Dupont hembra-macho 30 cm,127
 OLED VCC,bus VCC,rojo,Dupont hembra-macho 30 cm,141
 OLED SCL,bus SCL,cian,Dupont hembra-macho 30 cm,157
@@ -48,4 +48,4 @@ Puente GND del bus,GND del shield,negro,Jumper rígido,20
 Puente SDA del bus,SDA (junto a AREF),azul,Jumper rígido,20
 Puente SCL del bus,SCL (junto a AREF),cian,Jumper rígido,20
 Hub,UNO Q USB-C,gris,Cable USB (solo Q),71
-Cámara,hub,gris,Cable USB (solo Q),88
+Cámara,hub,gris,Cable USB (solo Q),81

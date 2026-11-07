@@ -15,20 +15,20 @@ AQUI = os.path.dirname(os.path.abspath(__file__))
 
 # ---------- Medidas (mismas que chasis.scad) ----------
 L, R_ESQ, ESP = 120, 30, 3
-D_RUEDA, A_RUEDA = 34, 20
-MOT_L, MOT_A, MOT_H = 24, 12, 10
+D_RUEDA, A_RUEDA = 45, 17
+MOT_L, MOT_A, MOT_H = 26.11, 11.94, 11.94
 EJE_Z = D_RUEDA / 2
 X_RUEDA_INT = L / 2 - A_RUEDA
 X_MOT = X_RUEDA_INT - 1.5 - MOT_L / 2
-POZO_X, POZO_Y = X_RUEDA_INT - 2, 19
+POZO_X, POZO_Y = X_RUEDA_INT - 2, ((D_RUEDA / 2) ** 2 - (MOT_H / 2) ** 2) ** 0.5 + 1.5
 Z1 = EJE_Z + MOT_H / 2
 SEP = 35
 Z2 = Z1 + ESP + SEP
-POSTES = [(42, 50), (-42, 50), (48, -40), (-48, -40)]
-BAT, BAT_Y = (65, 37, 19), 7
+POSTES = [(32, 55.5), (-32, 55.5), (48, -40), (-48, -40)]
+BAT, BAT_Y = (70, 37, 19), 7
 L298, L298_Y, L298_AG = (43, 43, 27), -37.5, 37
 TOF = (25, 10.7)
-TOF_FRENTE_Y, TOF_LADO = 54, (50, 34.5)
+TOF_FRENTE_Y, TOF_LADO = 54, (43, 40)
 TOF_CARA = 1.8                      # del centro del soporte a la cara del sensor
 HEADER, DUPONT = 2.5, 14            # plastico del header recto y largo del dupont
 TOF_ATRAS = 0.3 + HEADER + DUPONT   # del centro del soporte al final del dupont
@@ -193,7 +193,7 @@ def planta_piso1(pp):
         ax.add_patch(Rectangle((POZO_X if s > 0 else -L / 2 - 1, -POZO_Y), L / 2 - POZO_X + 1,
                                2 * POZO_Y, fc="white", ec=C["borde"], lw=0.8, zorder=1.5))
     ruedas_planta(ax)
-    caja(ax, 0, BAT_Y, BAT[0], BAT[1], C["bat"], "batería 2S 18650\n65 × 37", alpha=0.6, tc="white", z=5)
+    caja(ax, 0, BAT_Y, BAT[0], BAT[1], C["bat"], "batería 2S 18650\n70 × 37", alpha=0.6, tc="white", z=5)
     caja(ax, 0, L298_Y, L298[0], L298[1], C["l298"], "L298N", alpha=0.6, tc="white", z=5)
     xb, yb = BAT[0] / 2 + 1.2, BAT[1] / 2 + 1.2
     for s in (-1, 1):
@@ -271,7 +271,7 @@ def planta_piso2(pp):
     caja(ax, 0, OLED_PINES_Y, 13, 4.5, "white", "pines", fs=5.5, z=5)
     caja(ax, 0, -3, 60, 6, "white", z=6)
     for s in (-1, 1):
-        caja(ax, s * RAN2_X, TOF_LADO[1], 16, 22, "white", z=6)
+        caja(ax, s * RAN2_X, 34.5, 16, 22, "white", z=6)
     ax.add_patch(Circle(BOTON_XY, 5, fc="#333", ec="k", zorder=5))
     ax.text(BOTON_XY[0], BOTON_XY[1] + 8, "botón Ø7", ha="center", fontsize=7)
     ax.add_patch(Circle(SWITCH_XY, 3.2, fc="#777", ec="k", zorder=5))

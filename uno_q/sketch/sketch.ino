@@ -329,6 +329,7 @@ void setup() {
   pinMode(BTN, INPUT_PULLUP);
   motores(0, 0);
 
+  delay(500);  // la OLED tarda en despertar al prender por VIN
   Wire.begin();
   Wire.setClock(400000);
   oled.begin(SSD1306_SWITCHCAPVCC, 0x3C, true);  // va de cabeza en el mastil

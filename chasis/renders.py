@@ -31,11 +31,30 @@ ARRIBA = (0, -25, 430, 0, 0, 60)
 LADO = (330, 0, 60, 0, 0, 45)
 
 # Puntos de referencia (mm, coordenadas del robot)
-Z1, ESP, SEP = 22, 3, 35
+D_RUEDA, A_RUEDA, MOT_L, MOT_H = 45, 17, 26.11, 11.94
+EJE_Z = D_RUEDA / 2
+ESP, SEP = 3, 35
+Z1 = EJE_Z + MOT_H / 2
 Z2 = Z1 + ESP + SEP
-ZP = Z2 + ESP + 9.5
+ZS = Z2 + ESP                                   # cara de arriba del piso 2
+ZP = ZS + 9.5
+UNO_Z = ZS + 6                                  # cara de abajo del PCB del UNO
+X_RUEDA_INT = 60 - A_RUEDA
+X_RUEDA = X_RUEDA_INT + A_RUEDA / 2             # centro de la rueda en X
+X_MOT_EXT = X_RUEDA_INT - 1.5
+X_MOT = X_MOT_EXT - MOT_L / 2
+X_MOT_INT = X_MOT_EXT - MOT_L
+CUNA_Z = Z1 - MOT_H - 2 + 0.3                   # fondo de la cuna del motor
+TOF_LADO = (43, 40)
+TOF_BASE = 7                                    # base del soporte del VL53L0X
+TOF_ATRAS = 0.3 + 2.5 + 14                      # centro de la ranura al final del dupont
+POSTE_F = (32, 55.5)                             # columna delantera derecha del piso 1
+BAT_XB = 70 / 2 + 0.2 + 1                       # tope de la bateria
+T_Z = Z1 + ESP + 19                             # conector T: fondo (sobre la bateria)
 L298_Y = -37.5
-BORNE_Z = Z1 + ESP + 5 + 1.6 + 4
+L298_Z = Z1 + ESP + 5                           # cara de abajo del PCB del L298N
+BORNE_Z = L298_Z + 1.6 + 4
+LOG_Z = L298_Z + 11                             # punta de los pines del header de logica
 XP = 35 / 2 + 1.1
 
 
@@ -67,7 +86,7 @@ def pin(n):
 
 
 def shield_z(placa):
-    return 70.6 + (11.5 if placa == "uno_r3" else 8.5)
+    return UNO_Z + 1.6 + (11.5 if placa == "uno_r3" else 8.5)
 
 
 def zhd(placa):
@@ -89,78 +108,78 @@ VISTAS = {
     "fig_atras": ({"PASO": 0, "PLACA": "nano"}, ATRAS, []),
     "fig_lado": ({"PASO": 0, "PLACA": "nano"}, LADO, []),
     "paso1": ({"PASO": 1}, ABAJO_ATRAS, [
-        ("Cuna del motor", (26.5, -12, 13), (230, 120)),
-        ("Motor N20", (-30, -6, 14), (-260, 60)),
-        ("Capacitor 100 nF\nentre terminales", (-12.5, 0, 19.5), (-250, -150)),
-        ("Cables por la\nranura de 10 × 10", (-27, -27, 30), (-180, -170)),
-        ("Oreja con inserto;\nM3×12 desde arriba", (26.5, 29, 10.5), (180, -160)),
+        ("Cuna del motor", (X_MOT, -4, CUNA_Z), (230, 120)),
+        ("Motor N20", (-(X_MOT + 3.5), -6, CUNA_Z + 3.7), (-260, 60)),
+        ("Capacitor 100 nF\nentre terminales", (-(X_MOT_INT - 2), 0, Z1 - 2.5), (-250, -150)),
+        ("Cables por la\nranura de 10 × 10", (-27, -27, Z1 - 3), (-180, -170)),
+        ("Oreja con inserto;\nM3×12 desde arriba", (X_MOT, 29, CUNA_Z + 0.2), (180, -160)),
     ]),
     "paso2": ({"PASO": 2}, ABAJO_FRENTE, [
         ("TCS34725: entra deslizando\npor atrás, LED al suelo", (0, 28, 6), (280, 200)),
-        ("Capucha (2 M3×8)", (-14, 46, 8), (-300, 140)),
+        ("Capucha (2 M3×8)", (-11.5, 30, 2), (-300, 140)),
         ("Patín delantero", (0, 48.5, 2.5), (-120, 230)),
         ("Patín trasero (2 M3×8)", (0, -52, 2), (230, -40)),
-        ("Rueda a presión\nen el eje", (-50, 8, 10), (-260, -80)),
+        ("Rueda a presión\nen el eje", (-X_RUEDA, 8, 10), (-260, -80)),
     ]),
     "paso3": ({"PASO": 3}, ATRAS, [
         ("OUT1-OUT2\nmotor izquierdo", (-21.5, -32.5, BORNE_Z), (-260, -40)),
         ("OUT3-OUT4\nmotor derecho", (21.5, -32.5, BORNE_Z), (230, -120)),
-        ("Poste con inserto\n+ M3×8", (18.5, -56, 28), (200, 120)),
-        ("Cables del motor por\nla ranura de su lado", (27, -26, 27), (260, 30)),
-        ("Quita los jumpers\nENA y ENB", (1, -21.5, 41), (-120, -230)),
+        ("Poste con inserto\n+ M3×8", (18.5, -56, L298_Z - 2), (200, 120)),
+        ("Cables del motor por\nla ranura de su lado", (27, -26, Z1 + 5), (260, 30)),
+        ("Quita los jumpers\nENA y ENB", (1, -21.5, LOG_Z), (-120, -230)),
     ]),
-    "det_l298": ({"PIEZA": "det_l298"}, (0, -45, 150, 0, -33, 30), [
+    "det_l298": ({"PIEZA": "det_l298"}, (0, -45, L298_Z + 120, 0, -33, L298_Z), [
         ("12V (batería)", (18, -16, BORNE_Z + 4), (170, -170)),
         ("GND", (13, -16, BORNE_Z + 4), (60, -230)),
         ("5V: no se usa", (8, -16, BORNE_Z + 4), (-60, -260)),
-        ("ENA", (1, -19, 41), (-80, -170)),
-        ("IN1 IN2 IN3 IN4", (-5.3, -19, 41), (-260, -150)),
-        ("ENB", (-11.7, -19, 41), (-300, -60)),
-        ("Jumper 5V-EN:\nse queda", (3.9, -18, 38), (240, -40)),
+        ("ENA", (1, -19, LOG_Z), (-80, -170)),
+        ("IN1 IN2 IN3 IN4", (-5.3, -19, LOG_Z), (-260, -150)),
+        ("ENB", (-11.7, -19, LOG_Z), (-300, -60)),
+        ("Jumper 5V-EN:\nse queda", (3.9, -18, L298_Z + 8), (240, -40)),
         ("OUT1 OUT2", (-21.5, -32.5, BORNE_Z), (-260, 60)),
         ("OUT3 OUT4", (21.5, -32.5, BORNE_Z), (240, 80)),
     ]),
     "paso4": ({"PASO": 4}, FRENTE, [
-        ("Batería 2S sobre velcro", (18, 7, 44), (260, -120)),
-        ("Conector T macho", (-18, 10, 51), (-150, -220)),
-        ("Balanceo (solo para\ncargar)", (-25, 20, 49), (-300, -60)),
-        ("Topes", (33.7, -6.7, 33), (250, 40)),
+        ("Batería 2S sobre velcro", (18, 7, T_Z), (260, -120)),
+        ("Conector T macho", (-18, 10, T_Z + 7), (-150, -220)),
+        ("Balanceo (solo para\ncargar)", (-25, 20, T_Z + 5), (-300, -60)),
+        ("Topes", (BAT_XB, -6.7, Z1 + ESP + 8), (250, 40)),
     ]),
     "paso5": ({"PASO": 5}, FRENTE, [
-        ("VL53L0X frente", (0, 54.5, 30), (230, 160)),
-        ("VL53L0X izquierdo", (-50.5, 34.5, 30), (-230, 130)),
-        ("VL53L0X derecho", (50.5, 34.5, 30), (230, 60)),
-        ("5 dupont (GPIO1 libre),\nantes de meterlo", (0, 50, 35), (-80, 230)),
-        ("Cables hacia arriba", (23, 33.2, 62), (250, -150)),
+        ("VL53L0X frente", (0, 54.5, Z1 + ESP + TOF_BASE + 5), (230, 160)),
+        ("VL53L0X izquierdo", (-(TOF_LADO[0] + 0.5), TOF_LADO[1], Z1 + ESP + TOF_BASE + 5), (230, -40)),
+        ("VL53L0X derecho", (TOF_LADO[0] + 0.5, TOF_LADO[1], Z1 + ESP + TOF_BASE + 5), (-230, 40)),
+        ("5 dupont (GPIO1 libre),\nantes de meterlo", (0, 50, Z1 + ESP + 10), (-80, 230)),
+        ("Cables hacia arriba", (23, 33.2, 62), (-250, -170)),
     ]),
     "paso6": ({"PASO": 6}, ATRAS, [
-        ("Columna impresa\n(inserto arriba)", (48, -40, 45), (220, 60)),
-        ("Dupont en ENA … ENB", (-5, -19, 47), (-200, -220)),
-        ("Cables hacia arriba", (-5, -3, 62), (120, -230)),
+        ("Columna impresa\n(inserto arriba)", (48, -40, Z1 + 23), (220, 60)),
+        ("Dupont en ENA … ENB", (-5, -19, L298_Z + 17), (-200, -220)),
+        ("Cables hacia arriba", (-5, -3, Z2 + 2), (120, -230)),
     ]),
-    "paso7": ({"PIEZA": "sub_piso2", "PLACA": "nano"}, (60, -170, 230, 0, -12, 70), [
+    "paso7": ({"PIEZA": "sub_piso2", "PLACA": "nano"}, (60, -170, Z2 + 170, 0, -12, Z2 + 10), [
         ("Nano: USB hacia atrás", (-19.9, -52, ZP + 5), (-260, 80)),
         ("Bus 5V (columna 4)", (hx(XP, 1) + 3, hy(13), ZP + 1), (250, 0)),
         ("Bus GND (columna 1)", (hx(XP, 1) + 3, hy(16), ZP + 1), (250, -110)),
         ("Bus SDA (columna 10)", (hx(XP, 1) + 3, hy(7), ZP + 1), (250, 110)),
         ("Bus SCL (columna 7)", (hx(XP, 1) + 3, hy(10), ZP + 1), (250, 50)),
         ("Puentes del Nano\nal bus", (-2, hy(11), ZP + 2), (-60, 260)),
-        ("OLED, pines al fondo", (0, 39.4, Z2 + ESP + 3), (-200, -200)),
-        ("Botón", (-38, 5, Z2 + ESP + 6), (-200, -40)),
-        ("Interruptor", (38, 5, Z2 + ESP + 9), (200, -120)),
-        ("Ranuras de cables", (26.5, 34.5, Z2 + ESP), (220, -200)),
+        ("OLED, pines al fondo", (0, 39.4, ZS + 3), (-200, -200)),
+        ("Botón", (-38, 5, ZS + 6), (-200, -40)),
+        ("Interruptor", (38, 5, ZS + 10), (200, -120)),
+        ("Ranuras de cables", (26.5, TOF_LADO[1], ZS), (220, -200)),
     ]),
     "paso8": ({"PASO": 8, "PLACA": "nano"}, FRENTE, [
         ("Piso 2 armado", (-40, 20, Z2 + ESP), (-230, -120)),
-        ("Cables de sensores\npor las ranuras", (-26.5, 30, Z2 + ESP + 4), (-150, -250)),
-        ("M3×8 en cada\ncolumna", (42, 50, Z2 + ESP + 3), (220, -60)),
+        ("Cables de sensores\npor las ranuras", (-TOF_LADO[0] + TOF_ATRAS + 4, TOF_LADO[1] - 4.5, ZS + 4), (-150, -250)),
+        ("M3×8 en cada\ncolumna", (POSTE_F[0], POSTE_F[1], ZS + 3), (220, -60)),
     ]),
-    "det_arnes": ({"PIEZA": "det_arnes"}, (200, -150, 170, 10, -3, 45), [
-        ("Interruptor: rojo a una pata\nexterior, 2 naranjas al centro", (38, 5, 46), (180, -200)),
-        ("Conector T hembra", (-6, 10, 51), (-200, -180)),
+    "det_arnes": ({"PIEZA": "det_arnes"}, (200, -150, Z1 + 148, 10, -3, Z1 + 23), [
+        ("Interruptor: rojo a una pata\nexterior, 2 naranjas al centro", (38, 5, Z2 - 14), (180, -200)),
+        ("Conector T hembra", (-4, 10, T_Z + 7), (-200, -180)),
         ("Naranja a 12V", (18, -15, BORNE_Z), (60, 200)),
         ("2 negros en GND:\nconector T y Nano", (13, -15, BORNE_Z), (-260, 170)),
-        ("Naranja y negro suben\npor la ranura central", (20, -3, 58), (-160, -260)),
+        ("Naranja y negro suben\npor la ranura central", (27, -3, Z2 - 4), (-160, -260)),
     ]),
     "paso9": ({"PASO": 9, "PLACA": "nano"}, ARRIBA, [
         ("XSHUT → A0 A1 A2", (hx(-XP, 4), pin_nano(4), ZP + 18), (240, -20)),
@@ -169,41 +188,41 @@ VISTAS = {
         ("VIN y GND\n(cable rígido)", (hx(-XP, 4), pin_nano(14), ZP + 3), (-60, -260)),
         ("Sensores → bus", (hx(XP, 2), hy(13), ZP + 17), (240, 60)),
     ]),
-    "paso10": ({"PIEZA": "det_arnes", "UNIDO": "true"}, (-140, 120, 150, -12, 10, 45), [
-        ("Une el conector T", (-12, 10, 51), (200, -180)),
-        ("Interruptor en OFF", (38, 5, 60), (220, 40)),
+    "paso10": ({"PIEZA": "det_arnes", "UNIDO": "true"}, (-140, 120, Z1 + 128, -12, 10, Z1 + 23), [
+        ("Une el conector T", (-12, 10, T_Z + 7), (200, -180)),
+        ("Interruptor en OFF", (38, 5, Z2), (220, 40)),
     ]),
     "det_insertos": ({"PIEZA": "det_insertos"}, (230, -260, 300, 40, 0, 10), [
         ("Columnas: 4", (48, -40, 38), (-200, -120)),
         ("Postes del L298N: 4", (-18.5, -56, 8), (-220, 60)),
-        ("Cunas: 2 c/u", (80, 39, 11.7), (200, -150)),
-        ("Capucha: 2", (107, 60, 20), (200, -40)),
-        ("Patín: 2", (116, -50, 22), (200, 80)),
+        ("Cunas: 2 c/u", (80, 39, 2 + MOT_H - 0.3), (200, -150)),
+        ("Capucha: 2", (107, 60, Z1 - 2), (200, -40)),
+        ("Patín: 2", (116, -50, Z1), (200, 80)),
     ]),
     # ---- UNO R3 / UNO Q: las piezas impresas son las mismas; la Q solo agrega mastil, camara, repisa, hub y clip ----
-    "r3_iso": ({"PLACA": "uno_r3"}, (250, 290, 250, 0, 0, 60), [
-        ("Arduino UNO R3\n(4 M3×8 a insertos)", (34.2, -30, 70), (-250, 180)),
-        ("Proto Shield + mini\nprotoboard: bus I2C", (30, -45, 83), (-250, 160)),
+    "r3_iso": ({"PLACA": "uno_r3"}, (250, 290, Z2 + 190, 0, 0, Z2), [
+        ("Arduino UNO R3\n(4 M3×8 a insertos)", (34.2, -30, UNO_Z + 1), (-250, 180)),
+        ("Proto Shield + mini\nprotoboard: bus I2C", (30, -45, shield_z("uno_r3") + 1), (-250, 160)),
         ("Tiras hembra del shield:\ndupont de L298N y botón", (20, -7.2, zhd("uno_r3")), (-250, -120)),
-        ("OLED en el marco\ndel piso 2", (0, 39.4, 66), (230, 20)),
-        ("Cables de sensores:\nsuben por las ranuras", (-29.2, 34, 70), (250, -20)),
-        ("VL53L0X frente", (0, 54.5, 30), (230, 170)),
-        ("Interruptor", (38, 5, 73), (-230, 80)),
+        ("OLED en el marco\ndel piso 2", (0, 39.4, ZS + 3), (230, 20)),
+        ("Cables de sensores:\nsuben por las ranuras", (-TOF_LADO[0] + TOF_ATRAS + 4, TOF_LADO[1], ZS + 7), (250, -20)),
+        ("VL53L0X frente", (0, 54.5, Z1 + ESP + TOF_BASE + 5), (230, 170)),
+        ("Interruptor", (38, 5, ZS + 10), (-230, 80)),
     ]),
-    "r3_atras": ({"PLACA": "uno_r3"}, (-250, -290, 250, 0, 0, 60), [
+    "r3_atras": ({"PLACA": "uno_r3"}, (-250, -290, Z2 + 190, 0, 0, Z2), [
         ("Header de potencia: VIN,\nGND, 5V (R3) o 3V3 (Q)", (pin("VIN")[0], pin("VIN")[1], zhd("uno_r3")), (250, -230)),
         ("A0 A1 A2: XSHUT\nde los VL53L0X", (pin("A1")[0], pin("A1")[1], zhd("uno_r3")), (250, -150)),
-        ("USB-B del R3", (-34.3, -19.9, 77), (-250, 40)),
-        ("L298N", (0, -58, 40), (250, 90)),
+        ("USB-B del R3", (-34.3, -19.9, UNO_Z + 8), (-250, 40)),
+        ("L298N", (0, -58, L298_Z + 10), (250, 90)),
     ]),
     "q_iso": ({"PLACA": "unoq"}, (300, -330, 330, 0, 5, 85), [
-        ("Arduino UNO Q\n(4 M3×8 a insertos)", (30, -50, 72), (-250, 150)),
-        ("Proto Shield con mini\nprotoboard: bus I2C", (-15, -31, 91), (230, 140)),
+        ("Arduino UNO Q\n(4 M3×8 a insertos)", (30, -50, UNO_Z + 3), (-250, 150)),
+        ("Proto Shield con mini\nprotoboard: bus I2C", (-15, -31, zbb("unoq") + 0.8), (230, 140)),
         ("Cámara UVC 32 × 32\nlente M12 gran angular", (0, 30, 165), (-260, -60)),
         ("Mástil PTR 10 o 15\n(medida pendiente)", (7.5, 10.5, 120), (-260, 40)),
         ("Hub USB en repisa\n(4 M3×8 a insertos)", (20, 39.5, 96.5), (240, -40)),
         ("OLED de cabeza en el\nclip del mástil", (0, -3, 120), (-240, -20)),
-        ("Cable USB-C en ángulo", (-38, -20, 76), (-220, 60)),
+        ("Cable USB-C en ángulo", (-38, -20, UNO_Z + 7), (-220, 60)),
     ]),
     "q_lado": ({"PLACA": "unoq"}, (-560, 40, 150, 0, 40, 85), [
         ("Lente a 150 mm,\n25° hacia abajo", (0, 30, 150), (220, -120)),
@@ -211,30 +230,30 @@ VISTAS = {
         ("El piso se ve desde\n≈ 3 cm frente al robot", (0, 92, 0), (-200, 60)),
         ("Hub: queda bajo\nel campo de visión", (0, 54, 96), (230, 120)),
     ]),
-    "r3_paso7": ({"PIEZA": "sub_piso2", "PLACA": "uno_r3"}, (170, -170, 210, 0, -12, 70), [
-        ("UNO R3 sobre 4 postes\ncon inserto (4 M3×8)", (34.2, -40, 70), (250, 100)),
-        ("Proto Shield: sus pines\nentran en los headers", (-34.3, -30, 82), (-250, 120)),
+    "r3_paso7": ({"PIEZA": "sub_piso2", "PLACA": "uno_r3"}, (170, -170, Z2 + 150, 0, -12, Z2 + 10), [
+        ("UNO R3 sobre 4 postes\ncon inserto (4 M3×8)", (34.2, -40, UNO_Z + 1), (250, 100)),
+        ("Proto Shield: sus pines\nentran en los headers", (-34.3, -30, shield_z("uno_r3")), (-250, 120)),
         ("Mini protoboard 170", (0, -31, zbb("uno_r3")), (-250, -40)),
         ("Puentes del bus", (bb(6, 5)[0], bb(6, 5)[1], zbb("uno_r3") + 2.5), (250, -60)),
-        ("OLED en su marco\n(pines al fondo)", (0, 39.4, 66), (-230, -180)),
-        ("Botón", (-38, 5, 70), (-230, -80)),
-        ("Interruptor", (38, 5, 73), (230, -180)),
+        ("OLED en su marco\n(pines al fondo)", (0, 39.4, ZS + 3), (-230, -180)),
+        ("Botón", (-38, 5, ZS + 7), (-230, -80)),
+        ("Interruptor", (38, 5, ZS + 10), (230, -180)),
     ]),
     "r3_paso8": ({"PASO": 8, "PLACA": "uno_r3"}, FRENTE, [
         ("Piso 2 armado, sobre las\ncolumnas (4 M3×8)", (-40, 20, Z2 + ESP), (-230, -120)),
-        ("Cables de sensores\npor las ranuras", (-26.5, 30, Z2 + ESP + 4), (-150, -250)),
+        ("Cables de sensores\npor las ranuras", (-TOF_LADO[0] + TOF_ATRAS + 4, TOF_LADO[1] - 4.5, ZS + 4), (-150, -250)),
         ("Cables de potencia y\nlógica: ranura central", (20, -3, Z2 + ESP + 2), (-230, 40)),
     ]),
-    "r3_paso9": ({"PASO": 9, "PLACA": "uno_r3"}, (190, -250, 250, 0, -25, 90), [
+    "r3_paso9": ({"PASO": 9, "PLACA": "uno_r3"}, (190, -250, Z2 + 190, 0, -25, Z2 + 30), [
         ("XSHUT → A0 A1 A2", (pin("A1")[0], pin("A1")[1], zhd("uno_r3") + 14), (240, -60)),
         ("L298N → D5 … D10", (pin("D8")[0], pin("D8")[1], zhd("uno_r3") + 14), (-240, -170)),
         ("Botón → D2 y GND", (pin("D2")[0], pin("D2")[1], zhd("uno_r3") + 14), (240, -170)),
         ("VIN y GND\n(potencia)", (pin("VIN")[0], pin("VIN")[1], zhd("uno_r3") + 1.2), (-240, 60)),
         ("Sensores → bus", (bb(8, 8)[0], bb(8, 8)[1], zbb("uno_r3") + 14), (240, 60)),
     ]),
-    "r3_paso10": ({"PIEZA": "det_arnes", "UNIDO": "true"}, (-140, 120, 150, -12, 10, 45), [
-        ("Une el conector T", (-12, 10, 51), (200, -180)),
-        ("Interruptor en OFF", (38, 5, 60), (220, 40)),
+    "r3_paso10": ({"PIEZA": "det_arnes", "UNIDO": "true"}, (-140, 120, Z1 + 128, -12, 10, Z1 + 23), [
+        ("Une el conector T", (-12, 10, T_Z + 7), (200, -180)),
+        ("Interruptor en OFF", (38, 5, Z2), (220, 40)),
     ]),
     "q_paso11": ({"PASO": 11, "PLACA": "unoq"}, (300, -330, 330, 0, 5, 85), [
         ("Mástil (PTR)", (7.5, 10.5, 120), (-250, 40)),
@@ -261,7 +280,7 @@ VISTAS = {
         ("Repisa sobre 4 postes", (-52, 26, 84.5), (-240, 60)),
         ("Hub → USB-C del UNO Q", (-51.5, 30, 90.5), (-240, -40)),
         ("Cámara → hub", (13, 40, 102.5), (240, 120)),
-        ("USB-C del UNO Q", (-38, -20, 75), (-240, 160)),
+        ("USB-C del UNO Q", (-38, -20, UNO_Z + 6), (-240, 160)),
     ]),
     "placa_x2d": ({"PIEZA": "placa_vista"}, (128, 127, 720, 128, 128, 0), []),
 }

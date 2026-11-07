@@ -170,7 +170,14 @@ def avanzar(n, rapido=False):
 # ---------- Vision ----------
 def abrir_camara():
     global cam
-    cam = cv2.VideoCapture(CAM_ID)
+    import glob
+    print("video:", sorted(glob.glob("/dev/video*")))
+    for i in range(CAM_ID, 12):
+        cam = cv2.VideoCapture(i, cv2.CAP_V4L2)
+        if cam.isOpened() and cam.read()[0]:
+            print("Camara en /dev/video%d" % i)
+            break
+        cam.release()
     cam.set(cv2.CAP_PROP_FRAME_WIDTH, ANCHO)
     cam.set(cv2.CAP_PROP_FRAME_HEIGHT, ALTO)
     cam.set(cv2.CAP_PROP_BUFFERSIZE, 1)

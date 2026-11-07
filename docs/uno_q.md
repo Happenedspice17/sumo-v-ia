@@ -166,9 +166,9 @@ Batería → interruptor → fusible de 3 A → módulo DC-DC con salida USB-C P
 
 ## 11. Ruedas
 
-Parámetros CAD actuales: `D_RUEDA` = 34 mm, `A_RUEDA` = 20 mm.
+Parámetros CAD actuales: `D_RUEDA` = 45 mm, `A_RUEDA` = 17 mm.
 
-- Diámetro mayor de 38 mm: requiere un pozo de rueda más grande.
+- Medidas reales del kit; el pozo del piso 1 se calcula de `D_RUEDA` y `MOT_H`.
 - El ancho cuenta para el límite de 120 mm.
 - Al cambiar la rueda: recalibrar `T_CELDA` y `T_90`.
 
