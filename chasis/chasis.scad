@@ -36,6 +36,7 @@ $ins = !en(PIEZA, ["piso1", "piso2", "cuna_motor", "capucha_color", "patin", "pr
 // las medidas de abajo ya lo compensan. Antes de imprimir todo, imprime PIEZA="prueba".
 HOLGURA = 0.2;                 // juego por lado entre pieza impresa y componente
 RANURA = 1.6 + 0.4;            // ranura para un PCB de 1.6 mm
+RAN_TOF = 1.6 + 0.2;           // ranura justa del VL53L0X (con 0.4 bailaba)
 M3_PASO = 3.4;                 // M3 pasante
 INSERTO = [4.0, 5.7];          // inserto de calor M3: agujero y largo (medir el suyo; ver PIEZA="prueba")
 D_BOTON = 7 + 2 * 0.15;        // boton de panel de 7 mm
@@ -211,14 +212,14 @@ module soporte_tof() {
   h = TOF[1] + 1.5;
   difference() {
     union() {
-      for (s = [-1, 1]) translate([s * (a / 2 + 0.5) - 2, -2.5, 0]) cube([4, 5, h]);
-      translate([-a / 2 - 1.5, -2.5, 0]) cube([a + 3, 5, 2]);                 // canal del borde de abajo
+      for (s = [-1, 1]) translate([s > 0 ? a / 2 - 4 : -a / 2 - 2, -3.5, 0]) cube([6, 7, h]);   // abrazan 4 mm de cada oreja
+      translate([-a / 2 - 2, -3.5, 0]) cube([a + 4, 7, 2]);                   // canal del borde de abajo
     }
-    translate([-a / 2, 0.5 - RANURA / 2, -1]) cube([a, RANURA, 20]);
+    translate([-a / 2, 0.5 - RAN_TOF / 2, -1]) cube([a, RAN_TOF, 20]);
     // entrada abocinada arriba
     hull() {
-      translate([-a / 2, 0.5 - RANURA / 2, h - 1.5]) cube([a, RANURA, 0.01]);
-      translate([-a / 2 - 0.8, 0.5 - RANURA / 2 - 0.8, h]) cube([a + 1.6, RANURA + 1.6, 0.01]);
+      translate([-a / 2, 0.5 - RAN_TOF / 2, h - 1.5]) cube([a, RAN_TOF, 0.01]);
+      translate([-a / 2 - 0.8, 0.5 - RAN_TOF / 2 - 0.8, h]) cube([a + 1.6, RAN_TOF + 1.6, 0.01]);
     }
   }
 }
