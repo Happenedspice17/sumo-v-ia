@@ -217,7 +217,10 @@ module soporte_tof() {
   yb = 0.5 - 0.8;                                  // cara de atras de la placa
   zt = TOF_BASE + TOF_PIN_Z - 1.25 - 0.4;          // tope del bloque, abajo del plastico del header
   color(k($col)) difference() {
-    translate([-a / 2, yb - 10, 0]) cube([a, 10, zt]);
+    union() {
+      translate([-a / 2, yb - 10, 0]) cube([a, 10, zt]);
+      for (s = [0, 1]) mirror([s, 0, 0]) translate([3 * PASO_PIN + 1, yb - 10, 0]) cube([a / 2 - 3 * PASO_PIN - 1, 10, TOF_BASE + TOF[1]]);   // torres sobre los insertos; el centro libre para los dupont
+    }
     translate([-7, yb - 1, TOF_BASE]) cube([14, 1.1, 20]);                                  // componentes de atras
     for (x = [-1, 1]) translate([x * 15.5, -11, -1]) cylinder(d = 10, h = 30);                 // libra la columna del piso 1 (laterales)
     for (x = [-1, 1]) translate([x * TOF_FIJ[0], TOF_FIJ[1], 0]) mirror([0, 0, 1]) ag_inserto(INSERTO[1]);
