@@ -213,13 +213,13 @@ module cable(pts, col, d = CABLE, nombre = "") {
 // canal, todo con ranura; el modulo baja desde arriba con el chip a +Y. Entre los postes queda libre el header.
 module soporte_tof() {
   // bloque detras del VL53L0X: 2 M3 x 10 por el frente (oreja -> inserto). Arriba queda libre para el header y los dupont
-  a = TOF[0] + 6;                                  // 3 mm de pared a los lados de los insertos del frente
+  a = TOF[0] + 3.4;                                // 2.2 mm de pared a los lados de los insertos del frente
   yb = 0.5 - 0.8;                                  // cara de atras de la placa
   zt = TOF_BASE + TOF_PIN_Z - 1.25 - 0.4;          // tope del bloque, abajo del plastico del header
   color(k($col)) difference() {
     translate([-a / 2, yb - 10, 0]) cube([a, 10, zt]);
     translate([-7, yb - 1, TOF_BASE]) cube([14, 1.1, 20]);                                  // componentes de atras
-    for (x = [-1, 1]) translate([x * 15.5, -11, -1]) cylinder(d = 9, h = 30);                  // libra la columna del piso 1 (laterales)
+    for (x = [-1, 1]) translate([x * 15.5, -11, -1]) cylinder(d = 10, h = 30);                 // libra la columna del piso 1 (laterales)
     for (x = [-1, 1]) translate([x * TOF_FIJ[0], TOF_FIJ[1], 0]) mirror([0, 0, 1]) ag_inserto(INSERTO[1]);
     for (s = [-1, 1]) translate([s * TOF_AG[0] / 2, yb, TOF_BASE + TOF_AG[1]]) rotate([-90, 0, 0]) {
       ag_inserto(INSERTO[1]);
