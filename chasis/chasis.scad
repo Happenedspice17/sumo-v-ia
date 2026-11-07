@@ -212,28 +212,23 @@ module cable(pts, col, d = CABLE, nombre = "") {
 // Soporte de VL53L0X, pieza aparte: base con 2 insertos (M3x8 desde abajo del piso 1), dos postes y un
 // canal, todo con ranura; el modulo baja desde arriba con el chip a +Y. Entre los postes queda libre el header.
 module soporte_tof() {
-  a = TOF[0] + 2 * HOLGURA;
-  h = TOF_BASE + TOF[1] + 1.5;
+  // bloque detras del VL53L0X: 2 M3 x 10 por el frente (oreja -> inserto). Arriba queda libre para el header y los dupont
+  a = TOF[0];
+  yb = 0.5 - 0.8;                                  // cara de atras de la placa
+  zt = TOF_BASE + TOF_PIN_Z - 1.25 - 0.4;          // tope del bloque, abajo del plastico del header
   color(k($col)) difference() {
-    union() {
-      for (s = [-1, 1]) translate([s > 0 ? a / 2 - 4 : -a / 2 - 2, -5.5, 0]) cube([6, 9, h]);   // abrazan 4 mm de cada oreja
-      translate([-a / 2 - 2, -5.5, 0]) cube([a + 4, 9, TOF_BASE + 2]);       // base y canal del borde de abajo
-    }
-    translate([-a / 2, 0.5 - RAN_TOF / 2, TOF_BASE]) cube([a, RAN_TOF, 20]);
+    translate([-a / 2, yb - 10, 0]) cube([a, 10, zt]);
+    translate([-7, yb - 1, TOF_BASE]) cube([14, 1.1, 20]);                                  // componentes de atras
     for (x = [-1, 1]) translate([x * TOF_FIJ[0], TOF_FIJ[1], 0]) mirror([0, 0, 1]) ag_inserto(INSERTO[1]);
-    // M3 x 8 desde el frente: pasa libre por el poste de enfrente y la oreja, rosca en el plastico del de atras
-    // (sin inserto: en los laterales la columna del piso 2 tapa la cara de atras)
-    for (s = [-1, 1]) translate([s * TOF_AG[0] / 2, 0, TOF_BASE + TOF_AG[1] + 1.5]) rotate([90, 0, 0]) {
-      translate([0, 0, -4]) cylinder(d = M3_PASO, h = 4, $fn = 24);
-      cylinder(d = 2.5, h = 5, $fn = 24);
-    }
-    // entrada abocinada arriba
-    hull() {
-      translate([-a / 2, 0.5 - RAN_TOF / 2, h - 1.5]) cube([a, RAN_TOF, 0.01]);
-      translate([-a / 2 - 0.8, 0.5 - RAN_TOF / 2 - 0.8, h]) cube([a + 1.6, RAN_TOF + 1.6, 0.01]);
+    for (s = [-1, 1]) translate([s * TOF_AG[0] / 2, yb, TOF_BASE + TOF_AG[1]]) rotate([-90, 0, 0]) {
+      ag_inserto(INSERTO[1]);
+      translate([0, 0, -9.5]) cylinder(d = 3, h = 10, $fn = 24);                          // punta del M3 x 10
     }
   }
-  if ($ins) for (x = [-1, 1]) translate([x * TOF_FIJ[0], TOF_FIJ[1], 0]) mirror([0, 0, 1]) inserto();
+  if ($ins) {
+    for (x = [-1, 1]) translate([x * TOF_FIJ[0], TOF_FIJ[1], 0]) mirror([0, 0, 1]) inserto();
+    for (s = [-1, 1]) translate([s * TOF_AG[0] / 2, yb, TOF_BASE + TOF_AG[1]]) rotate([-90, 0, 0]) inserto();
+  }
 }
 
 // Lugares de los 3 soportes de VL53L0X sobre el piso 1: frente, izquierdo y derecho
