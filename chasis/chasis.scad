@@ -133,7 +133,7 @@ function uno_h(n) = [for (h = [0 : 3]) if (idx(UNO_H[h], n) >= 0) h][0];
 function uno_pin(n) = uno([UNO_HX[uno_h(n)] + idx(UNO_H[uno_h(n)], n) * PASO_PIN, UNO_HY[uno_h(n)]]);
 
 // Camara USB en mastil de PTR (concepto: el PTR y su anclaje se definen cuando haya medida oficial)
-MASTIL = 15;             // 10 o 15 mm, pendiente
+MASTIL = 20;             // perfil de aluminio 2020 (ranura T, hoyo al centro), 75 mm de largo
 MASTIL_XY = [0, 10.5];   // al centro, entre el UNO y el OLED
 CAM_Z = 150;             // altura del lente sobre el suelo
 CAM_INCL = 25;           // grados hacia abajo
@@ -313,6 +313,7 @@ module piso2() {
     for (s = [-1, 1]) translate([s * RAN2_X, RAN2_Y, ESP / 2]) cube([16, 22, ESP + 2], center = true); // cables de sensores
     translate([BOTON_XY[0], BOTON_XY[1], 0]) agujero(D_BOTON, ESP);
     translate([SWITCH_XY[0], SWITCH_XY[1], 0]) agujero(D_SWITCH, ESP);
+    translate(MASTIL_XY) agujero(5.5, ESP);                                                      // M5 al hoyo central del mastil 2020
   }
   if ($ins && PLACA != "nano") {
     for (a = UNO_AG) translate(concat(uno(a), ESP + UNO_POSTE)) inserto();
@@ -983,7 +984,7 @@ PRM_UNO = concat(PRM_BASE, PLACA == "unoq" ? PRM_OLED_Q : PRM_OLED_R3);
 module mastil() {
   // provisional: solo marca el lugar; el PTR, su anclaje y el hueco se disenan con la medida oficial
   color("silver", 0.45) translate([MASTIL_XY[0] - MASTIL / 2, MASTIL_XY[1] - MASTIL / 2, Z2 + ESP])
-    cube([MASTIL, MASTIL, CAM_Z - 14 - Z2 - ESP]);
+    cube([MASTIL, MASTIL, CAM_Z - 6 - Z2 - ESP]);
 }
 
 // Cabeza de la camara (pieza impresa, provisional): manga sobre el PTR, brazo y placa inclinada CAM_INCL hacia abajo
@@ -993,6 +994,7 @@ module cabeza_camara() {
     difference() {
       translate([MASTIL_XY[0] - m / 2, MASTIL_XY[1] - m / 2, CAM_Z - 26]) cube([m, m, 26]);
       translate([MASTIL_XY[0] - MASTIL / 2 - 0.2, MASTIL_XY[1] - MASTIL / 2 - 0.2, CAM_Z - 27]) cube([MASTIL + 0.4, MASTIL + 0.4, 21]);
+      translate([MASTIL_XY[0] - m / 2 - 1, MASTIL_XY[1], CAM_Z - 16]) rotate([0, 90, 0]) cylinder(d = 2.5, h = 5);   // M3 opresor a la ranura
     }
     translate([MASTIL_XY[0], CAM_Y, CAM_Z]) rotate([-CAM_INCL, 0, 0]) difference() {                  // placa porta camara
       translate([-CAM_PCB / 2 - 2, -10.6, -CAM_PCB / 2 - 2]) cube([CAM_PCB + 4, 3, CAM_PCB + 4]);
