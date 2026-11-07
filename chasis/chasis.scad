@@ -213,7 +213,7 @@ module cable(pts, col, d = CABLE, nombre = "") {
 // canal, todo con ranura; el modulo baja desde arriba con el chip a +Y. Entre los postes queda libre el header.
 module soporte_tof() {
   // bloque detras del VL53L0X: 2 M3 x 10 por el frente (oreja -> inserto). Arriba queda libre para el header y los dupont
-  a = TOF[0];
+  a = TOF[0] + 6;                                  // 3 mm de pared a los lados de los insertos del frente
   yb = 0.5 - 0.8;                                  // cara de atras de la placa
   zt = TOF_BASE + TOF_PIN_Z - 1.25 - 0.4;          // tope del bloque, abajo del plastico del header
   color(k($col)) difference() {
