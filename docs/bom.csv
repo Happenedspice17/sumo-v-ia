@@ -4,6 +4,7 @@ Impresa 3D,"Piso 2 (marco del OLED, alojamiento de la placa, botón, interruptor
 Impresa 3D,Cuna de motor,PETG o PLA,2
 Impresa 3D,Capucha del sensor de color con patín delantero,PLA negro,1
 Impresa 3D,Patín trasero,PETG o PLA,1
+Impresa 3D,Soporte de VL53L0X (se cambia solo si se rompe),PLA negro,3
 Impresa 3D,Pieza de prueba de tolerancias,El mismo de las demás,1
 Impresa 3D,Repisa del hub USB (solo Q),PETG o PLA,1
 Impresa 3D,"Cabeza de cámara, provisional (solo Q)",PETG o PLA,1
@@ -36,8 +37,8 @@ Cables,"Cable calibre 22 de silicón, rojo, negro, amarillo, blanco y naranja","
 Cables,Jumpers rígidos,Puentes del bus en la protoboard del shield y del bus a la placa,8
 Cables,Cinchos chicos y termofit de 3 mm,Ordenar cables y aislar soldaduras (la Q usa 2 más para el hub),12 / 30 cm
 Cables,Cinta aislante,"Sobre el USB-B del R3, bajo el shield",1
-Tornilleria,Inserto de calor M3 (latón),"Comunes: columnas (4) y postes del L298N (4) del piso 1, cunas (4), capucha (2), patín (2), placa en el piso 2 (4). Solo Q: repisa (4)",20 (+4 solo Q)
-Tornilleria,Tornillo Allen M3 × 8,"Comunes: L298N (4), piso 2 (4), placa (4), capucha (2), patín (2), VL53L0X (6). Solo Q: repisa (4)",22 (+4 solo Q)
+Tornilleria,Inserto de calor M3 (latón),"Comunes: columnas (4) y postes del L298N (4) del piso 1, cunas (4), capucha (2), patín (2), soportes de VL53L0X (6), placa en el piso 2 (4). Solo Q: repisa (4)",26 (+4 solo Q)
+Tornilleria,Tornillo Allen M3 × 8,"Comunes: L298N (4), piso 2 (4), placa (4), capucha (2), patín (2), soportes de VL53L0X (6), VL53L0X (6). Solo Q: repisa (4)",28 (+4 solo Q)
 Tornilleria,Tornillo Allen M3 × 12,Cunas de motor,4
 Tornilleria,Tornillo M2 (del kit de la cámara),Cámara en su cabeza,4 (solo Q)
 Tornilleria,Velcro adhesivo 3 × 5 cm,Bajo la batería,1

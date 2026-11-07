@@ -147,10 +147,10 @@ VISTAS = {
     ]),
     "paso5": ({"PASO": 5}, FRENTE, [
         ("VL53L0X frente", (0, 54.5, Z1 + ESP + TOF_BASE + 5), (230, 160)),
-        ("VL53L0X izquierdo", (-(TOF_LADO[0] + 0.5), TOF_LADO[1], Z1 + ESP + TOF_BASE + 5), (-230, 130)),
-        ("VL53L0X derecho", (TOF_LADO[0] + 0.5, TOF_LADO[1], Z1 + ESP + TOF_BASE + 5), (230, 60)),
+        ("VL53L0X izquierdo", (-(TOF_LADO[0] + 0.5), TOF_LADO[1], Z1 + ESP + TOF_BASE + 5), (230, -40)),
+        ("VL53L0X derecho", (TOF_LADO[0] + 0.5, TOF_LADO[1], Z1 + ESP + TOF_BASE + 5), (-230, 40)),
         ("5 dupont (GPIO1 libre),\nantes de meterlo", (0, 50, Z1 + ESP + 10), (-80, 230)),
-        ("Cables hacia arriba", (23, 33.2, 62), (250, -150)),
+        ("Cables hacia arriba", (23, 33.2, 62), (-250, -170)),
     ]),
     "paso6": ({"PASO": 6}, ATRAS, [
         ("Columna impresa\n(inserto arriba)", (48, -40, Z1 + 23), (220, 60)),
