@@ -52,27 +52,27 @@ R_ESQ = 30;         // radio de esquinas (deja girar en un pasillo de 180)
 ESP = 3;            // espesor de pisos
 
 // Ruedas y motores N20
-D_RUEDA = 34;
-A_RUEDA = 20;
-MOT_L = 24;         // caja + motor
-MOT_A = 12;         // ancho (Y)
-MOT_H = 10;         // alto (Z)
+D_RUEDA = 45;       // medida real
+A_RUEDA = 17;       // goma; la maza (7) no sobresale
+MOT_L = 26.11;      // caja + motor, sin eje (eje centrado, sale 7)
+MOT_A = 11.94;      // ancho (Y)
+MOT_H = 11.94;      // alto (Z)
 EJE_Z = D_RUEDA / 2;
 X_RUEDA_INT = L / 2 - A_RUEDA;           // 40
 X_MOT_EXT = X_RUEDA_INT - 1.5;           // cara de la caja de engranes
 X_MOT = X_MOT_EXT - MOT_L / 2;           // centro del motor
 X_MOT_INT = X_MOT_EXT - MOT_L;           // cara de las terminales (14.5)
 POZO_X = X_RUEDA_INT - 2;                // hueco de la rueda en el piso 1
-POZO_Y = 19;
+POZO_Y = sqrt(pow(D_RUEDA / 2, 2) - pow(MOT_H / 2, 2)) + 1.5;   // media cuerda de la rueda en el fondo del piso 1 + juego
 
 // Pisos
 Z1 = EJE_Z + MOT_H / 2;                  // fondo del piso 1 (toca el motor)
 SEP = 35;                                // columnas impresas del piso 1, con inserto arriba
 Z2 = Z1 + ESP + SEP;                     // fondo del piso 2
-POSTES = [[42, 50], [-42, 50], [48, -40], [-48, -40]];   // los de atras dejan libre el jack y el USB-B del R3
+POSTES = [[34, 55], [-34, 55], [48, -40], [-48, -40]];   // los de atras dejan libre el jack y el USB-B del R3
 
 // Componentes
-BAT = [65, 37, 19];      // 2S 18650 acostada a lo ancho (X, Y, Z)
+BAT = [70, 37, 19];      // 2S 18650 acostada a lo ancho (X, Y, Z)
 BAT_Y = 7;               // sobre el eje: deja libres los pasillos de los conectores de los VL53L0X
 BAT_PARED = 8;           // alto de los topes que la sujetan
 L298 = [43, 43, 27];
@@ -84,7 +84,7 @@ BORNE_Z = L298_Z + 1.6 + 4;              // altura de entrada de los cables a lo
 TOF = [25, 10.7];        // VL53L0X CJVL53L0XV2 (ancho, alto)
 TOF_AG = [20, 5.35];     // agujeros del VL53L0X (pasa M3): separacion y altura desde el borde sin pines, plano de UNIT
 TOF_FRENTE_Y = 54;
-TOF_LADO = [50, 34.5];   // (X, Y) de los soportes laterales
+TOF_LADO = [43, 40];     // (X, Y) de los soportes laterales: delante de la rueda y dentro de la esquina
 HEADER = [2.5, 6, 1.4];  // header recto: plastico, pin largo, punta corta que sale del lado del chip
 COLOR_MOD = 20.5;        // TCS34725 morado (medir el suyo)
 COLOR_Y = 34;
