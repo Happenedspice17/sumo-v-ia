@@ -46,8 +46,9 @@ X_MOT = X_MOT_EXT - MOT_L / 2
 X_MOT_INT = X_MOT_EXT - MOT_L
 CUNA_Z = Z1 - MOT_H - 2 + 0.3                   # fondo de la cuna del motor
 TOF_LADO = (43, 40)
+TOF_BASE = 7                                    # base del soporte del VL53L0X
 TOF_ATRAS = 0.3 + 2.5 + 14                      # centro de la ranura al final del dupont
-POSTE_F = (34, 55)                              # columna delantera derecha del piso 1
+POSTE_F = (32, 55.5)                             # columna delantera derecha del piso 1
 BAT_XB = 70 / 2 + 0.2 + 1                       # tope de la bateria
 T_Z = Z1 + ESP + 19                             # conector T: fondo (sobre la bateria)
 L298_Y = -37.5
@@ -145,9 +146,9 @@ VISTAS = {
         ("Topes", (BAT_XB, -6.7, Z1 + ESP + 8), (250, 40)),
     ]),
     "paso5": ({"PASO": 5}, FRENTE, [
-        ("VL53L0X frente", (0, 54.5, Z1 + ESP + 5), (230, 160)),
-        ("VL53L0X izquierdo", (-(TOF_LADO[0] + 0.5), TOF_LADO[1], Z1 + ESP + 5), (-230, 130)),
-        ("VL53L0X derecho", (TOF_LADO[0] + 0.5, TOF_LADO[1], Z1 + ESP + 5), (230, 60)),
+        ("VL53L0X frente", (0, 54.5, Z1 + ESP + TOF_BASE + 5), (230, 160)),
+        ("VL53L0X izquierdo", (-(TOF_LADO[0] + 0.5), TOF_LADO[1], Z1 + ESP + TOF_BASE + 5), (-230, 130)),
+        ("VL53L0X derecho", (TOF_LADO[0] + 0.5, TOF_LADO[1], Z1 + ESP + TOF_BASE + 5), (230, 60)),
         ("5 dupont (GPIO1 libre),\nantes de meterlo", (0, 50, Z1 + ESP + 10), (-80, 230)),
         ("Cables hacia arriba", (23, 33.2, 62), (250, -150)),
     ]),
@@ -205,7 +206,7 @@ VISTAS = {
         ("Tiras hembra del shield:\ndupont de L298N y botón", (20, -7.2, zhd("uno_r3")), (-250, -120)),
         ("OLED en el marco\ndel piso 2", (0, 39.4, ZS + 3), (230, 20)),
         ("Cables de sensores:\nsuben por las ranuras", (-TOF_LADO[0] + TOF_ATRAS + 4, TOF_LADO[1], ZS + 7), (250, -20)),
-        ("VL53L0X frente", (0, 54.5, Z1 + ESP + 5), (230, 170)),
+        ("VL53L0X frente", (0, 54.5, Z1 + ESP + TOF_BASE + 5), (230, 170)),
         ("Interruptor", (38, 5, ZS + 10), (-230, 80)),
     ]),
     "r3_atras": ({"PLACA": "uno_r3"}, (-250, -290, Z2 + 190, 0, 0, Z2), [

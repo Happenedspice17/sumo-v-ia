@@ -223,6 +223,7 @@ BOM_IMP = [
     ["Cuna de motor", "PETG o PLA", "Impresión 3D", "2"],
     ["Capucha del sensor de color con patín delantero", "PLA negro", "Impresión 3D", "1"],
     ["Patín trasero", "PETG o PLA", "Impresión 3D", "1"],
+    ["Soporte de VL53L0X (se cambia solo si se rompe)", "PLA negro", "Impresión 3D", "3"],
     ["Pieza de prueba de tolerancias", "El mismo de las demás", "Impresión 3D (primero)", "1"],
     ["Repisa del hub USB (solo Q)", "PETG o PLA", "Impresión 3D", "1"],
     ["Cabeza de cámara, provisional (solo Q)", "PETG o PLA", "Impresión 3D", "1"],
@@ -261,8 +262,8 @@ BOM_CABLES = [
     ["Cinta aislante", "Sobre el USB-B del R3, bajo el shield", "1"],
 ]
 BOM_TORN = [
-    ["Inserto de calor M3 (latón)", "20 (+4 solo Q)", "Comunes: columnas (4) y postes del L298N (4) del piso 1, cunas (4), capucha (2), patín (2), placa en el piso 2 (4). Solo Q: repisa (4)"],
-    ["Tornillo Allen M3 × 8", "22 (+4 solo Q)", "Comunes: L298N (4), piso 2 (4), placa (4), capucha (2), patín (2), VL53L0X (6). Solo Q: repisa (4)"],
+    ["Inserto de calor M3 (latón)", "26 (+4 solo Q)", "Comunes: columnas (4) y postes del L298N (4) del piso 1, cunas (4), capucha (2), patín (2), soportes de VL53L0X (6), placa en el piso 2 (4). Solo Q: repisa (4)"],
+    ["Tornillo Allen M3 × 8", "28 (+4 solo Q)", "Comunes: L298N (4), piso 2 (4), placa (4), capucha (2), patín (2), soportes de VL53L0X (6), VL53L0X (6). Solo Q: repisa (4)"],
     ["Tornillo Allen M3 × 12", "4", "Cunas de motor"],
     ["Tornillo M2 (del kit de la cámara)", "4 (solo Q)", "Cámara en su cabeza"],
     ["Velcro adhesivo 3 × 5 cm", "1", "Bajo la batería"],
@@ -486,6 +487,7 @@ def manual_ensamble():
                  ["Cuna de motor (2)", "Base abajo, hueco del motor arriba", "PETG, 4 paredes, 40 %", "No"],
                  ["Capucha de color", "Orejas sobre la cama, patín arriba", "PLA negro, 4 paredes, 30 %", "No"],
                  ["Patín trasero", "Barra sobre la cama, domo arriba", "PETG, 4 paredes, 40 %", "No"],
+                 ["Soporte de VL53L0X (×3)", "Base sobre la cama", "PLA, 4 paredes, 40 %", "No"],
                  ["Repisa, cabeza de cámara, clip OLED (solo Q)", "Cara plana sobre la cama", "PETG, 4 paredes, 40 %", "No"]],
                 [44, 56, 50, 26]),
           *lista([
@@ -508,11 +510,11 @@ def manual_ensamble():
               "Empuja sin forzar: entra solo con el calor en 5–10 s. Para cuando quede a ras.",
               "Antes de que enfríe, aplánalo con algo metálico frío para dejarlo parejo.",
               "Piso 1: arriba de las 4 columnas y de los 4 postes del L298N. Cunas: en la cara de las orejas. "
-              "Capucha y patín: en la cara que va contra el piso 1.",
+              "Capucha, patín y soportes de VL53L0X: en la cara que va contra el piso 1.",
               "Piso 2: 4 insertos para la placa. <b>Solo Q:</b> otros 4 en los postes de la repisa.",
           ], num=True),
           img("det_insertos.png", 165, 85),
-          fig("Fig. 3. Insertos (dorados): 20 comunes, más 4 de la repisa solo con la UNO Q."),
+          fig("Fig. 3. Insertos (dorados): 26 comunes, más 4 de la repisa solo con la UNO Q."),
           CondPageBreak(60 * mm),
           h2("4.3 Soldadura"),
           *lista([
@@ -593,8 +595,9 @@ def manual_ensamble():
               "entre la batería y el borde del L298N quedan ~4.5 mm libres para doblar los cables de potencia.",
               "paso4.png")
     H += paso("Paso 5. Sensores de distancia VL53L0X",
-              "3 VL53L0X con header, 15 dupont hembra-macho, 6 Allen M3×8",
-              ["Conecta 5 dupont a cada sensor <b>antes</b> de meterlo: VIN rojo, GND negro, SCL cian, SDA azul y "
+              "3 soportes de VL53L0X con insertos, 3 VL53L0X con header, 15 dupont hembra-macho, 12 Allen M3×8",
+              ["Atornilla cada soporte al piso 1 con 2 M3×8 desde abajo. Si uno se rompe, se cambia solo ese soporte.",
+               "Conecta 5 dupont a cada sensor <b>antes</b> de meterlo: VIN rojo, GND negro, SCL cian, SDA azul y "
                "XSHUT verde. GPIO1 queda libre.",
                "Baja cada sensor por las ranuras de su soporte: chip hacia afuera, pines arriba apuntando hacia adentro.",
                "Fija cada sensor con 2 M3×8 desde el frente, uno por oreja: pasan libres el poste de enfrente y la oreja, y "
