@@ -329,7 +329,7 @@ module cuna_motor() {
       translate([-8, -MOT_A / 2 - 3, 0]) cube([16, MOT_A + 6, h]);
       for (y = CUNA_Y) translate([-3.5, min(0, y + sign(y) * 3.5), 0]) cube([7, abs(y) + 3.5, h]);
     }
-    translate([-9, -MOT_A / 2 - 0.1, 2]) cube([18, MOT_A + 0.2, MOT_H + 1]);
+    translate([-9, -6, 2]) cube([18, 12, MOT_H + 1]);
     for (y = CUNA_Y) translate([0, y, h]) ag_inserto(10);
   }
   if ($ins) for (y = CUNA_Y) translate([0, y, h]) inserto();
