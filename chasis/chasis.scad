@@ -82,7 +82,7 @@ L298_POSTE = 5;          // postes impresos del L298N, con inserto
 L298_Z = Z1 + ESP + L298_POSTE;          // cara de abajo de su PCB
 BORNE_Z = L298_Z + 1.6 + 4;              // altura de entrada de los cables a los bornes
 TOF = [25, 10.7];        // VL53L0X CJVL53L0XV2 (ancho, alto)
-TOF_AG = [20, 5.35];     // agujeros del VL53L0X (2.6 mm): separacion y altura desde el borde sin pines, plano de UNIT
+TOF_AG = [20, 5.35];     // agujeros del VL53L0X (pasa M3): separacion y altura desde el borde sin pines, plano de UNIT
 TOF_FRENTE_Y = 54;
 TOF_LADO = [50, 34.5];   // (X, Y) de los soportes laterales
 HEADER = [2.5, 6, 1.4];  // header recto: plastico, pin largo, punta corta que sale del lado del chip
@@ -217,10 +217,11 @@ module soporte_tof() {
       translate([-a / 2 - 2, -3.5, 0]) cube([a + 4, 7, 2]);                   // canal del borde de abajo
     }
     translate([-a / 2, 0.5 - RAN_TOF / 2, -1]) cube([a, RAN_TOF, 20]);
-    // M2 x 8 desde el frente: pasa libre por el poste de enfrente y la oreja, rosca en el de atras
+    // M3 x 8 desde el frente: pasa libre por el poste de enfrente y la oreja, rosca en el plastico del de atras
+    // (sin inserto: en los laterales la columna del piso 2 tapa la cara de atras)
     for (s = [-1, 1]) translate([s * TOF_AG[0] / 2, 0, TOF_AG[1]]) rotate([90, 0, 0]) {
-      translate([0, 0, -4]) cylinder(d = 2.4, h = 4, $fn = 24);
-      cylinder(d = 1.7, h = 5, $fn = 24);
+      translate([0, 0, -4]) cylinder(d = M3_PASO, h = 4, $fn = 24);
+      cylinder(d = 2.5, h = 5, $fn = 24);
     }
     // entrada abocinada arriba
     hull() {
