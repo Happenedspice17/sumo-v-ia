@@ -332,7 +332,7 @@ void setup() {
   delay(500);  // la OLED tarda en despertar al prender por VIN
   Wire.begin();
   Wire.setClock(400000);
-  oled.begin(SSD1306_SWITCHCAPVCC, 0x3C, true);  // va de cabeza en el mastil
+  oled.begin(SSD1306_SWITCHCAPVCC, 0x3C, false);  // derecha en la cabeza de la camara
   oled.setTextColor(SSD1306_WHITE);
   tofOk = tofInit();
   if (!tofOk) falla("SIN VL53L0X");
