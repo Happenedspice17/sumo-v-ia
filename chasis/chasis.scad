@@ -141,7 +141,7 @@ CAM_FOV = [100, 75];     // lente M12 gran angular (horizontal, vertical)
 CAM_PCB = 32;            // modulo UVC de 32 x 32 mm, agujeros M2 a 28 mm
 // OLED en la cara de atras del mastil (solo Q): header acodado de 4 pines hacia ARRIBA (el OLED va de cabeza; en el
 // codigo se gira la pantalla 180 grados), sujeto por un clip impreso. Asi sus cables salen por arriba, sin cruzar los del shield.
-OLED_MZ = 108;                                   // borde de abajo del OLED sobre el suelo
+OLED_MZ = CAM_Z + 5.5 - OLED[1];                 // borde de abajo del OLED (va en la cabeza de la camara, header arriba)
 CLIP_YB = MASTIL_XY[1] - (MASTIL + 6) / 2;       // cara de atras del collar y de la manga de la camara
 CLIP_Z0 = 100;                                   // abajo del clip (el collar mide 12)
 
@@ -410,7 +410,6 @@ module placa() {
 module placa_q() {
   translate([CAMA / 2, MARGEN + 2, 0]) translate([0, -22, 0]) repisa();
   translate([60, 80, -(CAM_Z - 26)]) translate([-MASTIL_XY[0], -MASTIL_XY[1], 0]) cabeza_camara();
-  translate([160, 80, -CLIP_Z0]) translate([-MASTIL_XY[0], -CLIP_YB + 5.5, 0]) clip_oled();
 }
 
 // ---------- Componentes comprados (solo para el ensamble) ----------
@@ -901,9 +900,9 @@ function p_tof(t, i) = t == 0 ? [-TOF_LADO[0] + TOF_ATRAS + 4, TOF_LADO[1] + xk(
                      : t == 2 ? [TOF_LADO[0] - TOF_ATRAS - 4, TOF_LADO[1] - xk(i), ZS + 4]
                      : [23 + (i - 2.5) * 1.5, TOF_FRENTE_Y - TOF_ATRAS - 4, Z1 + ESP + TOF_BASE + TOF_PIN_Z + TOF_SUBE + i * 1.5 + 14];
 // OLED del mastil: 4 dupont parados sobre su header acodado; el cable sale por arriba de la carcasa
-OLED_YH = CLIP_YB - 2 - 1.6 - 1.25;                      // eje de los pines (delante de la cara del PCB)
+OLED_YH = CLIP_YB - 1.5 + DUPONT[1];                     // punta de los dupont (header recto hacia adelante, sobre la manga)
 function oled_x(i) = MASTIL_XY[0] + (i - 1.5) * PASO_PIN; // GND VCC SCL SDA (OLED de cabeza, visto desde atras)
-OLED_ZSAL = OLED_MZ + OLED[1] - 1.25 + DUPONT[1] + 0.75;   // z donde sale el cable del OLED (arriba de la carcasa)
+OLED_ZSAL = OLED_MZ + OLED[1] - 2.5;                       // fila de pines del OLED
 function oled_def() = [for (i = [0 : 3]) let(l = [1, 0, 2, 3][i])
   [str("OLED ", SEN_OLED[i], " -> bus ", UBUS_NOM[l]), COL_OLED[i],
    PLACA == "unoq" ? [oled_x(i), OLED_YH, OLED_ZSAL] : [20 + i * 1.5, OLED_PINES_Y, ZS + 4],
@@ -1000,6 +999,17 @@ module cabeza_camara() {
       translate([-8, -11, -8]) cube([16, 4, 16]);
     }
     translate([MASTIL_XY[0] - 5, MASTIL_XY[1] + m / 2 - 1, CAM_Z - 26]) cube([10, CAM_Y - MASTIL_XY[1] - m / 2 - 6, 12]);   // brazo
+    // OLED atras, de pie, header recto hacia adelante por encima de la manga; entra por arriba en 2 rieles
+    yb = MASTIL_XY[1] - m / 2;
+    xo = OLED[0] / 2;
+    difference() {
+      union() {
+        translate([MASTIL_XY[0] - xo - 2.4, yb - 1.5, CAM_Z - 26]) cube([2 * xo + 4.8, 1.5, 26]);
+        for (s = [-1, 1]) translate([MASTIL_XY[0] + s * (xo + 0.9) - 1.5, yb - 8, CAM_Z - 26]) cube([3, 8, OLED_MZ + OLED[1] - CAM_Z + 26]);
+      }
+      translate([MASTIL_XY[0] - xo - 0.2, yb - 4 - 1.6 - 0.2, OLED_MZ - 0.2]) cube([2 * xo + 0.4, 2, 40]);   // ranura del PCB
+      translate([MASTIL_XY[0] - xo + 0.65, yb - 9, OLED_MZ - 0.2]) cube([2 * xo - 1.3, 6, 40]);             // ventana
+    }
   }
 }
 
@@ -1090,13 +1100,13 @@ module clip_oled() {
 
 // OLED en la cara de atras del mastil, de cabeza: PCB, vidrio, header acodado (pines hacia arriba) y sus 4 carcasas dupont
 module oled_mastil() {
-  translate([MASTIL_XY[0], CLIP_YB - 2, OLED_MZ]) rotate([90, 0, 0]) {       // z local -> -Y, y local -> +Z
+  translate([MASTIL_XY[0], CLIP_YB - 4, OLED_MZ]) rotate([90, 0, 0]) {       // z local -> -Y, y local -> +Z
     color(k("navy")) translate([-OLED[0] / 2, 0, 0]) cube([OLED[0], OLED[1], 1.6]);
     color(k("black")) translate([-13, 2.4, 1.6]) cube([26, 19, 1.4]);
-    color(k("dimgray")) translate([-2 * PASO_PIN, OLED[1] - 3.75, 1.6]) cube([4 * PASO_PIN, 2.5, 2.5]);   // plastico del header
+    color(k("dimgray")) translate([-2 * PASO_PIN, OLED[1] - 3.75, -2.5]) cube([4 * PASO_PIN, 2.5, 2.5]);  // header recto, atras
     for (i = [0 : 3]) {
       x = (i - 1.5) * PASO_PIN;
-      color(k("black")) translate([x - DUPONT[0] / 2, OLED[1] - 1.25, 2.85 - DUPONT[0] / 2]) cube([DUPONT[0], DUPONT[1], DUPONT[0]]);
+      color(k("black")) translate([x - DUPONT[0] / 2, OLED[1] - 3.75, -2.5 - DUPONT[1]]) cube([DUPONT[0], DUPONT[0], DUPONT[1]]);
     }
   }
 }
@@ -1105,7 +1115,6 @@ module oled_mastil() {
 module q_extra(fov = true) {
   mastil();
   camara(fov);
-  clip_oled();
   oled_mastil();
   translate([0, 0, REPISA_Z]) repisa();
   for (p = REPISA_POSTES) translate(concat(p, REPISA_Z + REPISA_ESP)) tornillo(8);
