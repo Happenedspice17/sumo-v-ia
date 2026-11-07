@@ -219,6 +219,7 @@ module soporte_tof() {
   color(k($col)) difference() {
     translate([-a / 2, yb - 10, 0]) cube([a, 10, zt]);
     translate([-7, yb - 1, TOF_BASE]) cube([14, 1.1, 20]);                                  // componentes de atras
+    for (x = [-1, 1]) translate([x * 15.5, -11, -1]) cylinder(d = 9, h = 30);                  // libra la columna del piso 1 (laterales)
     for (x = [-1, 1]) translate([x * TOF_FIJ[0], TOF_FIJ[1], 0]) mirror([0, 0, 1]) ag_inserto(INSERTO[1]);
     for (s = [-1, 1]) translate([s * TOF_AG[0] / 2, yb, TOF_BASE + TOF_AG[1]]) rotate([-90, 0, 0]) {
       ag_inserto(INSERTO[1]);
