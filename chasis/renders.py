@@ -107,15 +107,15 @@ VISTAS = {
     "fig_atras": ({"PASO": 0, "PLACA": "nano"}, ATRAS, []),
     "fig_lado": ({"PASO": 0, "PLACA": "nano"}, LADO, []),
     "paso1": ({"PASO": 1}, ABAJO_ATRAS, [
-        ("Cuna del motor", (X_MOT, -12, CUNA_Z + 2.7), (230, 120)),
+        ("Cuna del motor", (X_MOT, -4, CUNA_Z), (230, 120)),
         ("Motor N20", (-(X_MOT + 3.5), -6, CUNA_Z + 3.7), (-260, 60)),
         ("Capacitor 100 nF\nentre terminales", (-(X_MOT_INT - 2), 0, Z1 - 2.5), (-250, -150)),
-        ("Cables por la\nranura de 10 × 10", (-27, -27, Z1 + ESP + 5), (-180, -170)),
+        ("Cables por la\nranura de 10 × 10", (-27, -27, Z1 - 3), (-180, -170)),
         ("Oreja con inserto;\nM3×12 desde arriba", (X_MOT, 29, CUNA_Z + 0.2), (180, -160)),
     ]),
     "paso2": ({"PASO": 2}, ABAJO_FRENTE, [
         ("TCS34725: entra deslizando\npor atrás, LED al suelo", (0, 28, 6), (280, 200)),
-        ("Capucha (2 M3×8)", (-14, 46, 8), (-300, 140)),
+        ("Capucha (2 M3×8)", (-11.5, 30, 2), (-300, 140)),
         ("Patín delantero", (0, 48.5, 2.5), (-120, 230)),
         ("Patín trasero (2 M3×8)", (0, -52, 2), (230, -40)),
         ("Rueda a presión\nen el eje", (-X_RUEDA, 8, 10), (-260, -80)),
@@ -175,10 +175,10 @@ VISTAS = {
     ]),
     "det_arnes": ({"PIEZA": "det_arnes"}, (200, -150, Z1 + 148, 10, -3, Z1 + 23), [
         ("Interruptor: rojo a una pata\nexterior, 2 naranjas al centro", (38, 5, Z2 - 14), (180, -200)),
-        ("Conector T hembra", (-6, 10, T_Z + 7), (-200, -180)),
+        ("Conector T hembra", (-4, 10, T_Z + 7), (-200, -180)),
         ("Naranja a 12V", (18, -15, BORNE_Z), (60, 200)),
         ("2 negros en GND:\nconector T y Nano", (13, -15, BORNE_Z), (-260, 170)),
-        ("Naranja y negro suben\npor la ranura central", (20, -3, Z2 - 2), (-160, -260)),
+        ("Naranja y negro suben\npor la ranura central", (27, -3, Z2 - 4), (-160, -260)),
     ]),
     "paso9": ({"PASO": 9, "PLACA": "nano"}, ARRIBA, [
         ("XSHUT → A0 A1 A2", (hx(-XP, 4), pin_nano(4), ZP + 18), (240, -20)),
