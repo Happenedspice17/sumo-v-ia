@@ -55,7 +55,7 @@ ESP = 3;            // espesor de pisos
 D_RUEDA = 45;       // medida real
 A_RUEDA = 17;       // goma; la maza (7) no sobresale
 MOT_L = 26.11;      // caja + motor, sin eje (eje centrado, sale 7)
-MOT_A = 12;         // ancho (Y)
+MOT_A = 11.94;      // ancho (Y)
 MOT_H = 11;         // alto (Z)
 EJE_Z = D_RUEDA / 2;
 X_RUEDA_INT = L / 2 - A_RUEDA;           // 40
@@ -223,7 +223,7 @@ module soporte_tof() {
     for (x = [-1, 1]) translate([x * TOF_FIJ[0], TOF_FIJ[1], 0]) mirror([0, 0, 1]) ag_inserto(INSERTO[1]);
     // M3 x 8 desde el frente: pasa libre por el poste de enfrente y la oreja, rosca en el plastico del de atras
     // (sin inserto: en los laterales la columna del piso 2 tapa la cara de atras)
-    for (s = [-1, 1]) translate([s * TOF_AG[0] / 2, 0, TOF_BASE + TOF_AG[1]]) rotate([90, 0, 0]) {
+    for (s = [-1, 1]) translate([s * TOF_AG[0] / 2, 0, TOF_BASE + TOF_AG[1] + 1.5]) rotate([90, 0, 0]) {
       translate([0, 0, -4]) cylinder(d = M3_PASO, h = 4, $fn = 24);
       cylinder(d = 2.5, h = 5, $fn = 24);
     }
@@ -329,7 +329,7 @@ module cuna_motor() {
       translate([-8, -MOT_A / 2 - 3, 0]) cube([16, MOT_A + 6, h]);
       for (y = CUNA_Y) translate([-3.5, min(0, y + sign(y) * 3.5), 0]) cube([7, abs(y) + 3.5, h]);
     }
-    translate([-9, -MOT_A / 2 - HOLGURA, 2]) cube([18, MOT_A + 2 * HOLGURA, MOT_H + 1]);
+    translate([-9, -MOT_A / 2 - 0.1, 2]) cube([18, MOT_A + 0.2, MOT_H + 1]);
     for (y = CUNA_Y) translate([0, y, h]) ag_inserto(10);
   }
   if ($ins) for (y = CUNA_Y) translate([0, y, h]) inserto();
