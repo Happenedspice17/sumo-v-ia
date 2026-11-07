@@ -106,6 +106,7 @@ DUPONT = [2.5, 14];      // conector dupont (lado, largo)
 CABLE = 1.4;             // diametro del cable dupont
 CABLE_POT = 1.8;         // calibre 22 con forro de silicon (bateria, interruptor, motores)
 RAN2_X = 26.5;           // ranuras laterales de cables del piso 2 (centro X)
+RAN2_Y = 34.5;           // y su centro Y (como el piso 2 ya impreso; los cables suben en Y 36-44)
 T_CON = [13, 12.7, 7];   // conector T (Deans): cada mitad (X, Y, Z)
 T_POS = [-25, 10, Z1 + ESP + BAT[2]];    // conector T acostado sobre la bateria (borde izq, centro Y, fondo)
 
@@ -146,7 +147,7 @@ CLIP_Z0 = 100;                                   // abajo del clip (el collar mi
 
 // Hub USB en una repisa al frente del piso 2 (el mismo piso 2 sirve al R3: ahi la repisa no se pone)
 HUB = [95, 30, 12];      // medir el suyo
-REPISA_Z = 82;           // cara de abajo de la repisa: libra los dupont que suben por las ranuras
+REPISA_Z = Z2 + ESP + 19;   // cara de abajo de la repisa: postes de 19 mm (como el piso 2 ya impreso)
 REPISA_ESP = 2.5;
 REPISA_POSTES = [[52, 26], [-52, 26], [52, 44], [-52, 44]];
 HUB_Y = 39.5;
@@ -309,7 +310,7 @@ module piso2() {
     translate([0, OLED_PINES_Y, ESP / 2]) cube([13, 4.5, ESP + 2], center = true);               // pines del OLED
     translate([0, OLED_Y + 3, ESP / 2]) cube([20, 14, ESP + 2], center = true);                  // aligera
     translate([0, -3, ESP / 2]) cube([60, 6, ESP + 2], center = true);                           // cables de abajo
-    for (s = [-1, 1]) translate([s * RAN2_X, TOF_LADO[1], ESP / 2]) cube([16, 22, ESP + 2], center = true); // cables de sensores
+    for (s = [-1, 1]) translate([s * RAN2_X, RAN2_Y, ESP / 2]) cube([16, 22, ESP + 2], center = true); // cables de sensores
     translate([BOTON_XY[0], BOTON_XY[1], 0]) agujero(D_BOTON, ESP);
     translate([SWITCH_XY[0], SWITCH_XY[1], 0]) agujero(D_SWITCH, ESP);
   }

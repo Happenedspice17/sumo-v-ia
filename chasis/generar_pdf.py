@@ -271,7 +271,7 @@ def planta_piso2(pp):
     caja(ax, 0, OLED_PINES_Y, 13, 4.5, "white", "pines", fs=5.5, z=5)
     caja(ax, 0, -3, 60, 6, "white", z=6)
     for s in (-1, 1):
-        caja(ax, s * RAN2_X, TOF_LADO[1], 16, 22, "white", z=6)
+        caja(ax, s * RAN2_X, 34.5, 16, 22, "white", z=6)
     ax.add_patch(Circle(BOTON_XY, 5, fc="#333", ec="k", zorder=5))
     ax.text(BOTON_XY[0], BOTON_XY[1] + 8, "botón Ø7", ha="center", fontsize=7)
     ax.add_patch(Circle(SWITCH_XY, 3.2, fc="#777", ec="k", zorder=5))
