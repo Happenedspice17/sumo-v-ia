@@ -12,7 +12,7 @@ Electronica,Arduino UNO R3 (ATmega328P),Placa oficial y de respaldo; cable USB-B
 Electronica,Arduino UNO Q (solo Q),Placa principal; cable USB-C de datos,1
 Electronica,Proto Shield comercial,Con mini protoboard de 170 puntos; va sobre la placa,1
 Electronica,Motorreductor N20,"6 V, 300–500 RPM, sin encoder",2
-Electronica,Rueda para N20,"Ø34 × 20 mm, eje D de 3 mm",2
+Electronica,Rueda para N20,"Ø45 × 17 mm, eje D de 3 mm",2
 Electronica,Puente H L298N,Módulo rojo 43 × 43 mm con disipador,1
 Electronica,Sensor de color TCS34725,Módulo morado 20.5 × 20.5 mm,1
 Electronica,Sensor de distancia VL53L0X,"CJVL53L0XV2, 25 × 10.7 mm",3
@@ -37,7 +37,7 @@ Cables,Jumpers rígidos,Puentes del bus en la protoboard del shield y del bus a 
 Cables,Cinchos chicos y termofit de 3 mm,Ordenar cables y aislar soldaduras (la Q usa 2 más para el hub),12 / 30 cm
 Cables,Cinta aislante,"Sobre el USB-B del R3, bajo el shield",1
 Tornilleria,Inserto de calor M3 (latón),"Comunes: columnas (4) y postes del L298N (4) del piso 1, cunas (4), capucha (2), patín (2), placa en el piso 2 (4). Solo Q: repisa (4)",20 (+4 solo Q)
-Tornilleria,Tornillo Allen M3 × 8,"Comunes: L298N (4), piso 2 (4), placa (4), capucha (2), patín (2). Solo Q: repisa (4)",16 (+4 solo Q)
+Tornilleria,Tornillo Allen M3 × 8,"Comunes: L298N (4), piso 2 (4), placa (4), capucha (2), patín (2), VL53L0X (6). Solo Q: repisa (4)",22 (+4 solo Q)
 Tornilleria,Tornillo Allen M3 × 12,Cunas de motor,4
 Tornilleria,Tornillo M2 (del kit de la cámara),Cámara en su cabeza,4 (solo Q)
 Tornilleria,Velcro adhesivo 3 × 5 cm,Bajo la batería,1

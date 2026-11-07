@@ -233,7 +233,7 @@ BOM_ELEC = [
     ["Arduino UNO Q (solo Q)", "Placa principal; cable USB-C de datos", "1"],
     ["Proto Shield comercial", "Con mini protoboard de 170 puntos; va sobre la placa", "1"],
     ["Motorreductor N20", "6 V, 300–500 RPM, sin encoder", "2"],
-    ["Rueda para N20", "Ø34 × 20 mm, eje D de 3 mm", "2"],
+    ["Rueda para N20", "Ø45 × 17 mm, eje D de 3 mm", "2"],
     ["Puente H L298N", "Módulo rojo 43 × 43 mm con disipador", "1"],
     ["Sensor de color TCS34725", "Módulo morado 20.5 × 20.5 mm", "1"],
     ["Sensor de distancia VL53L0X", "CJVL53L0XV2, 25 × 10.7 mm", "3"],
@@ -262,7 +262,7 @@ BOM_CABLES = [
 ]
 BOM_TORN = [
     ["Inserto de calor M3 (latón)", "20 (+4 solo Q)", "Comunes: columnas (4) y postes del L298N (4) del piso 1, cunas (4), capucha (2), patín (2), placa en el piso 2 (4). Solo Q: repisa (4)"],
-    ["Tornillo Allen M3 × 8", "16 (+4 solo Q)", "Comunes: L298N (4), piso 2 (4), placa (4), capucha (2), patín (2). Solo Q: repisa (4)"],
+    ["Tornillo Allen M3 × 8", "22 (+4 solo Q)", "Comunes: L298N (4), piso 2 (4), placa (4), capucha (2), patín (2), VL53L0X (6). Solo Q: repisa (4)"],
     ["Tornillo Allen M3 × 12", "4", "Cunas de motor"],
     ["Tornillo M2 (del kit de la cámara)", "4 (solo Q)", "Cámara en su cabeza"],
     ["Velcro adhesivo 3 × 5 cm", "1", "Bajo la batería"],
@@ -593,10 +593,12 @@ def manual_ensamble():
               "entre la batería y el borde del L298N quedan ~4.5 mm libres para doblar los cables de potencia.",
               "paso4.png")
     H += paso("Paso 5. Sensores de distancia VL53L0X",
-              "3 VL53L0X con header, 15 dupont hembra-macho",
+              "3 VL53L0X con header, 15 dupont hembra-macho, 6 Allen M3×8",
               ["Conecta 5 dupont a cada sensor <b>antes</b> de meterlo: VIN rojo, GND negro, SCL cian, SDA azul y "
                "XSHUT verde. GPIO1 queda libre.",
                "Baja cada sensor por las ranuras de su soporte: chip hacia afuera, pines arriba apuntando hacia adentro.",
+               "Fija cada sensor con 2 M3×8 desde el frente, uno por oreja: pasan libres el poste de enfrente y la oreja, y "
+               "roscan en el plástico del poste de atrás. Aprieta sin forzar.",
                "Dobla los cables hacia arriba justo al final del dupont.",
                "Los laterales suben derecho. El del frente va hacia la ranura derecha."],
               "cada sensor tocó el fondo de su soporte y detrás de él quedan ~27 mm libres.",
