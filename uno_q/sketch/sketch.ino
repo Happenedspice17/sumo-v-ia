@@ -100,6 +100,17 @@ int rpcColor() {
   return c;
 }
 
+volatile uint16_t raw[4];   // r g b c de la ultima lectura (para el dashboard)
+
+int rpcRaw(int i) { return raw[constrain(i, 0, 3)]; }
+
+// r, g, b en milesimas
+int rpcSetRef(int i, int r, int g, int b, int c) {
+  if (i < 0 || i >= NCOL) return 0;
+  refs[i].r = r / 1000.0f; refs[i].g = g / 1000.0f; refs[i].b = b / 1000.0f; refs[i].c = c;
+  return 1;
+}
+
 int rpcArranque() {
   nRpc++;
   int a = arranque;
@@ -252,6 +263,7 @@ bool armado = true;
 void leeColor() {
   uint16_t r, g, b, c;
   leeRaw(r, g, b, c);
+  raw[0] = r; raw[1] = g; raw[2] = b; raw[3] = c;
   int k = clasifica(r, g, b, c);
   racha = (k == ultimo) ? racha + 1 : 1;
   ultimo = k;
@@ -358,6 +370,8 @@ void setup() {
   Bridge.provide("paredes", rpcParedes);
   Bridge.provide("set_cuenta", rpcCuenta);
   Bridge.provide("set_estado", rpcEstado);
+  Bridge.provide("raw", rpcRaw);
+  Bridge.provide("set_ref", rpcSetRef);
 
   if (digitalRead(BTN) == LOW) calibracion();
 }

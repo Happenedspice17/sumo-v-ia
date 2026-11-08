@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calibrar colores</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; padding: 16px; background: #f4f4f4; color: #222; }
+  h1 { font-size: 22px; margin: 0 0 12px; }
+  .ahora { display: flex; gap: 16px; align-items: center; background: #fff; border-radius: 12px; padding: 16px; }
+  #muestra { width: 90px; height: 90px; border-radius: 12px; border: 2px solid #ccc; }
+  #color { font-size: 36px; font-weight: 700; }
+  #nums { font-family: monospace; color: #555; }
+  p { margin: 16px 0 8px; }
+  .botones { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+  button { font-size: 18px; padding: 16px 8px; border: 0; border-radius: 12px; color: #fff; cursor: pointer; }
+  button small { display: block; font-size: 12px; opacity: .85; font-family: monospace; }
+  #msg { margin-top: 12px; font-weight: 600; color: #0a7a2f; min-height: 1.2em; }
+</style>
+</head>
+<body>
+<h1>Calibrar colores</h1>
+<div class="ahora">
+  <div id="muestra"></div>
+  <div>
+    <div>El robot ve:</div>
+    <div id="color">...</div>
+    <div id="nums"></div>
+  </div>
+</div>
+<p>Pon el sensor encima de un color y aprieta su botón:</p>
+<div class="botones" id="botones"></div>
+<div id="msg"></div>
+<script>
+const fondo = { PISO: "#777", ROJO: "#c62828", VERDE: "#2e7d32", AZUL: "#1565c0", AMAR: "#c79100" };
+let hechos = false;
+
+function pinta(d) {
+  const [r, g, b, c] = d.v;
+  const k = 255 / Math.max(r, g, b, 0.01);
+  document.getElementById("muestra").style.background = `rgb(${r * k},${g * k},${b * k})`;
+  document.getElementById("color").textContent = d.color;
+  document.getElementById("nums").textContent = `r ${r.toFixed(2)}  g ${g.toFixed(2)}  b ${b.toFixed(2)}  c ${c}`;
+  const cont = document.getElementById("botones");
+  if (!hechos) {
+    d.colores.forEach((n, i) => {
+      const bt = document.createElement("button");
+      bt.style.background = fondo[n] || "#555";
+      bt.onclick = () => guardar(i, n);
+      cont.appendChild(bt);
+    });
+    hechos = true;
+  }
+  d.colores.forEach((n, i) => {
+    const f = d.refs[i];
+    cont.children[i].innerHTML = `Es ${n}<small>${f[0]} ${f[1]} ${f[2]} ${f[3]}</small>`;
+  });
+}
+
+async function guardar(i, n) {
+  document.getElementById("msg").textContent = "Guardando " + n + "...";
+  const d = await (await fetch("/api/guardar?i=" + i)).json();
+  pinta(d);
+  document.getElementById("msg").textContent = n + " guardado ✔";
+}
+
+async function ciclo() {
+  try { pinta(await (await fetch("/api/lectura")).json()); } catch (e) {}
+  setTimeout(ciclo, 300);
+}
+ciclo();
+</script>
+</body>
+</html>

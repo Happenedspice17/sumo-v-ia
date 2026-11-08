@@ -26,14 +26,15 @@ GND común entre todo. No alimentes el UNO Q con el regulador de 5 V del L298N. 
 ## Programación (Arduino App Lab)
 
 1. Crea una app nueva llamada `Laberinto`.
-2. Copia `sketch/sketch.ino`, `python/main.py` y `python/requirements.txt` a la app.
+2. Copia `sketch/sketch.ino`, `python/main.py`, `python/requirements.txt`, `assets/index.html` y `app.yaml` a la app.
 3. En las librerías del sketch agrega `Adafruit SSD1306`, `Adafruit GFX Library`, `Adafruit TCS34725` y `VL53L0X` (de Pololu).
 4. Pulsa **Run**. App Lab carga el sketch al STM32 y arranca el Python.
 5. Marca la app para que arranque sola al encender.
 
 ## Calibración
 
-1. **Sensores**: enciende con el botón presionado. La OLED muestra `r g b c`, el color detectado y las 3 distancias. Pon el sensor de color sobre el piso y sobre cada marca y copia los valores a `refs[]`. Centra el robot en una celda y anota `D_LADO` y `D_FRENTE`.
+1. **Colores (fácil)**: con la app corriendo abre `http://<ip de la Q>:7000` (App Lab muestra el link). Pon el sensor sobre cada color y aprieta su botón; se guarda en `/app/colores.json` y ya no hay que tocar `refs[]`.
+   **Sensores**: enciende con el botón presionado. La OLED muestra `r g b c`, el color detectado y las 3 distancias. Pon el sensor de color sobre el piso y sobre cada marca y copia los valores a `refs[]`. Centra el robot en una celda y anota `D_LADO` y `D_FRENTE`.
 2. **Avance**: ajusta `MS_CELDA` hasta que avance 18 cm en un pasillo sin pared enfrente, y `MS_90` para giros de 90°. `MS_RAPIDA` se ajusta igual, en rectas de varias celdas. Calibra con la batería cargada. Si se desvía, ajusta `AJUSTE_DER`.
 3. **Cámara**: al arrancar se guardan `/app/cal.jpg` y `/app/mask.jpg`. Ajusta `ROI`, `PARED_LO/HI` y `UMBRAL` en `main.py` hasta que los rectángulos salgan rojos donde hay pared en la celda siguiente.
 4. **Laberinto**: ajusta `N`, `INICIO`, `RUMBO_INI` y `META` según las reglas del día.
