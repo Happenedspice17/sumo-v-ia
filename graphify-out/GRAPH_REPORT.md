@@ -1,9 +1,9 @@
-# Graph Report - sumo-v-ia  (2026-11-07)
+# Graph Report - sumo-v-ia  (2026-11-08)
 
 ## Corpus Check
-- 37 files · ~38,323 words
+- 37 files · ~38,334 words
 - Verdict: corpus is large enough that graph structure adds value.
-- Unclassified: 20 file(s) not represented in the graph (top: .stl 12, (none) 4, .csv 2)
+- Unclassified: 19 file(s) not represented in the graph (top: .stl 11, (none) 4, .csv 2)
 
 ## Summary
 - 481 nodes · 871 edges · 23 communities (21 shown, 2 thin omitted)
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `82f34ffc`
+- Built from commit: `dff56849`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
