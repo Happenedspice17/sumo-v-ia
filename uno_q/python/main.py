@@ -1,4 +1,5 @@
 from arduino.app_utils import *
+from arduino.app_bricks.web_ui import WebUI
 from collections import deque
 import cv2
 import json
@@ -14,6 +15,10 @@ RUMBO_INI = 0                            # 0=N 1=E 2=S 3=O
 META = {(7, 7), (7, 8), (8, 7), (8, 8)}
 COLORES = ["PISO", "ROJO", "VERDE", "AZUL", "AMAR"]
 ARCHIVO = "/app/mapa.json"
+ARCH_COL = "/app/colores.json"
+# r, g, b normalizados y brillo c; los mismos de refs[] del sketch
+REFS = [[0.33, 0.33, 0.33, 900], [0.58, 0.22, 0.20, 400], [0.26, 0.46, 0.28, 350],
+        [0.20, 0.32, 0.48, 300], [0.42, 0.40, 0.18, 700]]
 
 DX = [0, 1, 0, -1]
 DY = [1, 0, -1, 0]
@@ -237,6 +242,49 @@ def sensar():
             set_pared(nx, ny, (rumbo + rel) % 4, tentativo)
 
 
+# ---------- Dashboard de colores (http://<ip de la Q>:7000) ----------
+def lectura():
+    r, g, b, c = (rpc("raw", i) for i in range(4))
+    s = r + g + b + 1
+    return [r / s, g / s, b / s, c]
+
+
+def clasifica(v):
+    import math
+    d = [(v[0] - f[0]) ** 2 + (v[1] - f[1]) ** 2 + (v[2] - f[2]) ** 2
+         + 0.01 * math.log((v[3] + 1) / (f[3] + 1)) ** 2 for f in REFS]
+    k = min(range(len(REFS)), key=d.__getitem__)
+    return k if d[k] < 0.02 else 0
+
+
+def enviar_refs():
+    for i, f in enumerate(REFS):
+        rpc("set_ref", i, round(f[0] * 1000), round(f[1] * 1000), round(f[2] * 1000), round(f[3]))
+
+
+def api_lectura():
+    v = lectura()
+    return {"v": v, "color": COLORES[clasifica(v)], "colores": COLORES, "refs": REFS}
+
+
+def api_guardar(i: int):
+    m = [0, 0, 0, 0]
+    for _ in range(5):
+        m = [a + b / 5 for a, b in zip(m, lectura())]
+        time.sleep(0.05)
+    REFS[i] = [round(x, 3) for x in m[:3]] + [round(m[3])]
+    enviar_refs()
+    with open(ARCH_COL, "w") as f:
+        json.dump(REFS, f)
+    print("Color", COLORES[i], REFS[i])
+    return api_lectura()
+
+
+ui = WebUI()
+ui.expose_api("GET", "/api/lectura", api_lectura)
+ui.expose_api("GET", "/api/guardar", api_guardar)
+
+
 # ---------- Estrategias ----------
 def explorar(objetivos, est):
     estado(est)
@@ -302,6 +350,11 @@ def borrar():
 
 
 def iniciar():
+    global REFS
+    if os.path.exists(ARCH_COL):
+        with open(ARCH_COL) as f:
+            REFS = json.load(f)
+    enviar_refs()
     bordes()
     cargar()
     for c in range(1, len(COLORES)):

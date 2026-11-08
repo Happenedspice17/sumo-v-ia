@@ -2,4 +2,5 @@ name: Laberinto
 description: Robot que resuelve laberinto con camara y cuenta marcas de color
 icon: 🤖
 ports: []
-bricks: []
+bricks:
+  - arduino:web_ui: {}
