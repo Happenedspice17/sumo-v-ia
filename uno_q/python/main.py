@@ -23,7 +23,7 @@ BIT = [1, 2, 4, 8]
 # Los VL53L0X leen las paredes de la celda actual. La camara mira la celda
 # siguiente y adelanta sus paredes al mapa como "tentativas".
 CAM_ID = 0
-USAR_CAM = False                        # True cuando llegue la camara
+USAR_CAM = True
 ANCHO, ALTO = 320, 240
 # Regiones (x0, y0, x1, y1) en fraccion de la imagen; ajustar con /app/cal.jpg
 ROI = {
