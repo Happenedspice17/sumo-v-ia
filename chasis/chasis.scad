@@ -986,11 +986,13 @@ module mastil() {
     cube([MASTIL, MASTIL, CAM_Z - 6 - Z2 - ESP]);
 }
 
-// Pedestal impreso en lugar del perfil 2020: M5 desde abajo del piso 2 (hoyo de 4.2 para machuelear o autorroscar)
+// Pedestal impreso en lugar del perfil 2020: M4 desde abajo del piso 2 a un inserto de calor M4
+INSERTO_M4 = [5.6, 8];   // agujero y largo del inserto M4 (medir el suyo)
 module pedestal() {
   difference() {
     translate([-MASTIL / 2, -MASTIL / 2, 0]) cube([MASTIL, MASTIL, CAM_Z - 6 - Z2 - ESP]);
-    agujero(4.2, 25);
+    agujero(INSERTO_M4[0], INSERTO_M4[1] + 1);
+    agujero(4.2, 20);    // deja pasar el tornillo mas largo que el inserto
   }
 }
 
