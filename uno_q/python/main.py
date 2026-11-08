@@ -208,6 +208,7 @@ def leer_camara(debug=False):
         res[k] = mask[a[1]:b[1], a[0]:b[0]].mean() / 255 > UMBRAL
         if debug:
             cv2.rectangle(img, a, b, (0, 0, 255) if res[k] else (0, 255, 0), 2)
+    print("cam:", " ".join("%s=%s" % (k, "P" if v else ".") for k, v in res.items()))
     if debug:
         cv2.imwrite("/app/cal.jpg", img)
         cv2.imwrite("/app/mask.jpg", mask)
