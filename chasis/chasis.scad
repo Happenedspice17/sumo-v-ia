@@ -1007,7 +1007,8 @@ module cabeza_camara() {
     }
     translate([MASTIL_XY[0], CAM_Y, CAM_Z]) rotate([-CAM_INCL, 0, 0]) difference() {                  // placa porta camara
       translate([-CAM_PCB / 2 - 2, -10.6, -CAM_PCB / 2 - 2]) cube([CAM_PCB + 4, 3, CAM_PCB + 4]);
-      translate([-8, -11, -8]) cube([16, 4, 16]);
+      translate([-11, -11, -11]) cube([22, 4, 22]);                                                  // ventana: conector USB y cable
+      for (x = [-1, 1]) for (z = [-1, 1]) translate([x * 14, -11, z * 14]) rotate([-90, 0, 0]) cylinder(d = 2.3, h = 4, $fn = 16);   // M2 + tuerca atras
     }
     translate([MASTIL_XY[0] - 5, MASTIL_XY[1] + m / 2 - 1, CAM_Z - 26]) cube([10, CAM_Y - MASTIL_XY[1] - m / 2 - 6, 12]);   // brazo
     // OLED atras, de pie, header recto hacia adelante por encima de la manga; entra por arriba en 2 rieles
