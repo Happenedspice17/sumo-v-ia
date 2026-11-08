@@ -1,6 +1,6 @@
 # Prompt: Markdown a PDF imprimible para engargolar
 
-Copia todo lo de abajo y pégalo junto con el archivo `.md` (`manual_uso.md` o `manual_jueces.md`).
+Copia todo lo de abajo y pégalo junto con el archivo `.md` (`manual_uso.md` o `manual_tecnico.md`).
 
 ---
 

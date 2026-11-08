@@ -1,0 +1,29 @@
+@page { size: letter; margin: 18mm 18mm 20mm 18mm; }
+:root { --azul:#1f4e9c; --azul2:#e8eff9; --verde:#1e7a4a; --verde2:#e6f4ec; --naranja:#c25e00; --naranja2:#fff1e0; --gris:#f3f4f6; }
+body { font-size: var(--fs, 10.5pt); font-family: "DejaVu Sans", Helvetica, Arial, sans-serif; line-height: 1.45; color:#1b1b1b; margin:0; max-width:none; padding:0; }
+header#title-block-header { background: linear-gradient(135deg, var(--azul), #3a7bd5); color:#fff; padding: 18mm 12mm; border-radius: 6px; margin-bottom: 8mm; }
+header#title-block-header h1.title { font-size: 28pt; margin:0; color:#fff; border:none; }
+header#title-block-header p.subtitle { font-size: 14pt; margin: 4px 0 0; opacity:.9; }
+h1 { font-size: 16pt; color: var(--azul); border-bottom: 3px solid var(--azul); padding-bottom: 3px; margin: 9mm 0 3mm; break-after: avoid; }
+h2, h3 { color: var(--azul); break-after: avoid; }
+p, li { orphans: 3; widows: 3; }
+table { border-collapse: collapse; width: 100%; margin: 3mm 0; break-inside: avoid; font-size: 9.8pt; }
+th { background: var(--azul); color:#fff; text-align:left; padding: 5px 7px; }
+td { padding: 5px 7px; border-bottom: 1px solid #d5dbe5; vertical-align: top; }
+tr:nth-child(even) td { background: #f6f8fc; }
+code { font-family: "DejaVu Sans Mono", monospace; font-size: 9pt; background: var(--gris); padding: 1px 4px; border-radius: 3px; color:#a3261b; }
+pre { background: #1e2633; color:#e6e6e6; padding: 8px 10px; border-radius: 5px; break-inside: avoid; }
+pre code { background:none; color:inherit; }
+blockquote { margin: 3mm 0 3mm 4mm; padding: 4px 10px; border-left: 3px solid var(--azul); background: var(--azul2); font-style: italic; }
+.simple, .nota, .aviso { padding: 8px 12px; border-radius: 6px; margin: 3mm 0; break-inside: avoid; border-left: 6px solid; }
+.simple { background: var(--verde2); border-color: var(--verde); }
+.nota { background: var(--azul2); border-color: var(--azul); }
+.aviso { background: var(--naranja2); border-color: var(--naranja); }
+.simple p, .nota p, .aviso p { margin: 2px 0; }
+ul.task-list { list-style: none; padding-left: 2mm; }
+ul.task-list li { font-size: 11.5pt; margin: 3px 0; }
+input[type=checkbox] { display:none; }
+ul.task-list label::before { content:""; display:inline-block; width:12px; height:12px; border:2px solid var(--azul); border-radius:3px; margin-right:9px; vertical-align:-3px; background:#fff; }
+td:empty { height: 9mm; }
+
+section.level1 > p:first-of-type, section.level1 > .simple { break-after: avoid; }
