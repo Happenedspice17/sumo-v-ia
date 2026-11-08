@@ -986,6 +986,14 @@ module mastil() {
     cube([MASTIL, MASTIL, CAM_Z - 6 - Z2 - ESP]);
 }
 
+// Pedestal impreso en lugar del perfil 2020: M5 desde abajo del piso 2 (hoyo de 4.2 para machuelear o autorroscar)
+module pedestal() {
+  difference() {
+    translate([-MASTIL / 2, -MASTIL / 2, 0]) cube([MASTIL, MASTIL, CAM_Z - 6 - Z2 - ESP]);
+    agujero(4.2, 25);
+  }
+}
+
 // Cabeza de la camara (pieza impresa, provisional): manga sobre el PTR, brazo y placa inclinada CAM_INCL hacia abajo
 module cabeza_camara() {
   m = MASTIL + 6;
@@ -1209,6 +1217,7 @@ else if (PIEZA == "placa_vista") {
 }
 else if (PIEZA == "sub_piso2") sub_piso2();
 else if (PIEZA == "repisa") repisa();
+else if (PIEZA == "pedestal") pedestal();
 else if (PIEZA == "cabeza_camara") translate([0, 0, -(CAM_Z - 26)]) cabeza_camara();
 else if (PIEZA == "clip_oled") translate([0, 0, -CLIP_Z0]) clip_oled();
 else if (PIEZA == "placa_q") placa_q();
