@@ -59,6 +59,8 @@ volatile int ocupado = 0;
 volatile int colorPend = 0;
 volatile int arranque = 0;
 volatile int refresca = 1;
+volatile uint32_t nRpc = 0;   // sube cada vez que Python pregunta: si no cambia, Python no corre
+volatile char ult = '-';
 
 int cuenta[NCOL] = {0};
 int estado = 0;
@@ -72,6 +74,7 @@ float vel;
 
 // ---------- RPC desde Python ----------
 int rpcMover(int celdas, int r) {
+  ult = 'M';
   if (ocupado) return 0;
   arg = celdas;
   rapido = r;
@@ -81,6 +84,7 @@ int rpcMover(int celdas, int r) {
 }
 
 int rpcGirar(int cuartos) {
+  ult = 'G';
   if (ocupado) return 0;
   arg = cuartos;
   cmd = GIRA;
@@ -97,6 +101,7 @@ int rpcColor() {
 }
 
 int rpcArranque() {
+  nRpc++;
   int a = arranque;
   arranque = 0;
   return a;
@@ -277,6 +282,11 @@ void pinta() {
     oled.print(cuenta[i]);
     total += cuenta[i];
   }
+  oled.setCursor(0, 54);
+  oled.print("PY ");
+  oled.print(nRpc);
+  oled.print(" ");
+  oled.print(ult);
   oled.setCursor(90, 54);
   oled.print("T:");
   oled.print(total);
@@ -352,7 +362,7 @@ void setup() {
   if (digitalRead(BTN) == LOW) calibracion();
 }
 
-uint32_t tCtrl = 0, tColor = 0;
+uint32_t tCtrl = 0, tColor = 0, tOled = 0;
 int btnPrev = HIGH;
 uint32_t tBtn = 0;
 
@@ -375,9 +385,18 @@ void loop() {
 
   int btn = digitalRead(BTN);
   if (btn != btnPrev && t - tBtn > 50) {
-    if (btn == HIGH) arranque = (t - tBtn > 2000) ? 2 : 1;
+    if (btn == HIGH) {
+      arranque = (t - tBtn > 2000) ? 2 : 1;
+      ult = arranque == 2 ? 'L' : 'B';
+      refresca = 1;
+    }
     tBtn = t;
     btnPrev = btn;
+  }
+
+  if (tipo == NADA && t - tOled >= 300) {
+    tOled = t;
+    refresca = 1;
   }
 
   if (refresca) {

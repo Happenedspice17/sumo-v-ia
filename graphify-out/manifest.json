@@ -120,9 +120,9 @@
     "semantic_hash": ""
   },
   "uno_q/python/main.py": {
-    "mtime": 1794080563.4371629,
-    "seen": 1794080567.1385682,
-    "ast_hash": "884d5e1268f5b941fc101f6820eda365",
+    "mtime": 1794159892.4202957,
+    "seen": 1794159894.5967548,
+    "ast_hash": "edf79a6bb90eb0bbd9b7b34be5d9f2fb",
     "semantic_hash": ""
   },
   "uno_q/sketch/oled.h": {
@@ -441,6 +441,48 @@
     "mtime": 1794025481.2550879,
     "seen": 1794080567.1386492,
     "ast_hash": "e71c6b77cae6e0218837f1005776a670",
+    "semantic_hash": ""
+  },
+  "docs/manual_uso.md": {
+    "mtime": 1794109883.702305,
+    "seen": 1794110023.960062,
+    "ast_hash": "00748985b07abccfd50171e683819158",
+    "semantic_hash": ""
+  },
+  "docs/md_pdf.js": {
+    "mtime": 1794109996.6015909,
+    "seen": 1794110023.9600208,
+    "ast_hash": "faa076a39e1c2b5f7648c201cacf4cfc",
+    "semantic_hash": ""
+  },
+  "docs/md_pdf.sh": {
+    "mtime": 1794110010.3250837,
+    "seen": 1794110023.960024,
+    "ast_hash": "fbd8b75a2ced04c3b6a98a4ed2df1ba0",
+    "semantic_hash": ""
+  },
+  "docs/manual_tecnico.md": {
+    "mtime": 1794109939.2903085,
+    "seen": 1794110023.9600601,
+    "ast_hash": "e1e60d0b79496b624c01fc41e5315141",
+    "semantic_hash": ""
+  },
+  "docs/prompt_pdf.md": {
+    "mtime": 1794110021.9802477,
+    "seen": 1794110023.9600635,
+    "ast_hash": "fa068548527652210b8e62913bbcfc32",
+    "semantic_hash": ""
+  },
+  "docs/pdf/manual_tecnico.pdf": {
+    "mtime": 1794110011.7158563,
+    "seen": 1794110023.9600756,
+    "ast_hash": "1d7bcd074c103af9ec06ce338b8eff76",
+    "semantic_hash": ""
+  },
+  "docs/pdf/manual_uso.pdf": {
+    "mtime": 1794110010.9080746,
+    "seen": 1794110023.9600766,
+    "ast_hash": "e1e8aa2fd16e8987c94cdbf9534129fb",
     "semantic_hash": ""
   }
 }

@@ -1,17 +1,17 @@
-# Graph Report - sumo-v-ia  (2026-11-07)
+# Graph Report - sumo-v-ia  (2026-11-08)
 
 ## Corpus Check
-- 37 files · ~38,323 words
+- 42 files · ~41,453 words
 - Verdict: corpus is large enough that graph structure adds value.
-- Unclassified: 20 file(s) not represented in the graph (top: .stl 12, (none) 4, .csv 2)
+- Unclassified: 22 file(s) not represented in the graph (top: .stl 12, (none) 4, .csv 2)
 
 ## Summary
-- 481 nodes · 871 edges · 23 communities (21 shown, 2 thin omitted)
-- Extraction: 87% EXTRACTED · 13% INFERRED · 0% AMBIGUOUS · INFERRED: 113 edges (avg confidence: 0.86)
+- 508 nodes · 896 edges · 27 communities (22 shown, 5 thin omitted)
+- Extraction: 87% EXTRACTED · 13% INFERRED · 0% AMBIGUOUS · INFERRED: 115 edges (avg confidence: 0.86)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `82f34ffc`
+- Built from commit: `3374d6a5`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -39,6 +39,10 @@
 - Ponytail
 - ponytail-debt/SKILL.md
 - .claude/CLAUDE.md
+- manual_uso.md
+- md_pdf.js
+- gen
+- prompt_pdf.md
 
 ## God Nodes (most connected - your core abstractions)
 1. `regAddr` - 59 edges
@@ -61,17 +65,17 @@
   docs/GUIA_PROGRAMACION.md → atmega328p/laberinto/main.cpp
 - `Robot de laberinto – Microcontroladores 2` --references--> `pdf()`  [INFERRED]
   README.md → chasis/generar_pdf.py
-- `3.9 Crear la herramienta externa para flashear` --references--> `w()`  [INFERRED]
-  docs/GUIA_PROGRAMACION.md → atmega328p/img/diagrama.py
+- `2. Dos cerebros` --references--> `arranque()`  [INFERRED]
+  docs/manual_tecnico.md → atmega328p/laberinto/twi.cpp
 
 ## Import Cycles
 - None detected.
 
-## Communities (23 total, 2 thin omitted)
+## Communities (27 total, 5 thin omitted)
 
 ### Community 0 - "main.cpp"
 Cohesion: 0.07
-Nodes (52): acota(), avanzar(), bordes(), borrar(), calibracion(), cargar(), centrado(), clasifica() (+44 more)
+Nodes (51): acota(), avanzar(), bordes(), borrar(), calibracion(), cargar(), centrado(), clasifica() (+43 more)
 
 ### Community 1 - "regAddr"
 Cohesion: 0.03
@@ -110,16 +114,16 @@ Cohesion: 0.09
 Nodes (22): 10. Cambio de placa R3 ↔ Q, 11. Ruedas, 12. Pruebas de alimentación, 13. Pendientes, 14. Fuentes, 1. Plan, 2. Hardware, 3. Comunicación MCU ↔ Linux (Bridge) (+14 more)
 
 ### Community 10 - "twi.cpp"
-Cohesion: 0.42
-Nodes (9): datos(), arranque(), espera(), twiAlto(), twiByte(), twiEscribeReg(), twiInicio(), twiInit() (+1 more)
+Cohesion: 0.15
+Nodes (19): datos(), arranque(), espera(), twiAlto(), twiByte(), twiEscribeReg(), twiInicio(), twiInit() (+11 more)
 
 ### Community 11 - "SequenceStepTimeouts"
 Cohesion: 0.22
 Nodes (9): SequenceStepTimeouts, final_range_mclks, final_range_us, final_range_vcsel_period_pclks, msrc_dss_tcc_mclks, msrc_dss_tcc_us, pre_range_mclks, pre_range_us (+1 more)
 
 ### Community 12 - "Robot de laberinto – Arduino UNO R3 (ATmega328P)"
-Cohesion: 0.25
-Nodes (7): Alimentación, Bus I2C, Cableado, Cambio R3 ↔ UNO Q, Funcionamiento, Programar con Microchip Studio, Robot de laberinto – Arduino UNO R3 (ATmega328P)
+Cohesion: 0.22
+Nodes (8): ms(), Alimentación, Bus I2C, Cableado, Cambio R3 ↔ UNO Q, Funcionamiento, Programar con Microchip Studio, Robot de laberinto – Arduino UNO R3 (ATmega328P)
 
 ### Community 13 - "app.yaml"
 Cohesion: 0.33
@@ -153,24 +157,28 @@ Nodes (4): Before you write, Levels, Ponytail, The smallest complete change
 Cohesion: 0.50
 Nodes (3): Boundaries, Output, Scan
 
+### Community 23 - "manual_uso.md"
+Cohesion: 0.25
+Nodes (7): 1. Revisa antes de prender, 2. Prende, 3. El botón D2, 4. Calibra los colores (una vez por pista), 5. Ajusta el movimiento, 6. A jugar, 7. Si algo falla
+
 ## Knowledge Gaps
 - **87 isolated node(s):** `SYSRANGE_START`, `SYSTEM_THRESH_HIGH`, `SYSTEM_THRESH_LOW`, `SYSTEM_SEQUENCE_CONFIG`, `SYSTEM_RANGE_CONFIG` (+82 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 236 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **2 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 255 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **5 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `VL53L0X` connect `VL53L0X` to `regAddr`, `SequenceStepTimeouts`, `3. Parte A: UNO R3 con Microchip Studio`, `Iteración B – Arduino UNO Q (con cámara)`?**
-  _High betweenness centrality (0.284) - this node is a cross-community bridge._
+  _High betweenness centrality (0.268) - this node is a cross-community bridge._
 - **Are the 2 inferred relationships involving `VL53L0X` (e.g. with `4.7 Agregar las librerías del sketch` and `Programación (Arduino App Lab)`) actually correct?**
   _`VL53L0X` has 2 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `SYSRANGE_START`, `SYSTEM_THRESH_HIGH`, `SYSTEM_THRESH_LOW` to the rest of the system?**
   _87 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `main.cpp` be split into smaller, more focused modules?**
-  _Cohesion score 0.07343987823439878 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.07472613458528951 - nodes in this community are weakly interconnected._
 - **Why does `regAddr` connect `regAddr` to `VL53L0X`?**
-  _High betweenness centrality (0.181) - this node is a cross-community bridge._
+  _High betweenness centrality (0.168) - this node is a cross-community bridge._
 - **Are the 11 inferred relationships involving `calibracion()` (e.g. with `oledBorra()` and `oledDec()`) actually correct?**
   _`calibracion()` has 11 INFERRED edges - model-reasoned connections that need verification._
 - **Should `regAddr` be split into smaller, more focused modules?**

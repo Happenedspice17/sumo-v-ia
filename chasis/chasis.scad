@@ -85,7 +85,7 @@ TOF = [25, 11];          // VL53L0X CJVL53L0XV2 (ancho, alto), medido
 TOF_AG = [20, TOF[1] - 5.5];   // agujeros del VL53L0X (pasa M3): separacion y altura del centro (5.5 medido desde el borde de los pines)
 TOF_FRENTE_Y = 54;
 TOF_BASE = 7;            // base del soporte con inserto; el VL53L0X queda esta altura sobre el piso 1
-TOF_FIJ = [8, -1];       // insertos de la base del soporte (X a cada lado, Y)
+TOF_FIJ = [8, -5.3];     // insertos de abajo del soporte (X a cada lado, Y), al centro del bloque
 TOF_LADO = [43, 40];     // (X, Y) de los soportes laterales: delante de la rueda y dentro de la esquina
 HEADER = [2.5, 6, 1.4];  // header recto: plastico, pin largo, punta corta que sale del lado del chip
 COLOR_MOD = 20.5;        // TCS34725 morado (medir el suyo)
@@ -212,28 +212,27 @@ module cable(pts, col, d = CABLE, nombre = "") {
 // Soporte de VL53L0X, pieza aparte: base con 2 insertos (M3x8 desde abajo del piso 1), dos postes y un
 // canal, todo con ranura; el modulo baja desde arriba con el chip a +Y. Entre los postes queda libre el header.
 module soporte_tof() {
-  a = TOF[0] + 2 * HOLGURA;
-  h = TOF_BASE + TOF[1] + 1.5;
+  // bloque detras del VL53L0X: 2 M3 x 10 por el frente (oreja -> inserto). Arriba queda libre para el header y los dupont
+  a = TOF[0] + 3.4;                                // 2.2 mm de pared a los lados de los insertos del frente
+  yb = 0.5 - 0.8;                                  // cara de atras de la placa
+  zt = TOF_BASE + TOF_PIN_Z - 1.25 - 0.4;          // tope del bloque, abajo del plastico del header
   color(k($col)) difference() {
     union() {
-      for (s = [-1, 1]) translate([s > 0 ? a / 2 - 4 : -a / 2 - 2, -5.5, 0]) cube([6, 9, h]);   // abrazan 4 mm de cada oreja
-      translate([-a / 2 - 2, -5.5, 0]) cube([a + 4, 9, TOF_BASE + 2]);       // base y canal del borde de abajo
+      translate([-a / 2, yb - 10, 0]) cube([a, 10, zt]);
+      for (s = [0, 1]) mirror([s, 0, 0]) translate([3 * PASO_PIN + 1, yb - 10, 0]) cube([a / 2 - 3 * PASO_PIN - 1, 10, TOF_BASE + TOF[1]]);   // torres sobre los insertos; el centro libre para los dupont
     }
-    translate([-a / 2, 0.5 - RAN_TOF / 2, TOF_BASE]) cube([a, RAN_TOF, 20]);
+    translate([-7, yb - 1, TOF_BASE]) cube([14, 1.1, 20]);                                  // componentes de atras
+    for (x = [-1, 1]) translate([x * 15.5, -11, -1]) cylinder(d = 10, h = 30);                 // libra la columna del piso 1 (laterales)
     for (x = [-1, 1]) translate([x * TOF_FIJ[0], TOF_FIJ[1], 0]) mirror([0, 0, 1]) ag_inserto(INSERTO[1]);
-    // M3 x 8 desde el frente: pasa libre por el poste de enfrente y la oreja, rosca en el plastico del de atras
-    // (sin inserto: en los laterales la columna del piso 2 tapa la cara de atras)
-    for (s = [-1, 1]) translate([s * TOF_AG[0] / 2, 0, TOF_BASE + TOF_AG[1] + 1.5]) rotate([90, 0, 0]) {
-      translate([0, 0, -4]) cylinder(d = M3_PASO, h = 4, $fn = 24);
-      cylinder(d = 2.5, h = 5, $fn = 24);
-    }
-    // entrada abocinada arriba
-    hull() {
-      translate([-a / 2, 0.5 - RAN_TOF / 2, h - 1.5]) cube([a, RAN_TOF, 0.01]);
-      translate([-a / 2 - 0.8, 0.5 - RAN_TOF / 2 - 0.8, h]) cube([a + 1.6, RAN_TOF + 1.6, 0.01]);
+    for (s = [-1, 1]) translate([s * TOF_AG[0] / 2, yb, TOF_BASE + TOF_AG[1]]) rotate([-90, 0, 0]) {
+      ag_inserto(INSERTO[1]);
+      translate([0, 0, -9.5]) cylinder(d = 3, h = 10, $fn = 24);                          // punta del M3 x 10
     }
   }
-  if ($ins) for (x = [-1, 1]) translate([x * TOF_FIJ[0], TOF_FIJ[1], 0]) mirror([0, 0, 1]) inserto();
+  if ($ins) {
+    for (x = [-1, 1]) translate([x * TOF_FIJ[0], TOF_FIJ[1], 0]) mirror([0, 0, 1]) inserto();
+    for (s = [-1, 1]) translate([s * TOF_AG[0] / 2, yb, TOF_BASE + TOF_AG[1]]) rotate([-90, 0, 0]) inserto();
+  }
 }
 
 // Lugares de los 3 soportes de VL53L0X sobre el piso 1: frente, izquierdo y derecho
@@ -330,7 +329,7 @@ module cuna_motor() {
       translate([-8, -MOT_A / 2 - 3, 0]) cube([16, MOT_A + 6, h]);
       for (y = CUNA_Y) translate([-3.5, min(0, y + sign(y) * 3.5), 0]) cube([7, abs(y) + 3.5, h]);
     }
-    translate([-9, -6, 2]) cube([18, 12, MOT_H + 1]);
+    translate([-9, -11.9 / 2, 2]) cube([18, 11.9, MOT_H + 1]);
     for (y = CUNA_Y) translate([0, y, h]) ag_inserto(10);
   }
   if ($ins) for (y = CUNA_Y) translate([0, y, h]) inserto();
@@ -987,6 +986,14 @@ module mastil() {
     cube([MASTIL, MASTIL, CAM_Z - 6 - Z2 - ESP]);
 }
 
+// Pedestal impreso en lugar del perfil 2020: M5 desde abajo del piso 2 (hoyo de 4.2 para machuelear o autorroscar)
+module pedestal() {
+  difference() {
+    translate([-MASTIL / 2, -MASTIL / 2, 0]) cube([MASTIL, MASTIL, CAM_Z - 6 - Z2 - ESP]);
+    agujero(4.2, 25);
+  }
+}
+
 // Cabeza de la camara (pieza impresa, provisional): manga sobre el PTR, brazo y placa inclinada CAM_INCL hacia abajo
 module cabeza_camara() {
   m = MASTIL + 6;
@@ -1210,6 +1217,7 @@ else if (PIEZA == "placa_vista") {
 }
 else if (PIEZA == "sub_piso2") sub_piso2();
 else if (PIEZA == "repisa") repisa();
+else if (PIEZA == "pedestal") pedestal();
 else if (PIEZA == "cabeza_camara") translate([0, 0, -(CAM_Z - 26)]) cabeza_camara();
 else if (PIEZA == "clip_oled") translate([0, 0, -CLIP_Z0]) clip_oled();
 else if (PIEZA == "placa_q") placa_q();
