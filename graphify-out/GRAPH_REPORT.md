@@ -1,17 +1,17 @@
 # Graph Report - sumo-v-ia  (2026-11-08)
 
 ## Corpus Check
-- 37 files · ~38,334 words
+- 38 files · ~39,173 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 19 file(s) not represented in the graph (top: .stl 11, (none) 4, .csv 2)
 
 ## Summary
-- 481 nodes · 871 edges · 23 communities (21 shown, 2 thin omitted)
+- 492 nodes · 881 edges · 24 communities (22 shown, 2 thin omitted)
 - Extraction: 87% EXTRACTED · 13% INFERRED · 0% AMBIGUOUS · INFERRED: 113 edges (avg confidence: 0.86)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `dff56849`
+- Built from commit: `03a76102`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -39,6 +39,7 @@
 - Ponytail
 - ponytail-debt/SKILL.md
 - .claude/CLAUDE.md
+- Manual de uso: robot de laberinto (UNO Q)
 
 ## God Nodes (most connected - your core abstractions)
 1. `regAddr` - 59 edges
@@ -67,7 +68,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (23 total, 2 thin omitted)
+## Communities (24 total, 2 thin omitted)
 
 ### Community 0 - "main.cpp"
 Cohesion: 0.07
@@ -153,16 +154,20 @@ Nodes (4): Before you write, Levels, Ponytail, The smallest complete change
 Cohesion: 0.50
 Nodes (3): Boundaries, Output, Scan
 
+### Community 23 - "Manual de uso: robot de laberinto (UNO Q)"
+Cohesion: 0.18
+Nodes (10): 0. Antes de prender, 1. Prender, 2. El botón D2, 3. La pantalla, 4. Jugar (la competencia), 5. Calibrar colores (una vez por pista / luz), 6. Calibrar movimiento (en `sketch.ino`, sección Calibracion), 7. Si algo falla (+2 more)
+
 ## Knowledge Gaps
 - **87 isolated node(s):** `SYSRANGE_START`, `SYSTEM_THRESH_HIGH`, `SYSTEM_THRESH_LOW`, `SYSTEM_SEQUENCE_CONFIG`, `SYSTEM_RANGE_CONFIG` (+82 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 236 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 246 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **2 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `VL53L0X` connect `VL53L0X` to `regAddr`, `SequenceStepTimeouts`, `3. Parte A: UNO R3 con Microchip Studio`, `Iteración B – Arduino UNO Q (con cámara)`?**
-  _High betweenness centrality (0.284) - this node is a cross-community bridge._
+  _High betweenness centrality (0.271) - this node is a cross-community bridge._
 - **Are the 2 inferred relationships involving `VL53L0X` (e.g. with `4.7 Agregar las librerías del sketch` and `Programación (Arduino App Lab)`) actually correct?**
   _`VL53L0X` has 2 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `SYSRANGE_START`, `SYSTEM_THRESH_HIGH`, `SYSTEM_THRESH_LOW` to the rest of the system?**
@@ -170,7 +175,7 @@ _Questions this graph is uniquely positioned to answer:_
 - **Should `main.cpp` be split into smaller, more focused modules?**
   _Cohesion score 0.07343987823439878 - nodes in this community are weakly interconnected._
 - **Why does `regAddr` connect `regAddr` to `VL53L0X`?**
-  _High betweenness centrality (0.181) - this node is a cross-community bridge._
+  _High betweenness centrality (0.173) - this node is a cross-community bridge._
 - **Are the 11 inferred relationships involving `calibracion()` (e.g. with `oledBorra()` and `oledDec()`) actually correct?**
   _`calibracion()` has 11 INFERRED edges - model-reasoned connections that need verification._
 - **Should `regAddr` be split into smaller, more focused modules?**

@@ -442,5 +442,11 @@
     "seen": 1794080567.1386492,
     "ast_hash": "e71c6b77cae6e0218837f1005776a670",
     "semantic_hash": ""
+  },
+  "docs/manual_uso.md": {
+    "mtime": 1794106633.867452,
+    "seen": 1794106639.9220579,
+    "ast_hash": "8b338e1ca35d2a8aac1c41c8decd04b4",
+    "semantic_hash": ""
   }
 }
