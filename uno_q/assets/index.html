@@ -15,6 +15,10 @@
   .botones { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
   button { font-size: 18px; padding: 16px 8px; border: 0; border-radius: 12px; color: #fff; cursor: pointer; }
   button small { display: block; font-size: 12px; opacity: .85; font-family: monospace; }
+  .paso { background: #fff; border-radius: 12px; padding: 16px; margin-top: 16px; font-size: 20px; }
+  .paso #pasoBtn { width: 100%; font-size: 24px; margin: 12px 0; }
+  .nav { display: flex; gap: 10px; }
+  .nav button { flex: 1; background: #888; font-size: 16px; padding: 10px; }
   #msg { margin-top: 12px; font-weight: 600; color: #0a7a2f; min-height: 1.2em; }
 </style>
 </head>
@@ -28,12 +32,36 @@
     <div id="nums"></div>
   </div>
 </div>
-<p>Pon el sensor encima de un color y aprieta su botón:</p>
+<div class="paso">
+  <div id="pasoTxt"></div>
+  <button id="pasoBtn" onclick="pasoGuardar()"></button>
+  <div class="nav"><button onclick="ir(-1)">◀ Atrás</button><button onclick="ir(1)">Saltar ▶</button></div>
+</div>
+<p>O guarda uno suelto:</p>
 <div class="botones" id="botones"></div>
 <div id="msg"></div>
 <script>
 const fondo = { PISO: "#777", ROJO: "#c62828", VERDE: "#2e7d32", AZUL: "#1565c0", AMAR: "#c79100" };
-let hechos = false;
+let hechos = false, paso = 0, nombres = [];
+
+function verPaso() {
+  const t = document.getElementById("pasoTxt"), b = document.getElementById("pasoBtn");
+  if (!nombres.length) return;
+  if (paso >= nombres.length) {
+    t.innerHTML = "<b>¡Listo!</b> Pasa el sensor por cada color y revisa que arriba diga el nombre correcto. Si uno falla, dale Atrás y repítelo.";
+    b.style.display = "none";
+    return;
+  }
+  const n = nombres[paso];
+  t.innerHTML = `<b>Paso ${paso + 1} de ${nombres.length}:</b> pon el robot con el sensor encima del <b>${n}</b>, quieto, y aprieta el botón.`;
+  b.style.display = "";
+  b.style.background = fondo[n] || "#555";
+  b.textContent = "Guardar " + n;
+}
+
+function ir(d) { paso = Math.max(0, Math.min(nombres.length, paso + d)); verPaso(); }
+
+async function pasoGuardar() { await guardar(paso, nombres[paso]); ir(1); }
 
 function pinta(d) {
   const [r, g, b, c] = d.v;
@@ -50,6 +78,8 @@ function pinta(d) {
       cont.appendChild(bt);
     });
     hechos = true;
+    nombres = d.colores;
+    verPaso();
   }
   d.colores.forEach((n, i) => {
     const f = d.refs[i];
