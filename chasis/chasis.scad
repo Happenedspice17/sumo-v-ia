@@ -986,11 +986,13 @@ module mastil() {
     cube([MASTIL, MASTIL, CAM_Z - 6 - Z2 - ESP]);
 }
 
-// Pedestal impreso en lugar del perfil 2020: M5 desde abajo del piso 2 (hoyo de 4.2 para machuelear o autorroscar)
+// Pedestal impreso en lugar del perfil 2020: M4 desde abajo del piso 2 a un inserto de calor M4
+INSERTO_M4 = [5.6, 8];   // agujero y largo del inserto M4 (medir el suyo)
 module pedestal() {
   difference() {
     translate([-MASTIL / 2, -MASTIL / 2, 0]) cube([MASTIL, MASTIL, CAM_Z - 6 - Z2 - ESP]);
-    agujero(4.2, 25);
+    agujero(INSERTO_M4[0], INSERTO_M4[1] + 1);
+    agujero(4.2, 20);    // deja pasar el tornillo mas largo que el inserto
   }
 }
 
@@ -1004,8 +1006,16 @@ module cabeza_camara() {
       translate([MASTIL_XY[0] - m / 2 - 1, MASTIL_XY[1], CAM_Z - 16]) rotate([0, 90, 0]) cylinder(d = 2.5, h = 5);   // M3 opresor a la ranura
     }
     translate([MASTIL_XY[0], CAM_Y, CAM_Z]) rotate([-CAM_INCL, 0, 0]) difference() {                  // placa porta camara
-      translate([-CAM_PCB / 2 - 2, -10.6, -CAM_PCB / 2 - 2]) cube([CAM_PCB + 4, 3, CAM_PCB + 4]);
-      translate([-8, -11, -8]) cube([16, 4, 16]);
+      union() {
+        translate([-CAM_PCB / 2 - 3, -10.6, -CAM_PCB / 2 - 3]) cube([CAM_PCB + 6, 3, CAM_PCB + 6]);
+        difference() {                                                                                // marco: centra el PCB (0.5 mm por lado)
+          translate([-CAM_PCB / 2 - 3, -7.6, -CAM_PCB / 2 - 3]) cube([CAM_PCB + 6, 2, CAM_PCB + 6]);
+          translate([-CAM_PCB / 2 - 0.5, -8, -CAM_PCB / 2 - 0.5]) cube([CAM_PCB + 1, 3, CAM_PCB + 1]);
+        }
+      }
+      translate([-11, -11, -11]) cube([22, 4, 22]);                                                  // ventana: conector USB y cable
+      for (x = [-1, 1]) for (z = [-1, 1]) translate([x * 14, -11, z * 14]) rotate([-90, 0, 0])       // M2 + tuerca atras, +-1 mm de juego
+        hull() for (a = [-1, 1]) for (b = [-1, 1]) translate([a, b, 0]) cylinder(d = 2.3, h = 4, $fn = 16);
     }
     translate([MASTIL_XY[0] - 5, MASTIL_XY[1] + m / 2 - 1, CAM_Z - 26]) cube([10, CAM_Y - MASTIL_XY[1] - m / 2 - 6, 12]);   // brazo
     // OLED atras, de pie, header recto hacia adelante por encima de la manga; entra por arriba en 2 rieles

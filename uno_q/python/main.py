@@ -4,7 +4,9 @@ from collections import deque
 import cv2
 import json
 import os
+import threading
 import time
+import base64
 
 print("Python OK, cv2", cv2.__version__)
 
@@ -48,6 +50,7 @@ cuenta = [0] * len(COLORES)
 pos = INICIO
 rumbo = RUMBO_INI
 cam = None
+cam_lock = threading.Lock()
 
 
 def guardar():
@@ -193,10 +196,23 @@ def abrir_camara():
 
 
 def foto():
-    for _ in range(3):
-        cam.grab()
-    ok, img = cam.read()
+    with cam_lock:                       # la usan el robot y la pagina web
+        for _ in range(3):
+            cam.grab()
+        ok, img = cam.read()
     return img if ok else None
+
+
+def analiza(img, dibuja=False):
+    h, w = img.shape[:2]
+    mask = cv2.inRange(cv2.cvtColor(img, cv2.COLOR_BGR2HSV), PARED_LO, PARED_HI)
+    res = {}
+    for k, (x0, y0, x1, y1) in ROI.items():
+        a, b = (int(x0 * w), int(y0 * h)), (int(x1 * w), int(y1 * h))
+        res[k] = mask[a[1]:b[1], a[0]:b[0]].mean() / 255 > UMBRAL
+        if dibuja:
+            cv2.rectangle(img, a, b, (0, 0, 255) if res[k] else (0, 255, 0), 2)
+    return res, mask
 
 
 def leer_camara(debug=False):
@@ -205,14 +221,7 @@ def leer_camara(debug=False):
     img = foto()
     if img is None:
         return None
-    h, w = img.shape[:2]
-    mask = cv2.inRange(cv2.cvtColor(img, cv2.COLOR_BGR2HSV), PARED_LO, PARED_HI)
-    res = {}
-    for k, (x0, y0, x1, y1) in ROI.items():
-        a, b = (int(x0 * w), int(y0 * h)), (int(x1 * w), int(y1 * h))
-        res[k] = mask[a[1]:b[1], a[0]:b[0]].mean() / 255 > UMBRAL
-        if debug:
-            cv2.rectangle(img, a, b, (0, 0, 255) if res[k] else (0, 255, 0), 2)
+    res, mask = analiza(img, debug)
     print("cam:", " ".join("%s=%s" % (k, "P" if v else ".") for k, v in res.items()))
     if debug:
         cv2.imwrite("/app/cal.jpg", img)
@@ -280,9 +289,20 @@ def api_guardar(i: int):
     return api_lectura()
 
 
+def api_foto():
+    img = foto() if cam is not None else None
+    if img is None:
+        return {"img": None}
+    res, _ = analiza(img, True)
+    img = cv2.resize(img, (160, 120))
+    ok, buf = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 40])
+    return {"img": base64.b64encode(buf).decode(), "res": res}
+
+
 ui = WebUI()
 ui.expose_api("GET", "/api/lectura", api_lectura)
 ui.expose_api("GET", "/api/guardar", api_guardar)
+ui.expose_api("GET", "/api/foto", api_foto)
 
 
 # ---------- Estrategias ----------
