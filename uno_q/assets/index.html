@@ -33,6 +33,10 @@
   </div>
 </div>
 <div class="paso">
+  <div>Cámara (rojo = ve pared, verde = libre):</div>
+  <img id="cam" alt="sin cámara" style="width:100%;max-width:320px;image-rendering:pixelated;background:#000;border-radius:8px;margin-top:8px">
+</div>
+<div class="paso">
   <div id="pasoTxt"></div>
   <button id="pasoBtn" onclick="pasoGuardar()"></button>
   <div class="nav"><button onclick="ir(-1)">◀ Atrás</button><button onclick="ir(1)">Saltar ▶</button></div>
@@ -99,6 +103,15 @@ async function ciclo() {
   setTimeout(ciclo, 300);
 }
 ciclo();
+
+async function camara() {
+  try {
+    const d = await (await fetch("/api/foto")).json();
+    if (d.img) document.getElementById("cam").src = "data:image/jpeg;base64," + d.img;
+  } catch (e) {}
+  setTimeout(camara, 500);
+}
+camara();
 </script>
 </body>
 </html>
