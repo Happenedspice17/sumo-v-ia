@@ -255,10 +255,10 @@ VISTAS = {
         ("Une el conector T", (-12, 10, T_Z + 7), (200, -180)),
         ("Interruptor en OFF", (38, 5, Z2), (220, 40)),
     ]),
-    "q_paso11": ({"PASO": 11, "PLACA": "unoq"}, (300, -330, 330, 0, 5, 85), [
-        ("Mástil (PTR)", (7.5, 10.5, 120), (-250, 40)),
-        ("Cámara en su cabeza\nimpresa", (0, 30, 150), (-250, -80)),
-        ("Clip del OLED\nsobre el mástil", (0, -4, 108), (-250, 150)),
+    "q_paso11": ({"PASO": 11, "PLACA": "unoq"}, (300, -330, 345, 0, 5, 100), [
+        ("Pedestal: M4 desde abajo", (0, 0.5, 120), (-250, 40)),
+        ("Cámara en su cabeza\nimpresa", (0, 30, 162), (-250, -80)),
+        ("OLED en los rieles\nde la cabeza", (0, -6.5, 140), (-250, 150)),
         ("Repisa: 4 M3×8", (50, 40, 84.5), (240, -60)),
         ("Hub USB", (20, 39.5, 96.5), (240, 60)),
         ("Cables USB", (-51.5, 30, 90.5), (-250, 230)),

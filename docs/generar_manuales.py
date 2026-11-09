@@ -219,15 +219,15 @@ def construir(nombre, titulo, historia):
 BOM_IMP = [
     # pieza, material, proceso, cant
     ["Piso 1 (base, columnas, postes del L298N, soportes de VL53L0X y topes)", "PETG o PLA", "Impresión 3D", "1"],
-    ["Piso 2 (marco del OLED, alojamiento de la placa, botón, interruptor, base del mástil)", "PETG o PLA", "Impresión 3D", "1"],
+    ["Piso 2 (marco del OLED, alojamiento de la placa, botón, interruptor, agujero M5 del pedestal)", "PETG o PLA", "Impresión 3D", "1"],
     ["Cuna de motor", "PETG o PLA", "Impresión 3D", "2"],
     ["Capucha del sensor de color con patín delantero", "PLA negro", "Impresión 3D", "1"],
     ["Patín trasero", "PETG o PLA", "Impresión 3D", "1"],
     ["Soporte de VL53L0X (se cambia solo si se rompe)", "PLA negro", "Impresión 3D", "3"],
     ["Pieza de prueba de tolerancias", "El mismo de las demás", "Impresión 3D (primero)", "1"],
     ["Repisa del hub USB (solo Q)", "PETG o PLA", "Impresión 3D", "1"],
-    ["Cabeza de cámara, provisional (solo Q)", "PETG o PLA", "Impresión 3D", "1"],
-    ["Clip del OLED en el mástil (solo Q)", "PETG o PLA", "Impresión 3D", "1"],
+    ["Cabeza de cámara con rieles del OLED (solo Q)", "PETG o PLA", "Impresión 3D", "1"],
+    ["Pedestal 20 × 20 × 75 mm (solo Q)", "PETG o PLA", "Impresión 3D", "1"],
 ]
 BOM_ELEC = [
     ["Arduino UNO R3 (ATmega328P)", "Placa oficial y de respaldo; cable USB-B de datos", "1"],
@@ -249,8 +249,8 @@ BOM_ELEC = [
     ["Header macho recto", "2.54 mm, tira de 40 (los rectos de siempre)", "1"],
     ["Cámara USB Arducam UB0234 (solo Q)", "OV2710, 32 × 32 mm, lente M12 de 105°; kit con tornillos M2", "1"],
     ["Cable USB-C corto en ángulo recto (solo Q)", "Del hub a la entrada USB-C de la UNO Q", "1"],
-    ["Hub USB UGREEN (solo Q)", "El que ya tienes; se mide para la repisa", "1"],
-    ["PTR de 10 o 15 mm, ~10 cm (solo Q)", "Mástil; tamaño pendiente, el modelo es un marcador", "1"],
+    ["Hub USB-C con entrada PD (solo Q)", "USB-C macho, 1 USB-A de datos y entrada de alimentación", "1"],
+    ["Inserto de calor M4 + tornillo M4 × 12 (solo Q)", "Pedestal al piso 2, desde abajo", "1"],
     ["Módulo fuente USB-C PD, opcional (solo Q)", "Entrada desde 6 V, salida 5 V / 3 A; solo si falla la prueba sin PD (sección 6.4)", "1"],
 ]
 BOM_CABLES = [
@@ -265,7 +265,8 @@ BOM_TORN = [
     ["Inserto de calor M3 (latón)", "26 (+4 solo Q)", "Comunes: columnas (4) y postes del L298N (4) del piso 1, cunas (4), capucha (2), patín (2), soportes de VL53L0X (6), placa en el piso 2 (4). Solo Q: repisa (4)"],
     ["Tornillo Allen M3 × 8", "28 (+4 solo Q)", "Comunes: L298N (4), piso 2 (4), placa (4), capucha (2), patín (2), soportes de VL53L0X (6), VL53L0X (6). Solo Q: repisa (4)"],
     ["Tornillo Allen M3 × 12", "4", "Cunas de motor"],
-    ["Tornillo M2 (del kit de la cámara)", "4 (solo Q)", "Cámara en su cabeza"],
+    ["Tornillo M2 + tuerca y rondana", "4 (solo Q)", "Cámara en su cabeza (tuerca atrás)"],
+    ["Tornillo M3 opresor", "1 (solo Q)", "Cabeza contra el pedestal"],
     ["Velcro adhesivo 3 × 5 cm", "1", "Bajo la batería"],
     ["Nota", "—", "Del kit M2–M5 solo se usan Allen M3 de 8 y 12 mm (y M2 para la cámara); sin tuercas, rondanas ni separadores"],
 ]
@@ -428,8 +429,8 @@ def manual_ensamble():
             "sensores y la OLED comparten un bus I2C armado en la protoboard de un Proto Shield. Abajo van motores, "
             "batería y L298N; arriba, la placa."),
           p("<b>El chasis y las piezas impresas son las mismas</b> con las dos placas. La <b>UNO R3</b> es la oficial y la "
-            "de respaldo. La <b>UNO Q</b> es la principal y solo <b>agrega</b>: mástil de PTR, cabeza con cámara USB, "
-            "repisa con hub USB, el OLED en un clip del mástil y los cables USB. Se cambia de una a otra sin tocar "
+            "de respaldo. La <b>UNO Q</b> es la principal y solo <b>agrega</b>: pedestal impreso, cabeza con cámara USB "
+            "y OLED, repisa con hub USB y los cables USB. Se cambia de una a otra sin tocar "
             "el cableado (sección 5, «Cambio R3 ↔ UNO Q»)."),
           Table([[img("r3_iso.png", 40, 52), img("r3_atras.png", 40, 52), img("q_iso.png", 40, 52), img("q_lado.png", 40, 52)]],
                 colWidths=[44 * mm] * 4,
@@ -441,7 +442,7 @@ def manual_ensamble():
                  ["Alimentación", "Batería 2S 18650 (7.4 V) → interruptor → L298N (12V) y VIN de la placa"],
                  ["Bus I2C", "VL53L0X × 3 (direcciones 0x30–0x32), TCS34725 (0x29), OLED (0x3C), 400 kHz"],
                  ["VCC del bus", "5V con el R3; <b>3V3 con la UNO Q</b>"],
-                 ["Piezas impresas", "6 comunes + 3 solo Q (repisa, cabeza de cámara provisional, clip del OLED)"]], [45, 131]),
+                 ["Piezas impresas", "6 comunes + 3 solo Q (repisa, cabeza de cámara con OLED, pedestal)"]], [45, 131]),
           Spacer(1, 4),
           h2("Mapa de pines (igual en las dos placas)"),
           tabla(MAPA_PINES, [88, 88]),
@@ -468,7 +469,7 @@ def manual_ensamble():
             "ahí los agujeros salen unos 0.1 mm chicos y las ranuras unos 0.15 mm angostas. Todas las piezas comunes caben "
             "en una sola placa de <b>256 × 256 mm</b>, la cama de la <b>X2D</b>: archivo "
             "<i>chasis/stl/placa_x2d.stl</i> (en Bambu Studio: clic derecho → <i>Dividir en objetos</i>). Las piezas "
-            "solo Q (repisa, cabeza de cámara y clip del OLED) se imprimen aparte."),
+            "solo Q (repisa, cabeza de cámara y pedestal) se imprimen aparte."),
           lado_a_lado([
               tabla([["Ajuste", "Valor"],
                      ["Boquilla / capa", "0.4 mm / 0.2 mm"],
@@ -488,7 +489,7 @@ def manual_ensamble():
                  ["Capucha de color", "Orejas sobre la cama, patín arriba", "PLA negro, 4 paredes, 30 %", "No"],
                  ["Patín trasero", "Barra sobre la cama, domo arriba", "PETG, 4 paredes, 40 %", "No"],
                  ["Soporte de VL53L0X (×3)", "Base sobre la cama", "PLA, 4 paredes, 40 %", "No"],
-                 ["Repisa, cabeza de cámara, clip OLED (solo Q)", "Cara plana sobre la cama", "PETG, 4 paredes, 40 %", "No"]],
+                 ["Repisa, cabeza de cámara, pedestal (solo Q)", "Cara plana sobre la cama (pedestal de pie)", "PETG, 4 paredes, 40 %", "No"]],
                 [44, 56, 50, 26]),
           *lista([
               "Imprime primero la <b>pieza de prueba</b> (<i>chasis/stl/prueba.stl</i>), sola, con los mismos ajustes.",
@@ -621,7 +622,7 @@ def manual_ensamble():
                "Haz los 4 puentes del bus en la protoboard del shield (sección 4.4): VCC, GND, SDA y SCL. "
                "<b>VCC del bus: 5V con el R3, 3V3 con la UNO Q.</b>",
                "<b>Solo R3:</b> acuesta el OLED en su marco del piso 2, pines hacia atrás, y conecta sus 4 dupont "
-               "(7.1). Con la UNO Q <b>no</b> va en el marco: va en el mástil (paso 11).",
+               "(7.1). Con la UNO Q <b>no</b> va en el marco: va en la cabeza de la cámara (paso 11).",
                "Mete el botón y el interruptor en sus agujeros y apriétalos con su tuerca."],
               "con el multímetro, cada columna del bus tiene continuidad de punta a punta y no con las demás; el VCC "
               "del bus no está en 5V si la placa es la Q.",
@@ -666,25 +667,27 @@ def manual_ensamble():
                "Con el R3, enciende: la OLED debe decir LABERINTO LISTO. Con la Q, termina el paso 11 antes de encender."],
               "nada se calienta en el primer minuto. Si algo huele o se calienta, apaga y desconecta el T.",
               "r3_paso10.png")
-    H += [h2("Paso 11. Solo UNO Q: mástil, cámara, hub y OLED")]
-    H += sub("11.1 Mástil y cabeza de cámara",
-             ["Mete el PTR (10 o 15 mm, ~10 cm) en su base del piso 2. El tamaño está pendiente: la base del modelo es "
-              "un marcador, confirma que el PTR entre sin juego.",
-              "Atornilla la cámara USB a la cabeza con 4 M2 del kit (agujeros a 28 mm), lente al frente.",
-              "Pon la cabeza en la punta del mástil (la cabeza es provisional)."],
+    H += [h2("Paso 11. Solo UNO Q: pedestal, cámara, hub y OLED")]
+    H += sub("11.1 Pedestal y cabeza de cámara",
+             ["Mete con el cautín el inserto M4 en la base del pedestal. Atorníllalo al piso 2 con un M4 × 12 desde abajo "
+              "(agujero central de 5.5 mm).",
+              "Pon la cámara en el marco de la cabeza, lente al frente, con el conector por el hueco de arriba a la izquierda "
+              "(visto por atrás). 4 M2 con tuerca y rondana atrás; los agujeros dan ±1 mm de juego.",
+              "Pasa los cables de alimentación de la cámara por la ranura de abajo al centro.",
+              "Mete la cabeza en el pedestal hasta el fondo (entra 20 mm) y apriétala con el M3 opresor del lado."],
              None, "q_paso11.png", alto_img=95, intro="Parte solo de la versión con UNO Q.")
     H += sub("11.2 Repisa, hub y OLED",
              ["Atornilla la repisa a sus 4 postes del piso 2 con 4 M3×8.",
               "Pon el hub sobre la repisa y sujétalo con 2 cinchos por las ranuras.",
-              "Sujeta el clip del OLED al mástil, con el OLED mirando hacia atrás. Conecta sus 4 dupont al bus "
-              "(el VCC del bus sigue en 3V3)."],
+              "Desliza el OLED desde arriba en los rieles de atrás de la cabeza, header hacia arriba. Conecta sus 4 "
+              "dupont al bus (el VCC del bus sigue en 3V3)."],
              None, "det_q_usb.png", alto_img=85)
     H += [fig("Fig. 5. Hub, repisa y cables USB de la UNO Q."),
           *lista(["<b>Cables USB:</b> el cable USB-C corto en ángulo recto va del hub a la entrada USB-C de la UNO Q. "
                   "El cable de la cámara va al hub.",
-                  "La placa se alimenta por VIN con la batería. Si la cámara no aparece en la Q así, prueba el módulo PD "
-                  "de la sección 6.4."], num=True),
-          verifica("el VCC del bus está en 3V3, el hub no se mueve al tocarlo y los cables USB no rozan las ruedas ni el mástil."),
+                  "La placa se alimenta por VIN con la batería. Alimenta el hub por su entrada PD: el USB-C de la Q no da "
+                  "suficiente corriente para la cámara. Conecta cámara y hub antes de darle Run."], num=True),
+          verifica("el VCC del bus está en 3V3, el hub no se mueve al tocarlo y los cables USB no rozan las ruedas ni el pedestal."),
           Spacer(1, 4), raya(), Spacer(1, 2)]
     H += [h2("Cambio R3 ↔ UNO Q"),
           p("El cableado vive en el shield: se cambia de placa sin tocar los dupont."),
@@ -694,7 +697,7 @@ def manual_ensamble():
               "Quita los 4 M3×8 de la placa, cambia R3 por Q (o al revés) y vuelve a poner los 4 tornillos.",
               "Pon el shield otra vez sobre los headers.",
               "<b>Mueve el jumper VCC del bus:</b> 5V para el R3, 3V3 para la Q.",
-              "Pasa de R3 a Q: agrega mástil, cabeza con cámara, repisa con hub, el OLED en el clip del mástil y los "
+              "Pasa de R3 a Q: agrega pedestal, cabeza con cámara, repisa con hub, el OLED en los rieles de la cabeza y los "
               "cables USB (paso 11). Quita el OLED del marco.",
               "Pasa de Q a R3: quita esas piezas y pon el OLED en su marco (7.1); con el R3, cinta aislante sobre el USB-B.",
           ], num=True),

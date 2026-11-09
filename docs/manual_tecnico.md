@@ -46,6 +46,8 @@ Se pasan mensajes entre ellas. Si la grande tarda en contestar, la pequeña term
 | `color()` | Último color visto, codificado como `c + 16·k` (clase *c*, a *k* celdas del inicio del movimiento) |
 | `arranque()` | Evento del botón: 1 = corto, 2 = largo |
 | `set_cuenta`, `set_estado` | Actualizan la pantalla |
+| `raw(i)` | Lectura cruda del sensor de color (*i* = R, G, B, C) para el panel web |
+| `set_ref(i, r, g, b, c)` | Carga el color de referencia *i* (r, g, b en milésimas) |
 
 Separar los dominios aísla la latencia no determinista de Linux (planificador, E/S, visión) del lazo de control.
 
@@ -91,6 +93,8 @@ La distancia a cada color de referencia *i* suma un término logarítmico de bri
 
 Si la menor distancia es mayor que 0.02, el resultado es "piso".
 
+**Calibración:** desde un panel web que sirve la propia placa (puerto 7000). Cada referencia es el promedio de 5 lecturas tomadas sobre la pista. Se guarda en `/app/colores.json` y Linux la carga al MCU con `set_ref` en cada arranque, sin recompilar el sketch.
+
 **Antirrebote:** se exigen 3 muestras iguales seguidas (3 × 30 ms). El evento solo se dispara en la transición piso → color.
 
 **¿En qué celda estaba?** Durante un avance de duración *T* por celda, la marca está en la celda *k = ⌊t/T + δ + 0.5⌋*. Aquí *δ* = 0.2 celdas es la distancia del eje de las ruedas al sensor. Python descarta las marcas repetidas por coordenada.
@@ -98,12 +102,14 @@ Si la menor distancia es mayor que 0.02, el resultado es "piso".
 # 5. Cámara (opcional)
 
 ::: {.simple}
-**En simple:** la cámara en el mástil mira una celda adelante. Si cree ver una pared, el mapa la anota como "posible", nunca como segura. Solo cuentan como seguras las que confirman los sensores láser. Si la cámara se equivoca y el robot se queda sin salida, el robot la ignora. Sin cámara, el robot funciona igual.
+**En simple:** la cámara va arriba de un poste y mira una celda adelante. Si cree ver una pared, el mapa la anota como "posible", nunca como segura. Solo cuentan como seguras las que confirman los sensores láser. Si la cámara se equivoca y el robot se queda sin salida, el robot la ignora. Sin cámara, el robot funciona igual.
 :::
 
 - **Captura:** cámara UVC a 320 × 240, OpenCV con V4L2.
 - **Detección:** segmentación HSV del color de pared y fracción de píxeles en 3 regiones de interés de la celda siguiente (fondo, izquierda, derecha).
 - **Mapa tentativo:** lo detectado va a un mapa separado del confirmado. El *flood fill* lo usa para anticipar callejones sin salida. Si deja al robot sin camino, se recalcula sin él.
+- **Montaje:** módulo de 32 × 32 mm sobre un pedestal impreso de 20 × 20 × 75 mm. Lente a 162 mm del piso, inclinado 25° hacia abajo. Se conecta por un hub USB-C con entrada de alimentación, porque el puerto del Q no da suficiente corriente alimentado por VIN.
+- **Ajuste:** el panel web muestra la imagen a 160 × 120 (JPEG calidad 40, 2 cuadros por segundo) con las 3 regiones en rojo (pared) o verde (libre). Un candado comparte la cámara entre el robot y el panel.
 
 # 6. Cómo se mueve
 
@@ -176,7 +182,7 @@ Si la menor distancia es mayor que 0.02, el resultado es "piso".
 | Lógica de potencia | Regulador 78M05 del L298N (necesita ≳ 7 V). Entradas compatibles con 3.3 V (V_IH ≥ 2.3 V) |
 | Bus I²C | 400 kHz, alimentado a 3.3 V para no exponer los pines del Q a *pull-ups* de 5 V. Lleva 3 × VL53L0X, TCS34725 y una OLED SSD1306 |
 | Pantalla | OLED 128 × 64 con driver propio. Muestra estado, conteos y un contador de *heartbeat* de la comunicación entre los procesadores |
-| Chasis | OpenSCAD paramétrico de dos pisos, FDM (Bambu X2D), insertos de latón M3 y mástil de aluminio 2020. Interferencias verificadas por intersección CSG |
+| Chasis | OpenSCAD paramétrico de dos pisos, FDM (Bambu X2D), insertos de latón M3 y pedestal impreso con inserto M4. Interferencias verificadas por intersección CSG |
 | Cambio de placa | Mismo mapa de pines en Q y R3 vía Proto Shield; solo cambia el puente de VCC (3V3 ↔ 5V) |
 
 **Voltaje en los motores:** el L298N es bipolar (Darlington) y cae ≈ 2–3 V. Con 7.4 V llegan ≈ 4.5–5 V a los motores. Es la principal ineficiencia del diseño; un puente MOSFET (TB6612FNG, DRV8833) la eliminaría.
@@ -192,7 +198,8 @@ Si la menor distancia es mayor que 0.02, el resultado es "piso".
 | `PARED` | 120 mm | Distancia para considerar pared |
 | `D_FRENTE` / `D_LADO` | 55 / 50 mm | Distancias de paro y de centrado |
 | `AJUSTE_DER` | 0 | Corrige si un motor es más fuerte |
-| `refs[]` | se mide | Colores de referencia |
+| Colores de referencia | se mide | Desde el panel web; se guardan en `/app/colores.json` |
+| `ROI`, `PARED_LO/HI`, `UMBRAL` | ver `main.py` | Regiones y color de pared de la cámara |
 
 # 10. Glosario
 

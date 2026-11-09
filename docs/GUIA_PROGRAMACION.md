@@ -595,7 +595,7 @@ sudo apt install -y v4l-utils
 
 Pide la contraseña de Linux (tampoco se ve al escribir).
 
-**Verifica:** `v4l2-ctl --list-devices` muestra la cámara con `/dev/video0`. El código usa `CAM_ID = 0` (es decir, `/dev/video0`). Si tu cámara sale con otro número, cámbialo en `main.py`.
+**Verifica:** `v4l2-ctl --list-devices` muestra la cámara. En la Q, `/dev/video0` y `/dev/video1` son internos de la placa; la cámara sale como `video2` o mayor. El código prueba de `video0` a `video11` y escribe `Camara en /dev/videoN` cuando la encuentra. Conecta la cámara y el hub **antes** de darle Run.
 
 ### 4.10 Cómo funciona Bridge (en dos frases y un ejemplo)
 
@@ -651,7 +651,7 @@ La pantalla muestra:
 
 Qué hacer, en orden:
 
-1. **Colores.** Pon el sensor de color sobre el piso y anota `r g b c`. Repite sobre cada marca de color (rojo, verde, azul, amarillo). En `config.h` hay una tabla `refs[]` con una línea por color: `{"ROJO", r, g, b, c}`. Pon ahí tus valores. **Ojo:** en la OLED `r g b` aparecen como porcentaje (por ejemplo `58`); en `refs[]` van como decimal (`0.58`).
+1. **Colores.** En el **UNO Q** no lo hagas aquí: usa el panel web (sección 5.4). En el **R3**: pon el sensor de color sobre el piso y anota `r g b c`. Repite sobre cada marca de color (rojo, verde, azul, amarillo). En `config.h` hay una tabla `refs[]` con una línea por color: `{"ROJO", r, g, b, c}`. Pon ahí tus valores. **Ojo:** en la OLED `r g b` aparecen como porcentaje (por ejemplo `58`); en `refs[]` van como decimal (`0.58`).
 2. **Distancias.** Pon el robot **centrado** en una celda con paredes a los lados y al frente. Anota las distancias:
    - La del lado (izquierda o derecha) es `D_LADO`.
    - La del frente es `D_FRENTE`.
@@ -679,7 +679,16 @@ Ejemplo: `T_CELDA = 60` significa 60 ticks de 10 ms, es decir 600 ms por celda.
 
 En el UNO Q, además, la cámara tiene su propia calibración en `main.py` (`ROI`, `PARED_LO/HI`, `UMBRAL`): ver `uno_q/README.md`, sección Calibración.
 
-### 5.4 Recompilar y volver a flashear después de cambiar una constante
+### 5.4 Panel web de calibración (solo UNO Q)
+
+1. Con la app corriendo, abre en la laptop o el celular (mismo WiFi) la dirección que muestra App Lab, con `:7000` al final (por ejemplo `http://192.168.3.66:7000`).
+2. Sigue el asistente: pide piso, rojo, verde, azul y amarillo. Pon el sensor encima de cada uno, en la pista real, y aprieta **Guardar**.
+3. Se guarda en `/app/colores.json` y se carga solo en cada arranque; no hay que tocar `refs[]`.
+4. Abajo sale la imagen de la cámara con 3 cuadros: rojo = ve pared, verde = libre. Úsala para ajustar `ROI` en `main.py`.
+
+Requisito: el brick **WebUI - HTML** agregado a la app y la carpeta `assets/` con `index.html`.
+
+### 5.5 Recompilar y volver a flashear después de cambiar una constante
 
 Un cambio en el código **no** hace efecto hasta que recompilas y flasheas otra vez.
 
