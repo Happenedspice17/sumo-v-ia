@@ -139,6 +139,7 @@ CAM_Z = 150;             // altura del lente sobre el suelo
 CAM_INCL = 25;           // grados hacia abajo
 CAM_FOV = [100, 75];     // lente M12 gran angular (horizontal, vertical)
 CAM_PCB = 32;            // modulo UVC de 32 x 32 mm, agujeros M2 a 28 mm
+CAM_DZ = 12;             // la placa de la camara va 12 mm arriba de la manga: su parte de atras queda libre
 // OLED en la cara de atras del mastil (solo Q): header acodado de 4 pines hacia ARRIBA (el OLED va de cabeza; en el
 // codigo se gira la pantalla 180 grados), sujeto por un clip impreso. Asi sus cables salen por arriba, sin cruzar los del shield.
 OLED_MZ = CAM_Z + 5.5 - OLED[1];                 // borde de abajo del OLED (va en la cabeza de la camara, header arriba)
@@ -1005,7 +1006,7 @@ module cabeza_camara() {
       translate([MASTIL_XY[0] - MASTIL / 2 - 0.2, MASTIL_XY[1] - MASTIL / 2 - 0.2, CAM_Z - 27]) cube([MASTIL + 0.4, MASTIL + 0.4, 21]);
       translate([MASTIL_XY[0] - m / 2 - 1, MASTIL_XY[1], CAM_Z - 16]) rotate([0, 90, 0]) cylinder(d = 2.5, h = 5);   // M3 opresor a la ranura
     }
-    translate([MASTIL_XY[0], CAM_Y, CAM_Z]) rotate([-CAM_INCL, 0, 0]) difference() {                  // placa porta camara
+    translate([MASTIL_XY[0], CAM_Y, CAM_Z + CAM_DZ]) rotate([-CAM_INCL, 0, 0]) difference() {         // placa porta camara
       union() {
         translate([-CAM_PCB / 2 - 3, -10.6, -CAM_PCB / 2 - 3]) cube([CAM_PCB + 6, 3, CAM_PCB + 6]);
         difference() {                                                                                // marco: centra el PCB (0.5 mm por lado)
@@ -1013,11 +1014,21 @@ module cabeza_camara() {
           translate([-CAM_PCB / 2 - 0.5, -8, -CAM_PCB / 2 - 0.5]) cube([CAM_PCB + 1, 3, CAM_PCB + 1]);
         }
       }
-      translate([-11, -11, -11]) cube([22, 4, 22]);                                                  // ventana: conector USB y cable
+      translate([-11, -11, -11]) cube([22, 4, 22]);                                                  // ventana del centro
+      translate([-16, -11, 0]) cube([5, 4, 11]);                                                     // conector USB: arriba a la izquierda visto por atras
+      translate([-9, -11, 11]) cube([11, 4, 5.5]);
+      translate([-5, -11, -16]) cube([10, 4, 5]);                                                    // cables de alimentacion: abajo al centro
       for (x = [-1, 1]) for (z = [-1, 1]) translate([x * 14, -11, z * 14]) rotate([-90, 0, 0])       // M2 + tuerca atras, +-1 mm de juego
         hull() for (a = [-1, 1]) for (b = [-1, 1]) translate([a, b, 0]) cylinder(d = 2.3, h = 4, $fn = 16);
     }
     translate([MASTIL_XY[0] - 5, MASTIL_XY[1] + m / 2 - 1, CAM_Z - 26]) cube([10, CAM_Y - MASTIL_XY[1] - m / 2 - 6, 12]);   // brazo
+    for (s = [-1, 1]) hull() {                                                                         // costillas: manga -> orillas de la placa
+      translate([MASTIL_XY[0], CAM_Y, CAM_Z + CAM_DZ]) rotate([-CAM_INCL, 0, 0])
+        translate([s > 0 ? CAM_PCB / 2 + 1 : -CAM_PCB / 2 - 3, -10.6, -CAM_PCB / 2 - 3]) cube([2, 3, CAM_PCB + 6]);
+      translate([MASTIL_XY[0] + (s > 0 ? CAM_PCB / 2 + 1 : -CAM_PCB / 2 - 3), MASTIL_XY[1], CAM_Z - 10]) cube([2, m / 2, 10]);
+    }
+    for (s = [-1, 1]) translate([MASTIL_XY[0] + (s > 0 ? m / 2 - 0.5 : -CAM_PCB / 2 - 3), MASTIL_XY[1], CAM_Z - 10])   // pie de las costillas
+      cube([CAM_PCB / 2 + 3.5 - m / 2, m / 2, 10]);
     // OLED atras, de pie, header recto hacia adelante por encima de la manga; entra por arriba en 2 rieles
     yb = MASTIL_XY[1] - m / 2;
     xo = OLED[0] / 2;
@@ -1035,7 +1046,7 @@ module cabeza_camara() {
 // Camara UVC con su cabeza impresa
 module camara(fov = true) {
   cabeza_camara();
-  translate([MASTIL_XY[0], CAM_Y, CAM_Z]) rotate([-CAM_INCL, 0, 0]) {
+  translate([MASTIL_XY[0], CAM_Y, CAM_Z + CAM_DZ]) rotate([-CAM_INCL, 0, 0]) {
     color(k("darkgreen")) translate([-CAM_PCB / 2, -7.6, -CAM_PCB / 2]) cube([CAM_PCB, 1.6, CAM_PCB]);
     color(k("black")) translate([-7, -6, -7]) cube([14, 6, 14]);                                       // porta lente M12
     color(k("black")) rotate([-90, 0, 0]) cylinder(d = 14, h = 8);                                    // lente
@@ -1045,7 +1056,7 @@ module camara(fov = true) {
         sphere(0.1);
         translate([0, 400, 0]) cube([2 * 400 * tan(CAM_FOV[0] / 2), 0.1, 2 * 400 * tan(CAM_FOV[1] / 2)], center = true);
       }
-      rotate([CAM_INCL, 0, 0]) translate([-500, -500, -CAM_Z]) cube([1000, 1000, 1000]);
+      rotate([CAM_INCL, 0, 0]) translate([-500, -500, -CAM_Z - CAM_DZ]) cube([1000, 1000, 1000]);
     }
   }
 }
