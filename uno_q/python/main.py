@@ -14,7 +14,7 @@ print("Python OK, cv2", cv2.__version__)
 N = 16                                   # 3 m / 18 cm
 INICIO = (0, 0)
 RUMBO_INI = 0                            # 0=N 1=E 2=S 3=O
-META = {(7, 7), (7, 8), (8, 7), (8, 8)}
+META = {(N // 2 - 1 + i, N // 2 - 1 + j) for i in (0, 1) for j in (0, 1)}   # las 4 del centro
 COLORES = ["PISO", "ROJO", "VERDE", "AZUL", "AMAR"]
 ARCHIVO = "/app/mapa.json"
 ARCH_COL = "/app/colores.json"
@@ -45,6 +45,11 @@ ROI = {
     "2,0,D": (0.65, 0.05, 0.75, 0.22),
 }
 REL = {"F": 0, "I": -1, "D": 1}
+# Piso de la celda siguiente: la camara busca ahi marcas de color antes de que llegue el sensor
+ROI_PISO = (0.30, 0.45, 0.70, 0.80)
+SAT_MIN, VAL_MIN, FRAC_COLOR = 90, 70, 0.08   # pixel "de color": saturado y no oscuro (piso negro, pared blanca)
+HUE = [(1, 0, 10), (1, 170, 180), (4, 20, 35), (2, 40, 85), (3, 90, 130)]   # (color, h min, h max) en HSV de OpenCV
+BRILLO_MIN = 1.3                         # una marca refleja al menos 1.3 veces mas que el piso negro
 PARED_LO = (0, 0, 170)                   # HSV de la pared (blanca por defecto)
 PARED_HI = (180, 60, 255)
 UMBRAL = 0.35
@@ -58,6 +63,7 @@ pos = INICIO
 rumbo = RUMBO_INI
 cam = None
 cam_lock = threading.Lock()
+cam_vio = {}                             # celda -> color que vio la camara (0 = solo piso)
 
 
 def guardar():
@@ -153,6 +159,9 @@ def revisar_color(origen, h):
     x, y = origen[0] + DX[h] * k, origen[1] + DY[h] * k
     if (x, y) in marcas:
         return
+    if cam_vio.get((x, y)) == 0:         # la camara vio piso limpio ahi: falso positivo del sensor
+        print(f"Descarto {COLORES[c]} en {x},{y}: la camara no vio color")
+        return
     marcas[(x, y)] = c
     cuenta[c] += 1
     rpc("set_cuenta", c, cuenta[c])
@@ -178,6 +187,7 @@ def girar_a(h):
 def avanzar(n, rapido=False):
     global pos
     origen = pos
+    precheck()
     rpc("mover", n, int(rapido))
     esperar(origen, rumbo)
     pos = (pos[0] + DX[rumbo] * n, pos[1] + DY[rumbo] * n)
@@ -237,6 +247,31 @@ def leer_camara(debug=False):
     return res
 
 
+def color_piso(img):
+    h, w = img.shape[:2]
+    x0, y0, x1, y1 = ROI_PISO
+    hsv = cv2.cvtColor(img[int(y0 * h):int(y1 * h), int(x0 * w):int(x1 * w)], cv2.COLOR_BGR2HSV)
+    ok = cv2.inRange(hsv, (0, SAT_MIN, VAL_MIN), (180, 255, 255)) > 0
+    if ok.mean() < FRAC_COLOR:
+        return 0
+    hues = hsv[..., 0][ok]
+    votos = [0] * len(COLORES)
+    for c, a, b in HUE:
+        votos[c] += int(((hues >= a) & (hues <= b)).sum())
+    return max(range(len(COLORES)), key=votos.__getitem__) if max(votos) else 0
+
+
+def precheck():
+    nx, ny = pos[0] + DX[rumbo], pos[1] + DY[rumbo]
+    if cam is None or not dentro(nx, ny) or (nx, ny) in cam_vio:
+        return
+    img = foto()
+    if img is not None:
+        cam_vio[(nx, ny)] = color_piso(img)
+        if cam_vio[(nx, ny)]:
+            print(f"Camara: {COLORES[cam_vio[(nx, ny)]]} adelante en {nx},{ny}")
+
+
 def sensar():
     x, y = pos
     if visto[x][y]:
@@ -273,6 +308,8 @@ def clasifica(v):
     import math
     d = [(v[0] - f[0]) ** 2 + (v[1] - f[1]) ** 2 + (v[2] - f[2]) ** 2
          + 0.01 * math.log((v[3] + 1) / (f[3] + 1)) ** 2 for f in REFS]
+    if v[3] < REFS[0][3] * BRILLO_MIN:
+        return 0
     k = min(range(len(REFS)), key=d.__getitem__)
     return k if d[k] < 0.02 else 0
 
@@ -304,7 +341,12 @@ def api_foto():
     img = foto() if cam is not None else None
     if img is None:
         return {"img": None}
+    c = color_piso(img)
     res, _ = analiza(img, True)
+    h, w = img.shape[:2]
+    x0, y0, x1, y1 = ROI_PISO
+    cv2.rectangle(img, (int(x0 * w), int(y0 * h)), (int(x1 * w), int(y1 * h)), (255, 0, 255), 2)
+    cv2.putText(img, COLORES[c], (int(x0 * w) + 2, int(y1 * h) - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 1)
     img = cv2.resize(img, (160, 120))
     ok, buf = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 40])
     return {"img": base64.b64encode(buf).decode(), "res": res}
@@ -370,6 +412,7 @@ def borrar():
     tentativo = [[0] * N for _ in range(N)]
     visto = [[False] * N for _ in range(N)]
     marcas.clear()
+    cam_vio.clear()
     bordes()
     if os.path.exists(ARCHIVO):
         os.remove(ARCHIVO)
