@@ -21,7 +21,7 @@ COLORES = ["PISO", "ROJO", "VERDE", "AZUL", "AMAR"]
 ARCHIVO = "/app/mapa.json"
 ARCH_COL = "/app/colores.json"
 ARCH_MODO = "/app/modo.json"
-modo = "mapa"                            # "mapa": flood fill | "tonto": sigue la pared derecha (no depende del mapa)
+modo = "tonto"                           # solo se usa el modo tonto: sigue la pared con los ToF, sin mapa
 # r, g, b normalizados y brillo c; los mismos de refs[] del sketch
 REFS = [[0.33, 0.33, 0.33, 900], [0.58, 0.22, 0.20, 400], [0.26, 0.46, 0.28, 350],
         [0.20, 0.32, 0.48, 300], [0.42, 0.40, 0.18, 700]]
@@ -34,7 +34,7 @@ BIT = [1, 2, 4, 8]
 # Los VL53L0X leen las paredes de la celda actual. La camara mira la celda
 # siguiente y adelanta sus paredes al mapa como "tentativas".
 CAM_ID = 0
-USAR_CAM = True
+USAR_CAM = False                         # prueba sin camara: solo ToF y sensor de color
 ANCHO, ALTO = 320, 240
 # La camara ve por encima de las paredes: cada region mira una pared de una celda adelante.
 # Clave "adelante,lado,pared": adelante = celdas al frente (1 = la siguiente), lado = -1 izq / 0 / 1 der,
@@ -55,7 +55,7 @@ CELDA, PARED_CARA = 180, 84              # mm entre centros; cara de la pared de
 ODO_MAX = 30                             # mm: correcciones de la camara mas grandes se ignoran
 TOF_RANGO = 1000                         # mm: si el frontal ve algo mas cerca, manda el frontal y no la camara
 PARED_F = 130                            # mm: al frente, menos de esto = pared (= PARED_F del sketch)
-D_FRENTE_TOF = 55                        # mm que lee el frontal con el robot centrado y pared en su celda (= D_FRENTE del sketch)
+D_FRENTE_TOF = 130                       # mm que lee el frontal con el robot centrado y pared en su celda (= D_FRENTE del sketch)
 odo = {"falta": 0, "corr": 0, "ult": 0, "cam_mm": None, "cam_err": None, "extra": 0, "frente": None}
 PESO_CAM = 1                             # una pared vista solo por la camara cuenta como 3 celdas extra de camino
 # Piso de la celda siguiente: la camara busca ahi marcas de color antes de que llegue el sensor
@@ -422,9 +422,31 @@ def api_lectura():
             "odo": {**odo, **vivo}}
 
 
+def que_haria(izq, frente, der, mueve):
+    """Simulacion para pruebas: que haria el robot con lo que leen los ToF ahora (no mueve nada)."""
+    if frente < D_FRENTE_TOF - 10:
+        return "Retrocede: muy pegado a la pared de enfrente", 2, 0
+    if mueve and frente < PARED_F:
+        return f"Frena: pared a {frente} mm, se detiene a {D_FRENTE_TOF} mm", 0, 0
+    libres = 0 if frente < PARED_F else (99 if frente >= TOF_RANGO else
+                                         max(1, int((frente - D_FRENTE_TOF + CELDA / 2) // CELDA)))
+    libre = {0: libres > 0, -1: izq >= 120, 1: der >= 120, 2: True}
+    rel = next(r for r in (1, 0, -1, 2) if libre[r])   # modo tonto: pared derecha
+    n = (libres if libres < 99 else "varias") if rel == 0 else 1
+    texto = {0: f"Sigue de frente ({n} celda{'s' if n != 1 else ''})",
+             1: "Gira 90° a la derecha (no va de frente), luego 1 celda hacia allá",
+             -1: "Gira 90° a la izquierda (no va de frente), luego 1 celda hacia allá",
+             2: "Media vuelta (180°), luego 1 celda de regreso"}[rel]
+    return texto, rel, n
+
+
 def api_tof():
-    return {"izq": rpc("odo", 6), "frente": rpc("odo", 5), "der": rpc("odo", 7), "pared": 120, "pared_f": PARED_F,
-            "libres": celdas_libres(), "falta": rpc("odo", 1), "mueve": bool(rpc("odo", 2) & 8)}
+    izq, frente, der = rpc("odo", 6), rpc("odo", 5), rpc("odo", 7)
+    mueve = bool(rpc("odo", 2) & 8)
+    accion, rel, n = que_haria(izq, frente, der, mueve)
+    return {"izq": izq, "frente": frente, "der": der, "pared": 120, "pared_f": PARED_F,
+            "libres": celdas_libres(), "falta": rpc("odo", 1), "mueve": mueve,
+            "accion": accion, "rel": rel, "modo": modo}
 
 
 def api_modo(m: str):
@@ -505,26 +527,23 @@ def explorar(objetivos, est):
     return True
 
 
-def seguir_pared(objetivos):
-    """Modo tonto: mano derecha. Igual va mapeando (sensores y camara) para la corrida rapida."""
+def seguir_pared(objetivos, mano=1):
+    """Modo tonto (el unico que se usa): sigue una pared con lo que leen los ToF en cada celda, sin mapa.
+    mano = 1 derecha, -1 izquierda."""
     estado(1)
     vistos = set()
     while (pos, rumbo) not in vistos:    # repetir posicion y rumbo = da vueltas a una isla
-        vistos.add((pos, rumbo))
         if pos in objetivos:
-            sensar()
-            guardar()
             return True
-        sensar()
-        x, y = pos
-        for rel in (1, 0, -1, 2):        # derecha, frente, izquierda, atras
-            h = (rumbo + rel) % 4
-            if not paredes[x][y] & BIT[h] and dentro(x + DX[h], y + DY[h]):
-                break
-        girar_a(h)
+        vistos.add((pos, rumbo))
+        time.sleep(0.06)                 # lectura nueva de los VL53L0X
+        p = rpc("paredes")
+        libre = {-1: not p & 1, 0: not p & 2, 1: not p & 4, 2: True}
+        rel = next(r for r in (mano, 0, -mano, 2) if libre[r])
+        girar_a((rumbo + rel) % 4)
         if not avanzar(1):
             vistos.discard((pos, rumbo))
-    print("La pared derecha no llega a la meta (isla): cambio a mapa")
+    print("Da vueltas a una isla con la mano", "derecha" if mano > 0 else "izquierda")
     return False
 
 
@@ -573,9 +592,6 @@ def borrar():
 
 def iniciar():
     global REFS, modo
-    if os.path.exists(ARCH_MODO):
-        with open(ARCH_MODO) as f:
-            modo = json.load(f)
     if os.path.exists(ARCH_COL):
         with open(ARCH_COL) as f:
             REFS = json.load(f)
@@ -603,18 +619,10 @@ def loop():
         return
     pos, rumbo = INICIO, RUMBO_INI
     t = time.time()
-    d = ruta_conocida()
-    if d:
-        if ruta_rapida(d):
-            estado(4)
-        else:                            # el mapa estaba mal: vuelve a explorar desde aqui
-            explorar(META, 1)
-            explorar({INICIO}, 2)
-            estado(0)
+    # solo modo tonto: pared derecha; si rodea una isla, prueba con la izquierda
+    if seguir_pared(META, 1) or seguir_pared(META, -1):
+        estado(4)
     else:
-        if modo != "tonto" or not seguir_pared(META):
-            explorar(META, 1)
-        explorar({INICIO}, 2)
         estado(0)
     guardar()
     print(f"Corrida: {time.time() - t:.1f} s, marcas {cuenta[1:]}")
