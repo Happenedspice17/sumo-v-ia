@@ -45,6 +45,10 @@ Con el hub conectado al USB-C, App Lab se conecta por WiFi (el puerto no puede i
 ## Funcionamiento
 
 - Los VL53L0X leen las paredes de la celda actual, mantienen el robot centrado y lo detienen a `D_FRENTE` cuando hay pared enfrente.
+- **Odometría ligera** (medidas del CAD: VL53L0X laterales 40 mm y frontal 54 mm adelante del eje; lente a 162 mm, 32 mm adelante, 25° abajo):
+  - Sketch, en tiempo real: cuando un sensor lateral pasa el borde de una pared (poste entre celdas) corrige la posición y aprende la velocidad real (`escala`); con pared al frente a menos de 400 mm corrige lo que falta. Ajuste: `BORDE_AJ`, `MAX_CORR`.
+  - Python, antes de cada avance: la cámara mide la distancia a la base de la pared de enfrente y le suma o resta hasta 60 mm al avance para quedar centrado. Ajuste: `CAM_INCL`, `CAM_H`, `CAM_FOV_V` (el panel dibuja la línea amarilla y los mm).
+  - El panel web muestra cuánto le falta, qué paredes ve cada sensor y lo que mide la cámara. RPC `odo(i)`.
 - **Los VL53L0X mandan.** Se leen en cada celda (aunque ya se conozca) y antes de cada avance: si ven pared enfrente no se avanza, y corrigen paredes del mapa en los dos sentidos. Lo que ve solo la cámara no bloquea: hace el camino `PESO_CAM` celdas más caro.
 - La cámara ve por encima de las paredes: cada región de `ROI` (`"adelante,lado,pared"`) marca una pared de una celda hasta 2 adelante, aunque haya pared enfrente. Esas paredes van al mapa como tentativas, para que el flood‑fill descarte callejones antes de entrar. Si la cámara se equivoca y bloquea todo, el robot ignora esas paredes tentativas. Sin cámara, funciona solo con los VL53L0X (OLED: `SIN CAM`).
 - Modo (en el panel web): **Mapa** usa flood fill; **Tonto** sigue la pared derecha y, si da vueltas a una isla, cambia solo a Mapa. Los dos van mapeando con sensores y cámara.
