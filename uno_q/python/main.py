@@ -11,13 +11,16 @@ import base64
 print("Python OK, cv2", cv2.__version__)
 
 # ---------- Laberinto ----------
-N = 16                                   # 3 m / 18 cm
+N = 11                                   # 11 x 11 celdas de 18 cm
 INICIO = (0, 0)
 RUMBO_INI = 0                            # 0=N 1=E 2=S 3=O
-META = {(N // 2 - 1 + i, N // 2 - 1 + j) for i in (0, 1) for j in (0, 1)}   # las 4 del centro
+# centro: 1 celda si N es impar, las 4 del centro si es par
+META = {(N // 2, N // 2)} if N % 2 else {(N // 2 - 1 + i, N // 2 - 1 + j) for i in (0, 1) for j in (0, 1)}
 COLORES = ["PISO", "ROJO", "VERDE", "AZUL", "AMAR"]
 ARCHIVO = "/app/mapa.json"
 ARCH_COL = "/app/colores.json"
+ARCH_MODO = "/app/modo.json"
+modo = "mapa"                            # "mapa": flood fill | "tonto": sigue la pared derecha (no depende del mapa)
 # r, g, b normalizados y brillo c; los mismos de refs[] del sketch
 REFS = [[0.33, 0.33, 0.33, 900], [0.58, 0.22, 0.20, 400], [0.26, 0.46, 0.28, 350],
         [0.20, 0.32, 0.48, 300], [0.42, 0.40, 0.18, 700]]
@@ -321,7 +324,17 @@ def enviar_refs():
 
 def api_lectura():
     v = lectura()
-    return {"v": v, "color": COLORES[clasifica(v)], "colores": COLORES, "refs": REFS}
+    return {"v": v, "color": COLORES[clasifica(v)], "colores": COLORES, "refs": REFS, "modo": modo}
+
+
+def api_modo(m: str):
+    global modo
+    if m in ("mapa", "tonto"):
+        modo = m
+        with open(ARCH_MODO, "w") as f:
+            json.dump(modo, f)
+        print("Modo", modo)
+    return {"modo": modo}
 
 
 def api_guardar(i: int):
@@ -356,6 +369,7 @@ ui = WebUI()
 ui.expose_api("GET", "/api/lectura", api_lectura)
 ui.expose_api("GET", "/api/guardar", api_guardar)
 ui.expose_api("GET", "/api/foto", api_foto)
+ui.expose_api("GET", "/api/modo", api_modo)
 
 
 # ---------- Estrategias ----------
@@ -382,6 +396,28 @@ def explorar(objetivos, est):
     sensar()
     guardar()
     return True
+
+
+def seguir_pared(objetivos):
+    """Modo tonto: mano derecha. Igual va mapeando (sensores y camara) para la corrida rapida."""
+    estado(1)
+    vistos = set()
+    while (pos, rumbo) not in vistos:    # repetir posicion y rumbo = da vueltas a una isla
+        vistos.add((pos, rumbo))
+        if pos in objetivos:
+            sensar()
+            guardar()
+            return True
+        sensar()
+        x, y = pos
+        for rel in (1, 0, -1, 2):        # derecha, frente, izquierda, atras
+            h = (rumbo + rel) % 4
+            if not paredes[x][y] & BIT[h] and dentro(x + DX[h], y + DY[h]):
+                break
+        girar_a(h)
+        avanzar(1)
+    print("La pared derecha no llega a la meta (isla): cambio a mapa")
+    return False
 
 
 def ruta_conocida():
@@ -424,7 +460,10 @@ def borrar():
 
 
 def iniciar():
-    global REFS
+    global REFS, modo
+    if os.path.exists(ARCH_MODO):
+        with open(ARCH_MODO) as f:
+            modo = json.load(f)
     if os.path.exists(ARCH_COL):
         with open(ARCH_COL) as f:
             REFS = json.load(f)
@@ -457,7 +496,8 @@ def loop():
         ruta_rapida(d)
         estado(4)
     else:
-        explorar(META, 1)
+        if modo != "tonto" or not seguir_pared(META):
+            explorar(META, 1)
         explorar({INICIO}, 2)
         estado(0)
     guardar()

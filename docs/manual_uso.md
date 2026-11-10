@@ -65,10 +65,11 @@ Después de cada prueba: **mantén D2 por 2 s** para borrar.
 
 # 7. A jugar
 
-1. **Mantén D2 por 2 s** (borra las pruebas).
-2. Pon el robot en la **esquina de inicio**, mirando hacia adelante.
-3. **Toque corto.** Va a la meta y regresa solo.
-4. Regrésalo al inicio y **toque corto** otra vez: ahora va directo y más rápido.
+1. En la página, elige el modo: **Mapa** (normal) o **Tonto** (sigue la pared derecha; si se atora, cambia solo a Mapa).
+2. **Mantén D2 por 2 s** (borra las pruebas).
+3. Pon el robot en la **esquina de inicio**, mirando hacia adelante.
+4. **Toque corto.** Va a la meta y regresa solo.
+5. Regrésalo al inicio y **toque corto** otra vez: ahora va directo y más rápido.
 
 ::: {.nota}
 Entre intentos del mismo laberinto **no borres**: así recuerda el camino.
