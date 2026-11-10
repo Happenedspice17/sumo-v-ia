@@ -24,6 +24,8 @@ const int VEL_RAPIDA = 220;
 const int VEL_GIRO = 130;
 const int VEL_MIN = 80;
 const int AJUSTE_DER = 0;     // suma PWM al motor derecho si se desvia
+const bool INV_IZQ = true;    // true si ese motor gira al reves (en vez de voltear cables)
+const bool INV_DER = true;
 const int PARED = 120;        // mm: lectura menor = hay pared
 const int D_FRENTE = 55;      // mm al frente con el robot centrado en la celda
 const int D_LADO = 50;        // mm a una pared lateral con el robot centrado
@@ -138,6 +140,8 @@ int rpcEstado(int e) {
 
 // ---------- Motores ----------
 void motores(int l, int r) {
+  if (INV_IZQ) l = -l;
+  if (INV_DER) r = -r;
   digitalWrite(IN1, l >= 0);
   digitalWrite(IN2, l < 0);
   digitalWrite(IN3, r >= 0);

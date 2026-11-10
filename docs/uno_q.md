@@ -11,10 +11,10 @@ Documento técnico del plan para la competencia (en 15 días desde 2026-10-29). 
 
 Mismo chasis, mismas piezas impresas y misma huella. El Q solo agrega:
 
-- Mástil (PTR de 10 o 15 mm, tamaño pendiente).
-- Cabeza con cámara USB.
-- Repisa y hub USB.
-- OLED movida a la parte trasera del mástil.
+- Pedestal impreso de 20 × 20 × 75 mm (inserto M4 abajo, M4 desde el piso 2).
+- Cabeza impresa: cámara al frente, OLED atrás en rieles.
+- Repisa y hub USB-C con entrada de alimentación.
+- Panel web de calibración en el puerto 7000.
 
 ## 2. Hardware
 
@@ -80,12 +80,14 @@ Geometría actual:
 
 | Parámetro | Valor |
 |---|---|
-| Altura del lente | 150 mm |
+| Altura del lente | 162 mm (placa 12 mm arriba de la manga para dejar libre la parte de atrás) |
 | Inclinación | 25° hacia abajo |
 | Campo de visión | ~100° × 75° |
 | Ve el piso desde | ~3 cm adelante |
 
-Pendiente: altura de la pared. Decide la altura de la cámara.
+Montaje: marco de 33 × 33 mm, 4 M2 a 28 mm con ±1 mm de juego y tuerca atrás, hueco para el conector USB arriba a la izquierda (visto por atrás) y paso de cables de alimentación abajo al centro.
+
+La Q busca la cámara de `/dev/video0` a `video11`; `video0` y `video1` son internos de la placa. Las regiones `ROI` se ajustan viendo la imagen en el panel web.
 
 ## 6. Sensor de color (TCS34725)
 
@@ -98,10 +100,10 @@ Geometría fija dentro de la capucha, LED encendido.
 1. **Blanco:** sin saturación (ATIME 24 ms, cuenta máxima 10240).
 2. **Oscuridad:** offset con negro mate.
 3. **Balance de blancos:** ganancias para que el blanco dé R = G = B.
-4. **Colores:** enseñar cada loseta real con ~30 lecturas promediadas y guardar en EEPROM.
-5. **En la sede:** recalibrar con el modo calibración (encender con el botón presionado).
+4. **Colores:** en el panel web (`http://<ip>:7000`), un asistente pide cada color; promedia 5 lecturas y guarda en `/app/colores.json`. Python lo manda al MCU en cada arranque.
+5. **En la sede:** repetir el asistente sobre la pista real.
 
-Clasificación: referencia más cercana en RGB normalizado + brillo. Ya está en el firmware. Los valores de `config.h` son placeholders.
+Clasificación: referencia más cercana en RGB normalizado + brillo. `refs[]` del sketch solo son los valores por defecto.
 
 ## 7. Energía
 
@@ -162,7 +164,7 @@ Batería → interruptor → fusible de 3 A → módulo DC-DC con salida USB-C P
 3. Cambiar la placa.
 4. Volver a colocar el shield.
 5. Mover el puente de VCC: **3V3** para Q, **5V** para R3.
-6. En Q: montar mástil, repisa y hub.
+6. En Q: montar pedestal, cabeza, repisa y hub.
 
 ## 11. Ruedas
 
@@ -191,13 +193,13 @@ Parámetros CAD actuales: `D_RUEDA` = 45 mm, `A_RUEDA` = 17 mm.
 
 | # | Pendiente | Qué decide | Estado |
 |---|---|---|---|
-| 1 | Tamaño del PTR (10 o 15 mm) | Mástil | Pendiente |
-| 2 | Altura de la pared | Altura de la cámara (lente hoy a 150 mm) | Pendiente |
+| 1 | Mástil | Pedestal impreso 20 × 20 con inserto M4 | Resuelto |
+| 2 | Altura de la pared | Ajuste de `ROI` (lente a 162 mm) | En la sede |
 | 3 | Rueda real: diámetro y ancho | `D_RUEDA`, `A_RUEDA`, pozo, límite de 120 mm, `T_CELDA`, `T_90` | Pendiente |
 | 4 | Referencia y dimensiones del hub | Repisa y espacio. Candidato: Arduino USB-C Hub 8-in-1 (https://www.robotshop.com/products/arduino-usb-c-hub-8in-1-for-uno-q) | Pendiente |
 | 5 | Resultado del test sin PD | Si se compra el módulo PD | Pendiente |
 | 6 | Posición exacta del USB-C del UNO Q | Repisa, mástil y cable | Medir |
-| 7 | Alinear `uno_q/README.md` con el mapa de pines de la sección 9 | Su tabla (ENA D9, ENB D10, IN D4/D5/D7/D8, botón D12) no coincide. Evita errores al cablear. | Pendiente |
+| 7 | Alinear `uno_q/README.md` con el mapa de pines de la sección 9 | Ya coinciden | Resuelto |
 
 ## 14. Fuentes
 
