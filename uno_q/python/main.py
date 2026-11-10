@@ -373,6 +373,18 @@ def error_camara(d):
     return e if abs(e) <= ODO_MAX else None
 
 
+def hacia_objetivo(img):
+    """Si la camara ve el color OBJETIVO en el piso: -1 izquierda, 0 al frente, 1 derecha (None si no lo ve).
+    Mira la mitad de abajo de la imagen partida en tercios y elige el tercio con mas pixeles de ese color."""
+    h, w = img.shape[:2]
+    hsv = cv2.cvtColor(img[int(h * 0.4):], cv2.COLOR_BGR2HSV)
+    a, b = next((a, b) for c, a, b in HUE if c == OBJETIVO)
+    m = cv2.inRange(hsv, (a, SAT_MIN, VAL_MIN), (b, 255, 255)) > 0
+    tercios = [m[:, i * w // 3:(i + 1) * w // 3].mean() for i in range(3)]
+    i = max(range(3), key=tercios.__getitem__)
+    return i - 1 if tercios[i] >= FRAC_COLOR / 2 else None
+
+
 def precheck():
     """Una foto antes de avanzar: color del piso de la celda siguiente y correccion de distancia."""
     if cam is None:
@@ -594,6 +606,11 @@ def buscar_color():
             h = (rumbo + r) % 4
             return visitas.get((pos[0] + DX[h], pos[1] + DY[h]), 0)
         rel = min(opciones, key=lambda r: (veces(r), opciones.index(r)))
+        img = foto() if cam is not None else None
+        ve = hacia_objetivo(img) if img is not None else None
+        if ve is not None and ve in opciones:  # la camara ve el amarillo: va hacia alla si los ToF dejan
+            rel = ve
+            print(f"Camara: {COLORES[OBJETIVO]} hacia", {-1: "la izquierda", 0: "el frente", 1: "la derecha"}[ve])
         girar_a((rumbo + rel) % 4)
         if not encontrado:
             avanzar(1)

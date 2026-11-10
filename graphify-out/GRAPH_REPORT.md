@@ -1,17 +1,17 @@
 # Graph Report - sumo-v-ia  (2026-11-10)
 
 ## Corpus Check
-- 42 files · ~45,964 words
+- 42 files · ~46,136 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 22 file(s) not represented in the graph (top: .stl 12, (none) 4, .csv 2)
 
 ## Summary
-- 548 nodes · 983 edges · 27 communities (22 shown, 5 thin omitted)
+- 550 nodes · 987 edges · 27 communities (22 shown, 5 thin omitted)
 - Extraction: 88% EXTRACTED · 12% INFERRED · 0% AMBIGUOUS · INFERRED: 115 edges (avg confidence: 0.86)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `c95da2fa`
+- Built from commit: `18b78aa3`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -95,7 +95,7 @@ Nodes (39): w(), 1. Qué hay en el repositorio y qué placa usa qué código, 2.
 
 ### Community 5 - "main.py"
 Cohesion: 0.07
-Nodes (45): abrir_camara(), analiza(), api_foto(), api_guardar(), api_lectura(), api_modo(), api_tof(), avanzar() (+37 more)
+Nodes (46): abrir_camara(), analiza(), api_foto(), api_guardar(), api_lectura(), api_modo(), api_tof(), avanzar() (+38 more)
 
 ### Community 6 - "generar_pdf.py"
 Cohesion: 0.15
@@ -163,7 +163,7 @@ Nodes (8): 1. Revisa antes de prender, 2. Prende, 3. El botón D2, 4. Calibra lo
 
 ## Knowledge Gaps
 - **87 isolated node(s):** `SYSRANGE_START`, `SYSTEM_THRESH_HIGH`, `SYSTEM_THRESH_LOW`, `SYSTEM_SEQUENCE_CONFIG`, `SYSTEM_RANGE_CONFIG` (+82 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 272 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 273 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **5 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
@@ -176,9 +176,9 @@ _Questions this graph is uniquely positioned to answer:_
 - **What connects `SYSRANGE_START`, `SYSTEM_THRESH_HIGH`, `SYSTEM_THRESH_LOW` to the rest of the system?**
   _87 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `main.cpp` be split into smaller, more focused modules?**
-  _Cohesion score 0.06912280701754386 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.06766917293233082 - nodes in this community are weakly interconnected._
 - **Why does `regAddr` connect `regAddr` to `VL53L0X`?**
-  _High betweenness centrality (0.159) - this node is a cross-community bridge._
+  _High betweenness centrality (0.158) - this node is a cross-community bridge._
 - **Are the 11 inferred relationships involving `calibracion()` (e.g. with `oledBorra()` and `oledDec()`) actually correct?**
   _`calibracion()` has 11 INFERRED edges - model-reasoned connections that need verification._
 - **Should `regAddr` be split into smaller, more focused modules?**
