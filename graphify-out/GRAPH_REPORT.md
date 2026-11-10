@@ -1,17 +1,17 @@
 # Graph Report - sumo-v-ia  (2026-11-10)
 
 ## Corpus Check
-- 42 files · ~45,673 words
+- 42 files · ~45,597 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 22 file(s) not represented in the graph (top: .stl 12, (none) 4, .csv 2)
 
 ## Summary
-- 541 nodes · 974 edges · 26 communities (21 shown, 5 thin omitted)
+- 541 nodes · 967 edges · 26 communities (21 shown, 5 thin omitted)
 - Extraction: 88% EXTRACTED · 12% INFERRED · 0% AMBIGUOUS · INFERRED: 115 edges (avg confidence: 0.86)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `87e4073b`
+- Built from commit: `41063ab1`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -49,7 +49,7 @@
 3. `Oled` - 21 edges
 4. `calibracion()` - 18 edges
 5. `main()` - 18 edges
-6. `rpc()` - 17 edges
+6. `rpc()` - 18 edges
 7. `manual_ensamble()` - 16 edges
 8. `Robot de laberinto: Arduino UNO Q` - 15 edges
 9. `planta_piso1()` - 13 edges
@@ -93,7 +93,7 @@ Cohesion: 0.05
 Nodes (39): w(), 1. Qué hay en el repositorio y qué placa usa qué código, 2. Descargar el repositorio (Windows), 3.10 Flashear y comprobar, 3.11 Alternativa: compilar con el Makefile, 3.1 Instalar Microchip Studio 7, 3.2 Conseguir avrdude, 3.3 Conectar la placa y encontrar el puerto COM (+31 more)
 
 ### Community 5 - "main.py"
-Cohesion: 0.09
+Cohesion: 0.08
 Nodes (41): abrir_camara(), analiza(), api_foto(), api_guardar(), api_lectura(), api_tof(), avanzar(), bloqueado() (+33 more)
 
 ### Community 6 - "generar_pdf.py"
