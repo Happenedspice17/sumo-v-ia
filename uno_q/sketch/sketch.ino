@@ -29,6 +29,8 @@ const bool INV_DER = true;
 const int PARED = 120;        // mm: lectura menor = hay pared (lados)
 const int PARED_F = 130;      // mm: al frente, menos de esto = pared (de 140 para arriba no hay)
 const int D_FRENTE = 55;      // mm al frente con el robot centrado en la celda
+const int D_CERCA = 15;       // mm: si queda mas de esto por debajo de D_FRENTE, se hace para atras
+const int FRENA_K = 2;        // PWM por mm: con pared al frente baja la velocidad al acercarse
 const int D_LADO = 50;        // mm a una pared lateral con el robot centrado
 const float KC = 0.8;         // ganancia de centrado
 const float OFF_COLOR = 0.2;  // distancia eje->sensor de color, en celdas
@@ -275,7 +277,12 @@ void control() {
   }
   // Con pared enfrente se detiene por distancia; si no, por tiempo
   bool paredF = dist[1] < PARED_F;
-  if (paredF && dist[1] <= D_FRENTE) { termina(); return; }
+  if (paredF && dist[1] <= D_FRENTE) {
+    // muy pegado: se hace para atras hasta D_FRENTE (maximo 0.8 s mas)
+    if (dist[1] < D_FRENTE - D_CERCA && t < dur + 800) { motores(-VEL_MIN, -VEL_MIN); return; }
+    termina();
+    return;
+  }
   if (t >= dur && !(paredF && t < dur + unidad / 3)) { termina(); return; }
   odometria();
   t = millis() - tIni;
@@ -283,6 +290,7 @@ void control() {
   long falta = max(dur - t, 0L);
   long zona = unidad / 4;
   float tope = falta < zona ? VEL_MIN + (vmax - VEL_MIN) * falta / (float)zona : vmax;
+  if (paredF) tope = min(tope, (float)VEL_MIN + FRENA_K * (dist[1] - D_FRENTE));   // frena al acercarse
   vel = min(vel + 6.0f, tope);
   float corr = centrado();
   motores(vel - corr, vel + corr);

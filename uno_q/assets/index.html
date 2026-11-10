@@ -41,10 +41,13 @@
       <line id="lF" x1="0" y1="-54" x2="0" y2="-54" stroke-width="10"/>
       <line id="lI" x1="-43" y1="-40" x2="-43" y2="-40" stroke-width="10"/>
       <line id="lD" x1="43" y1="-40" x2="43" y2="-40" stroke-width="10"/>
+      <g id="flecha" style="transition:transform .2s"><path d="M0,-40 L22,-5 L8,-5 L8,35 L-8,35 L-8,-5 L-22,-5 Z" fill="#1e88e5" stroke="#fff" stroke-width="2"/></g>
       <text id="tF" x="12" y="-200" font-size="20" fill="#fff"></text>
       <text id="tI" x="-195" y="-50" font-size="20" fill="#fff"></text>
       <text id="tD" x="195" y="-50" font-size="20" fill="#fff" text-anchor="end"></text>
     </svg>
+    <div style="margin-top:10px;font-size:20px">Qué haría (<span id="tofModo"></span>): <b id="accion">...</b></div>
+    <div style="font-size:14px;color:#666">Simulación: tapa o acerca un sensor con la mano y mira qué decide. No mueve el robot.</div>
     <div id="tofTxt" style="font-family:monospace;font-size:15px;margin-top:8px;white-space:pre-line"></div>
   </div>
 </div>
@@ -165,6 +168,11 @@ async function tof() {
     rayo("lI", -43, -40, -1, 0, d.izq, d.pared);
     rayo("lD", 43, -40, 1, 0, d.der, d.pared);
     document.getElementById("tF").textContent = t(d.frente);
+    document.getElementById("accion").textContent = d.accion;
+    document.getElementById("tofModo").textContent = d.modo;
+    const fl = document.getElementById("flecha");
+    fl.setAttribute("transform", "rotate(" + d.rel * 90 + ")");
+    fl.querySelector("path").setAttribute("fill", d.accion.startsWith("Retrocede") || d.accion.startsWith("Frena") ? "#e53935" : "#1e88e5");
     document.getElementById("tI").textContent = t(d.izq);
     document.getElementById("tD").textContent = t(d.der);
     document.getElementById("tofTxt").textContent =

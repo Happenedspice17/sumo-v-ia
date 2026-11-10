@@ -422,9 +422,39 @@ def api_lectura():
             "odo": {**odo, **vivo}}
 
 
+def que_haria(izq, frente, der, mueve):
+    """Simulacion para pruebas: que haria el robot con lo que leen los ToF ahora (no mueve nada)."""
+    if frente < D_FRENTE_TOF - 15:
+        return "Retrocede: muy pegado a la pared de enfrente", 2, 0
+    if mueve and frente < PARED_F:
+        return f"Frena: pared a {frente} mm, se detiene a {D_FRENTE_TOF} mm", 0, 0
+    libres = 0 if frente < PARED_F else (99 if frente >= TOF_RANGO else
+                                         max(1, int((frente - D_FRENTE_TOF + CELDA / 2) // CELDA)))
+    libre = {0: libres > 0, -1: izq >= 120, 1: der >= 120, 2: True}
+    if modo == "tonto":
+        rel = next(r for r in (1, 0, -1, 2) if libre[r])
+    else:                                # mapa: entre las salidas libres, la de menor distancia a la meta
+        d = flood(META, False)
+        x, y = pos
+        opciones = []
+        for r in (0, 1, -1, 2):
+            h = (rumbo + r) % 4
+            nx, ny = x + DX[h], y + DY[h]
+            if libre[r] and dentro(nx, ny):
+                opciones.append((d[nx][ny], r))
+        rel = min(opciones)[1] if opciones else 2
+    texto = {0: "Avanza", 1: "Gira a la derecha y avanza", -1: "Gira a la izquierda y avanza", 2: "Media vuelta"}[rel]
+    n = (libres if libres < 99 else "varias") if rel == 0 else 1
+    return f"{texto} ({n} celda{'s' if n != 1 else ''})", rel, n
+
+
 def api_tof():
-    return {"izq": rpc("odo", 6), "frente": rpc("odo", 5), "der": rpc("odo", 7), "pared": 120, "pared_f": PARED_F,
-            "libres": celdas_libres(), "falta": rpc("odo", 1), "mueve": bool(rpc("odo", 2) & 8)}
+    izq, frente, der = rpc("odo", 6), rpc("odo", 5), rpc("odo", 7)
+    mueve = bool(rpc("odo", 2) & 8)
+    accion, rel, n = que_haria(izq, frente, der, mueve)
+    return {"izq": izq, "frente": frente, "der": der, "pared": 120, "pared_f": PARED_F,
+            "libres": celdas_libres(), "falta": rpc("odo", 1), "mueve": mueve,
+            "accion": accion, "rel": rel, "modo": modo}
 
 
 def api_modo(m: str):
