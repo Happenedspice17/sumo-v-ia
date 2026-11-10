@@ -605,11 +605,11 @@ def buscar_color():
         def veces(r):
             h = (rumbo + r) % 4
             return visitas.get((pos[0] + DX[h], pos[1] + DY[h]), 0)
-        rel = min(opciones, key=lambda r: (veces(r), opciones.index(r)))
+        # la camara solo es referencia: desempata entre salidas igual de visitadas (punto muerto de los ToF)
         img = foto() if cam is not None else None
         ve = hacia_objetivo(img) if img is not None else None
-        if ve is not None and ve in opciones:  # la camara ve el amarillo: va hacia alla si los ToF dejan
-            rel = ve
+        rel = min(opciones, key=lambda r: (veces(r), r != ve, opciones.index(r)))
+        if ve is not None and rel == ve:
             print(f"Camara: {COLORES[OBJETIVO]} hacia", {-1: "la izquierda", 0: "el frente", 1: "la derecha"}[ve])
         girar_a((rumbo + rel) % 4)
         if not encontrado:
