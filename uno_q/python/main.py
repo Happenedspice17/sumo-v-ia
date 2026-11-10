@@ -55,7 +55,7 @@ CELDA, PARED_CARA = 180, 84              # mm entre centros; cara de la pared de
 ODO_MAX = 30                             # mm: correcciones de la camara mas grandes se ignoran
 TOF_RANGO = 1000                         # mm: si el frontal ve algo mas cerca, manda el frontal y no la camara
 PARED_F = 130                            # mm: al frente, menos de esto = pared (= PARED_F del sketch)
-D_FRENTE_TOF = 55                        # mm que lee el frontal con el robot centrado y pared en su celda (= D_FRENTE del sketch)
+D_FRENTE_TOF = 130                       # mm que lee el frontal con el robot centrado y pared en su celda (= D_FRENTE del sketch)
 odo = {"falta": 0, "corr": 0, "ult": 0, "cam_mm": None, "cam_err": None, "extra": 0, "frente": None}
 PESO_CAM = 1                             # una pared vista solo por la camara cuenta como 3 celdas extra de camino
 # Piso de la celda siguiente: la camara busca ahi marcas de color antes de que llegue el sensor
@@ -424,7 +424,7 @@ def api_lectura():
 
 def que_haria(izq, frente, der, mueve):
     """Simulacion para pruebas: que haria el robot con lo que leen los ToF ahora (no mueve nada)."""
-    if frente < D_FRENTE_TOF - 15:
+    if frente < D_FRENTE_TOF - 10:
         return "Retrocede: muy pegado a la pared de enfrente", 2, 0
     if mueve and frente < PARED_F:
         return f"Frena: pared a {frente} mm, se detiene a {D_FRENTE_TOF} mm", 0, 0
