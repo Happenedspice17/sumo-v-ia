@@ -115,7 +115,7 @@ int rpcOcupado() { return ocupado; }
 long pActual() { return tipo == AVANZA ? total * (long)(millis() - tIni) / dur : 0; }
 
 // 0 mm recorridos, 1 mm que faltan, 2 paredes (1 izq, 2 frente, 4 der, 8 en movimiento),
-// 3 correcciones del ultimo avance, 4 ultima correccion (mm), 5 distancia al frente (mm)
+// 3 correcciones del ultimo avance, 4 ultima correccion (mm), 5/6/7 distancia frente/izq/der (mm)
 int rpcOdo(int i) {
   long p = pActual();
   switch (i) {
@@ -124,6 +124,8 @@ int rpcOdo(int i) {
     case 2: return (dist[0] < PARED) | (dist[1] < PARED) << 1 | (dist[2] < PARED) << 2 | (tipo != NADA) << 3;
     case 3: return nCorr;
     case 4: return ultCorr;
+    case 6: return dist[0];
+    case 7: return dist[2];
     default: return dist[1];
   }
 }

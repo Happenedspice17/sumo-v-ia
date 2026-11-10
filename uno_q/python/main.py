@@ -52,9 +52,11 @@ REL = {"F": 0, "I": -1, "D": 1}
 # Geometria de la camara (chasis/chasis.scad): lente a CAM_H del piso, CAM_Y adelante del eje, inclinada CAM_INCL
 CAM_H, CAM_Y, CAM_INCL, CAM_FOV_V = 162, 32, 25, 75
 CELDA, PARED_CARA = 180, 84              # mm entre centros; cara de la pared de enfrente desde el centro (90 - 6)
-ODO_MAX = 60                             # mm: correcciones de la camara mas grandes se ignoran
+ODO_MAX = 30                             # mm: correcciones de la camara mas grandes se ignoran
+TOF_RANGO = 1000                         # mm: si el frontal ve algo mas cerca, manda el frontal y no la camara
+D_FRENTE_TOF = 55                        # mm que lee el frontal con el robot centrado y pared en su celda (= D_FRENTE del sketch)
 odo = {"falta": 0, "corr": 0, "ult": 0, "cam_mm": None, "cam_err": None, "extra": 0, "frente": None}
-PESO_CAM = 3                             # una pared vista solo por la camara cuenta como 3 celdas extra de camino
+PESO_CAM = 1                             # una pared vista solo por la camara cuenta como 3 celdas extra de camino
 # Piso de la celda siguiente: la camara busca ahi marcas de color antes de que llegue el sensor
 ROI_PISO = (0.30, 0.45, 0.70, 0.80)
 SAT_MIN, VAL_MIN, FRAC_COLOR = 90, 70, 0.08   # pixel "de color": saturado y no oscuro (piso negro, pared blanca)
@@ -213,21 +215,38 @@ def girar_a(h):
     rumbo = h
 
 
-def frente_libre():
-    """Los VL53L0X mandan: si ven pared enfrente no se avanza, aunque el mapa o la camara digan que no hay."""
-    time.sleep(0.06)
-    p = rpc("paredes")
-    if p >= 0 and p & 2:
-        set_pared(pos[0], pos[1], rumbo)
-        print(f"Sensor: pared enfrente en {pos}, no avanzo")
-        return False
-    return True
+def tof_frente():
+    """Distancia del VL53L0X de enfrente: la menor de 3 lecturas (una lectura mala no deja pasar)."""
+    d = []
+    for _ in range(3):
+        time.sleep(0.03)
+        d.append(rpc("odo", 5))
+    return min(d)
+
+
+def celdas_libres():
+    """Cuantas celdas puede avanzar segun el frontal (99 si no ve nada)."""
+    d = tof_frente()
+    if d >= TOF_RANGO:
+        return 99
+    return max(0, int((d - D_FRENTE_TOF + CELDA / 2) // CELDA))
 
 
 def avanzar(n, rapido=False):
+    """Los VL53L0X mandan: nunca avanza mas celdas de las que el frontal ve libres."""
     global pos
-    if not frente_libre():
+    libres = celdas_libres()
+    if libres == 0:
+        set_pared(pos[0], pos[1], rumbo)
+        print(f"Sensor: pared enfrente en {pos}, no avanzo")
         return False
+    if libres < n:
+        x, y = pos[0] + DX[rumbo] * libres, pos[1] + DY[rumbo] * libres
+        if dentro(x, y):
+            set_pared(x, y, rumbo)
+        print(f"Sensor: solo {libres} celdas libres de {n}, recorto la recta")
+    completo = libres >= n
+    n = min(n, libres)
     origen = pos
     odo["extra"] = int(precheck())
     rpc("mover", n, int(rapido), odo["extra"])
@@ -235,7 +254,7 @@ def avanzar(n, rapido=False):
     pos = (pos[0] + DX[rumbo] * n, pos[1] + DY[rumbo] * n)
     odo["corr"], odo["ult"], odo["frente"] = rpc("odo", 3), rpc("odo", 4), rpc("odo", 5)
     print(f"Odo {pos}: camara {odo['extra']:+d} mm, sensores {odo['corr']} correcciones (ultima {odo['ult']:+d} mm)")
-    return True
+    return completo
 
 
 # ---------- Vision ----------
@@ -341,6 +360,8 @@ def precheck():
             print(f"Camara: {COLORES[cam_vio[(nx, ny)]]} adelante en {nx},{ny}")
     odo["cam_mm"] = dist_camara(img)
     odo["cam_err"] = error_camara(odo["cam_mm"])
+    if rpc("odo", 5) < TOF_RANGO:        # el frontal ve la pared: corrige el sketch con el ToF, no la camara
+        return 0
     return odo["cam_err"] or 0
 
 
@@ -401,6 +422,11 @@ def api_lectura():
             "odo": {**odo, **vivo}}
 
 
+def api_tof():
+    return {"izq": rpc("odo", 6), "frente": rpc("odo", 5), "der": rpc("odo", 7), "pared": 120,
+            "libres": celdas_libres(), "falta": rpc("odo", 1), "mueve": bool(rpc("odo", 2) & 8)}
+
+
 def api_modo(m: str):
     global modo
     if m in ("mapa", "tonto"):
@@ -452,6 +478,7 @@ ui.expose_api("GET", "/api/lectura", api_lectura)
 ui.expose_api("GET", "/api/guardar", api_guardar)
 ui.expose_api("GET", "/api/foto", api_foto)
 ui.expose_api("GET", "/api/modo", api_modo)
+ui.expose_api("GET", "/api/tof", api_tof)
 
 
 # ---------- Estrategias ----------
@@ -510,8 +537,10 @@ def ruta_rapida(d):
     estado(3)
     while pos not in META:
         x, y = pos
-        h = next(h for h in range(4) if not bloqueado(x, y, h, True)
-                 and d[x + DX[h]][y + DY[h]] == d[x][y] - 1)
+        h = next((h for h in range(4) if not bloqueado(x, y, h, True)
+                  and d[x + DX[h]][y + DY[h]] == d[x][y] - 1), None)
+        if h is None:
+            return False
         n = 0
         cx, cy = x, y
         while (not bloqueado(cx, cy, h, True)
