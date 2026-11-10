@@ -432,9 +432,12 @@ def que_haria(izq, frente, der, mueve):
                                          max(1, int((frente - D_FRENTE_TOF + CELDA / 2) // CELDA)))
     libre = {0: libres > 0, -1: izq >= 120, 1: der >= 120, 2: True}
     rel = next(r for r in (1, 0, -1, 2) if libre[r])   # modo tonto: pared derecha
-    texto = {0: "Avanza", 1: "Gira a la derecha y avanza", -1: "Gira a la izquierda y avanza", 2: "Media vuelta"}[rel]
     n = (libres if libres < 99 else "varias") if rel == 0 else 1
-    return f"{texto} ({n} celda{'s' if n != 1 else ''})", rel, n
+    texto = {0: f"Sigue de frente ({n} celda{'s' if n != 1 else ''})",
+             1: "Gira 90° a la derecha (no va de frente), luego 1 celda hacia allá",
+             -1: "Gira 90° a la izquierda (no va de frente), luego 1 celda hacia allá",
+             2: "Media vuelta (180°), luego 1 celda de regreso"}[rel]
+    return texto, rel, n
 
 
 def api_tof():
