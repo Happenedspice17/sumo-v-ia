@@ -13,7 +13,6 @@
   "11": "SequenceStepTimeouts",
   "12": "Robot de laberinto – Arduino UNO R3 (ATmega328P)",
   "13": "app.yaml",
-  "14": "Iteración B – Arduino UNO Q (con cámara)",
   "15": "CLAUDE.md",
   "16": "Ponytail Help",
   "17": "ponytail-audit/SKILL.md",
@@ -25,6 +24,5 @@
   "23": "manual_uso.md",
   "24": "md_pdf.js",
   "25": "gen",
-  "26": "prompt_pdf.md",
-  "27": "calibracion"
+  "26": "prompt_pdf.md"
 }

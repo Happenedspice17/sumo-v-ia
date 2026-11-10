@@ -11,13 +11,16 @@ import base64
 print("Python OK, cv2", cv2.__version__)
 
 # ---------- Laberinto ----------
-N = 16                                   # 3 m / 18 cm
+N = 11                                   # 11 x 11 celdas de 18 cm
 INICIO = (0, 0)
 RUMBO_INI = 0                            # 0=N 1=E 2=S 3=O
-META = {(7, 7), (7, 8), (8, 7), (8, 8)}
+# centro: 1 celda si N es impar, las 4 del centro si es par
+META = {(N // 2, N // 2)} if N % 2 else {(N // 2 - 1 + i, N // 2 - 1 + j) for i in (0, 1) for j in (0, 1)}
 COLORES = ["PISO", "ROJO", "VERDE", "AZUL", "AMAR"]
 ARCHIVO = "/app/mapa.json"
 ARCH_COL = "/app/colores.json"
+ARCH_MODO = "/app/modo.json"
+modo = "mapa"                            # "mapa": flood fill | "tonto": sigue la pared derecha (no depende del mapa)
 # r, g, b normalizados y brillo c; los mismos de refs[] del sketch
 REFS = [[0.33, 0.33, 0.33, 900], [0.58, 0.22, 0.20, 400], [0.26, 0.46, 0.28, 350],
         [0.20, 0.32, 0.48, 300], [0.42, 0.40, 0.18, 700]]
@@ -32,12 +35,24 @@ BIT = [1, 2, 4, 8]
 CAM_ID = 0
 USAR_CAM = True
 ANCHO, ALTO = 320, 240
-# Regiones (x0, y0, x1, y1) en fraccion de la imagen; ajustar con /app/cal.jpg
+# La camara ve por encima de las paredes: cada region mira una pared de una celda adelante.
+# Clave "adelante,lado,pared": adelante = celdas al frente (1 = la siguiente), lado = -1 izq / 0 / 1 der,
+# pared = F (fondo), I (izquierda), D (derecha) de esa celda. Valor = (x0, y0, x1, y1) en fraccion de la imagen.
+# Ajustar viendo la camara en el panel web (rojo = ve pared, verde = libre).
 ROI = {
-    "frente2": (0.35, 0.05, 0.65, 0.25),   # pared del fondo de la celda siguiente
-    "izq2":    (0.05, 0.25, 0.25, 0.55),   # pared izquierda de la celda siguiente
-    "der2":    (0.75, 0.25, 0.95, 0.55),   # pared derecha de la celda siguiente
+    "1,0,F": (0.35, 0.05, 0.65, 0.25),
+    "1,0,I": (0.05, 0.25, 0.25, 0.55),
+    "1,0,D": (0.75, 0.25, 0.95, 0.55),
+    "2,0,F": (0.42, 0.00, 0.58, 0.06),
+    "2,0,I": (0.25, 0.05, 0.35, 0.22),
+    "2,0,D": (0.65, 0.05, 0.75, 0.22),
 }
+REL = {"F": 0, "I": -1, "D": 1}
+# Piso de la celda siguiente: la camara busca ahi marcas de color antes de que llegue el sensor
+ROI_PISO = (0.30, 0.45, 0.70, 0.80)
+SAT_MIN, VAL_MIN, FRAC_COLOR = 90, 70, 0.08   # pixel "de color": saturado y no oscuro (piso negro, pared blanca)
+HUE = [(1, 0, 10), (1, 170, 180), (4, 20, 35), (2, 40, 85), (3, 90, 130)]   # (color, h min, h max) en HSV de OpenCV
+BRILLO_MIN = 1.3                         # una marca refleja al menos 1.3 veces mas que el piso negro
 PARED_LO = (0, 0, 170)                   # HSV de la pared (blanca por defecto)
 PARED_HI = (180, 60, 255)
 UMBRAL = 0.35
@@ -51,6 +66,7 @@ pos = INICIO
 rumbo = RUMBO_INI
 cam = None
 cam_lock = threading.Lock()
+cam_vio = {}                             # celda -> color que vio la camara (0 = solo piso)
 
 
 def guardar():
@@ -146,6 +162,9 @@ def revisar_color(origen, h):
     x, y = origen[0] + DX[h] * k, origen[1] + DY[h] * k
     if (x, y) in marcas:
         return
+    if cam_vio.get((x, y)) == 0:         # la camara vio piso limpio ahi: falso positivo del sensor
+        print(f"Descarto {COLORES[c]} en {x},{y}: la camara no vio color")
+        return
     marcas[(x, y)] = c
     cuenta[c] += 1
     rpc("set_cuenta", c, cuenta[c])
@@ -171,6 +190,7 @@ def girar_a(h):
 def avanzar(n, rapido=False):
     global pos
     origen = pos
+    precheck()
     rpc("mover", n, int(rapido))
     esperar(origen, rumbo)
     pos = (pos[0] + DX[rumbo] * n, pos[1] + DY[rumbo] * n)
@@ -212,6 +232,7 @@ def analiza(img, dibuja=False):
         res[k] = mask[a[1]:b[1], a[0]:b[0]].mean() / 255 > UMBRAL
         if dibuja:
             cv2.rectangle(img, a, b, (0, 0, 255) if res[k] else (0, 255, 0), 2)
+            cv2.putText(img, k, (a[0] + 2, b[1] - 3), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255, 255, 0), 1)
     return res, mask
 
 
@@ -229,6 +250,31 @@ def leer_camara(debug=False):
     return res
 
 
+def color_piso(img):
+    h, w = img.shape[:2]
+    x0, y0, x1, y1 = ROI_PISO
+    hsv = cv2.cvtColor(img[int(y0 * h):int(y1 * h), int(x0 * w):int(x1 * w)], cv2.COLOR_BGR2HSV)
+    ok = cv2.inRange(hsv, (0, SAT_MIN, VAL_MIN), (180, 255, 255)) > 0
+    if ok.mean() < FRAC_COLOR:
+        return 0
+    hues = hsv[..., 0][ok]
+    votos = [0] * len(COLORES)
+    for c, a, b in HUE:
+        votos[c] += int(((hues >= a) & (hues <= b)).sum())
+    return max(range(len(COLORES)), key=votos.__getitem__) if max(votos) else 0
+
+
+def precheck():
+    nx, ny = pos[0] + DX[rumbo], pos[1] + DY[rumbo]
+    if cam is None or not dentro(nx, ny) or (nx, ny) in cam_vio:
+        return
+    img = foto()
+    if img is not None:
+        cam_vio[(nx, ny)] = color_piso(img)
+        if cam_vio[(nx, ny)]:
+            print(f"Camara: {COLORES[cam_vio[(nx, ny)]]} adelante en {nx},{ny}")
+
+
 def sensar():
     x, y = pos
     if visto[x][y]:
@@ -240,15 +286,18 @@ def sensar():
             set_pared(x, y, (rumbo + rel) % 4)
     visto[x][y] = True
 
-    nx, ny = x + DX[rumbo], y + DY[rumbo]
-    if p & 2 or not dentro(nx, ny) or visto[nx][ny]:
-        return
-    c = leer_camara()
+    c = leer_camara()                    # ve por arriba: tambien detras de una pared de enfrente
     if c is None:
         return
-    for k, rel in (("frente2", 0), ("izq2", -1), ("der2", 1)):
-        if c[k]:
-            set_pared(nx, ny, (rumbo + rel) % 4, tentativo)
+    der = (rumbo + 1) % 4
+    for k, v in c.items():
+        if not v:
+            continue
+        a, l, w = k.split(",")
+        cx = x + DX[rumbo] * int(a) + DX[der] * int(l)
+        cy = y + DY[rumbo] * int(a) + DY[der] * int(l)
+        if dentro(cx, cy) and not visto[cx][cy]:
+            set_pared(cx, cy, (rumbo + REL[w]) % 4, tentativo)
 
 
 # ---------- Dashboard de colores (http://<ip de la Q>:7000) ----------
@@ -262,6 +311,8 @@ def clasifica(v):
     import math
     d = [(v[0] - f[0]) ** 2 + (v[1] - f[1]) ** 2 + (v[2] - f[2]) ** 2
          + 0.01 * math.log((v[3] + 1) / (f[3] + 1)) ** 2 for f in REFS]
+    if v[3] < REFS[0][3] * BRILLO_MIN:
+        return 0
     k = min(range(len(REFS)), key=d.__getitem__)
     return k if d[k] < 0.02 else 0
 
@@ -273,7 +324,17 @@ def enviar_refs():
 
 def api_lectura():
     v = lectura()
-    return {"v": v, "color": COLORES[clasifica(v)], "colores": COLORES, "refs": REFS}
+    return {"v": v, "color": COLORES[clasifica(v)], "colores": COLORES, "refs": REFS, "modo": modo}
+
+
+def api_modo(m: str):
+    global modo
+    if m in ("mapa", "tonto"):
+        modo = m
+        with open(ARCH_MODO, "w") as f:
+            json.dump(modo, f)
+        print("Modo", modo)
+    return {"modo": modo}
 
 
 def api_guardar(i: int):
@@ -293,7 +354,12 @@ def api_foto():
     img = foto() if cam is not None else None
     if img is None:
         return {"img": None}
+    c = color_piso(img)
     res, _ = analiza(img, True)
+    h, w = img.shape[:2]
+    x0, y0, x1, y1 = ROI_PISO
+    cv2.rectangle(img, (int(x0 * w), int(y0 * h)), (int(x1 * w), int(y1 * h)), (255, 0, 255), 2)
+    cv2.putText(img, COLORES[c], (int(x0 * w) + 2, int(y1 * h) - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 1)
     img = cv2.resize(img, (160, 120))
     ok, buf = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 40])
     return {"img": base64.b64encode(buf).decode(), "res": res}
@@ -303,6 +369,7 @@ ui = WebUI()
 ui.expose_api("GET", "/api/lectura", api_lectura)
 ui.expose_api("GET", "/api/guardar", api_guardar)
 ui.expose_api("GET", "/api/foto", api_foto)
+ui.expose_api("GET", "/api/modo", api_modo)
 
 
 # ---------- Estrategias ----------
@@ -329,6 +396,28 @@ def explorar(objetivos, est):
     sensar()
     guardar()
     return True
+
+
+def seguir_pared(objetivos):
+    """Modo tonto: mano derecha. Igual va mapeando (sensores y camara) para la corrida rapida."""
+    estado(1)
+    vistos = set()
+    while (pos, rumbo) not in vistos:    # repetir posicion y rumbo = da vueltas a una isla
+        vistos.add((pos, rumbo))
+        if pos in objetivos:
+            sensar()
+            guardar()
+            return True
+        sensar()
+        x, y = pos
+        for rel in (1, 0, -1, 2):        # derecha, frente, izquierda, atras
+            h = (rumbo + rel) % 4
+            if not paredes[x][y] & BIT[h] and dentro(x + DX[h], y + DY[h]):
+                break
+        girar_a(h)
+        avanzar(1)
+    print("La pared derecha no llega a la meta (isla): cambio a mapa")
+    return False
 
 
 def ruta_conocida():
@@ -359,6 +448,7 @@ def borrar():
     tentativo = [[0] * N for _ in range(N)]
     visto = [[False] * N for _ in range(N)]
     marcas.clear()
+    cam_vio.clear()
     bordes()
     if os.path.exists(ARCHIVO):
         os.remove(ARCHIVO)
@@ -370,7 +460,10 @@ def borrar():
 
 
 def iniciar():
-    global REFS
+    global REFS, modo
+    if os.path.exists(ARCH_MODO):
+        with open(ARCH_MODO) as f:
+            modo = json.load(f)
     if os.path.exists(ARCH_COL):
         with open(ARCH_COL) as f:
             REFS = json.load(f)
@@ -403,7 +496,8 @@ def loop():
         ruta_rapida(d)
         estado(4)
     else:
-        explorar(META, 1)
+        if modo != "tonto" or not seguir_pared(META):
+            explorar(META, 1)
         explorar({INICIO}, 2)
         estado(0)
     guardar()

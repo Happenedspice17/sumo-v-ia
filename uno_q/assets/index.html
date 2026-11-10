@@ -33,6 +33,13 @@
   </div>
 </div>
 <div class="paso">
+  <div>Modo de exploración: <b id="modo">...</b></div>
+  <div class="nav" style="margin-top:8px">
+    <button style="background:#1565c0" onclick="ponModo('mapa')">Mapa (inteligente)</button>
+    <button style="background:#6d4c41" onclick="ponModo('tonto')">Tonto (pared derecha)</button>
+  </div>
+</div>
+<div class="paso">
   <div>Cámara (rojo = ve pared, verde = libre):</div>
   <img id="cam" alt="sin cámara" style="width:100%;max-width:320px;image-rendering:pixelated;background:#000;border-radius:8px;margin-top:8px">
 </div>
@@ -72,6 +79,7 @@ function pinta(d) {
   const k = 255 / Math.max(r, g, b, 0.01);
   document.getElementById("muestra").style.background = `rgb(${r * k},${g * k},${b * k})`;
   document.getElementById("color").textContent = d.color;
+  if (d.modo) document.getElementById("modo").textContent = d.modo;
   document.getElementById("nums").textContent = `r ${r.toFixed(2)}  g ${g.toFixed(2)}  b ${b.toFixed(2)}  c ${c}`;
   const cont = document.getElementById("botones");
   if (!hechos) {
@@ -96,6 +104,11 @@ async function guardar(i, n) {
   const d = await (await fetch("/api/guardar?i=" + i)).json();
   pinta(d);
   document.getElementById("msg").textContent = n + " guardado ✔";
+}
+
+async function ponModo(m) {
+  const d = await (await fetch("/api/modo?m=" + m)).json();
+  document.getElementById("modo").textContent = d.modo;
 }
 
 async function ciclo() {

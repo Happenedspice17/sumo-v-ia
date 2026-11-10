@@ -46,6 +46,7 @@ Ref refs[] = {
 };
 const int NCOL = sizeof(refs) / sizeof(refs[0]);
 const float DIST_MAX = 0.02;
+const float BRILLO_MIN = 1.3;  // piso negro: una marca refleja al menos 1.3x mas que el piso (quita falsos positivos)
 
 Oled oled(128, 64, &Wire, -1);
 Adafruit_TCS34725 tcs(TCS34725_INTEGRATIONTIME_24MS, TCS34725_GAIN_4X);
@@ -241,6 +242,7 @@ void tofLee() {
 
 // ---------- Sensor de color ----------
 int clasifica(uint16_t r, uint16_t g, uint16_t b, uint16_t c) {
+  if (c < refs[0].c * BRILLO_MIN) return 0;
   float s = r + g + b + 1;
   float rn = r / s, gn = g / s, bn = b / s;
   int mejor = 0;
