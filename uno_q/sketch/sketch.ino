@@ -91,6 +91,8 @@ bool ladoVe[2];               // pared vista a la izq / der (con antirrebote)
 int ladoRacha[2];
 uint32_t tIni;
 float vel;
+int dMin;                     // menor distancia al frente en este avance
+uint32_t tBaja;               // ultima vez que bajo: si ya no baja con pared enfrente, esta empujando la pared
 
 // ---------- RPC desde Python ----------
 int rpcMover(int celdas, int r, int extra) {
@@ -206,6 +208,8 @@ void iniciaMov() {
     dur0 = max((long)(total * unidad / CELDA * escala[rapido ? 1 : 0]), 50L);
     dur = dur0;
     nCorr = 0;
+    dMin = 9999;
+    tBaja = millis();
     for (int i = 0; i < 2; i++) { ladoVe[i] = dist[i * 2] < PARED; ladoRacha[i] = 0; }
   } else {
     dirL = arg > 0 ? 1 : -1;
@@ -277,6 +281,8 @@ void control() {
   }
   // Con pared enfrente se detiene por distancia; si no, por tiempo
   bool paredF = dist[1] < PARED_F;
+  if (dist[1] < dMin - 3) { dMin = dist[1]; tBaja = millis(); }
+  if (paredF && millis() - tBaja > 300) { termina(); return; }   // pegado a la pared y ya no se acerca: alto
   if (paredF && dist[1] <= D_FRENTE) {
     // muy pegado: se hace para atras hasta D_FRENTE (maximo 0.8 s mas)
     if (dist[1] < D_FRENTE - D_CERCA && t < dur + 800) { motores(-VEL_MIN, -VEL_MIN); return; }
