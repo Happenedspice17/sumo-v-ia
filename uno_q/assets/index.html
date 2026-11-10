@@ -33,6 +33,22 @@
   </div>
 </div>
 <div class="paso">
+  <button id="tofBtn" style="background:#37474f;width:100%" onclick="verTof()">Ver sensores ToF</button>
+  <div id="tofPanel" style="display:none;margin-top:12px">
+    <svg id="tofSvg" viewBox="-200 -230 400 330" style="width:100%;max-width:420px;display:block;margin:auto;background:#111;border-radius:10px">
+      <rect x="-60" y="-60" width="120" height="120" rx="28" fill="#ffb300"/>
+      <text x="0" y="8" text-anchor="middle" font-size="22" fill="#111">robot</text>
+      <line id="lF" x1="0" y1="-54" x2="0" y2="-54" stroke-width="10"/>
+      <line id="lI" x1="-43" y1="-40" x2="-43" y2="-40" stroke-width="10"/>
+      <line id="lD" x1="43" y1="-40" x2="43" y2="-40" stroke-width="10"/>
+      <text id="tF" x="12" y="-200" font-size="20" fill="#fff"></text>
+      <text id="tI" x="-195" y="-50" font-size="20" fill="#fff"></text>
+      <text id="tD" x="195" y="-50" font-size="20" fill="#fff" text-anchor="end"></text>
+    </svg>
+    <div id="tofTxt" style="font-family:monospace;font-size:15px;margin-top:8px;white-space:pre-line"></div>
+  </div>
+</div>
+<div class="paso">
   <div><b>Dónde está</b> (odometría)</div>
   <div id="odo" style="font-family:monospace;font-size:15px;margin-top:6px;white-space:pre-line">...</div>
 </div>
@@ -122,6 +138,41 @@ async function guardar(i, n) {
 async function ponModo(m) {
   const d = await (await fetch("/api/modo?m=" + m)).json();
   document.getElementById("modo").textContent = d.modo;
+}
+
+let tofOn = false;
+function verTof() {
+  tofOn = !tofOn;
+  document.getElementById("tofPanel").style.display = tofOn ? "" : "none";
+  document.getElementById("tofBtn").textContent = tofOn ? "Ocultar sensores ToF" : "Ver sensores ToF";
+  if (tofOn) tof();
+}
+
+function rayo(id, x0, y0, dx, dy, mm, pared) {
+  const largo = Math.min(mm, 400) / 2.5;          // 400 mm = 160 px
+  const l = document.getElementById(id);
+  l.setAttribute("x2", x0 + dx * largo);
+  l.setAttribute("y2", y0 + dy * largo);
+  l.setAttribute("stroke", mm >= 2000 ? "#555" : mm < pared ? "#e53935" : "#43a047");
+}
+
+async function tof() {
+  if (!tofOn) return;
+  try {
+    const d = await (await fetch("/api/tof")).json();
+    const t = (mm) => (mm >= 2000 ? "nada" : mm + " mm");
+    rayo("lF", 0, -54, 0, -1, d.frente, d.pared);
+    rayo("lI", -43, -40, -1, 0, d.izq, d.pared);
+    rayo("lD", 43, -40, 1, 0, d.der, d.pared);
+    document.getElementById("tF").textContent = t(d.frente);
+    document.getElementById("tI").textContent = t(d.izq);
+    document.getElementById("tD").textContent = t(d.der);
+    document.getElementById("tofTxt").textContent =
+      "Rojo = pared (< " + d.pared + " mm), verde = libre, gris = no ve nada\n" +
+      "Celdas libres al frente: " + (d.libres >= 99 ? "muchas" : d.libres) +
+      (d.mueve ? "\nAvanzando, faltan " + d.falta + " mm" : "");
+  } catch (e) {}
+  setTimeout(tof, 150);
 }
 
 async function ciclo() {
