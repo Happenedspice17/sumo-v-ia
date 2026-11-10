@@ -34,7 +34,7 @@ BIT = [1, 2, 4, 8]
 # Los VL53L0X leen las paredes de la celda actual. La camara mira la celda
 # siguiente y adelanta sus paredes al mapa como "tentativas".
 CAM_ID = 0
-USAR_CAM = True
+USAR_CAM = False                         # prueba sin camara: solo ToF y sensor de color
 ANCHO, ALTO = 320, 240
 # La camara ve por encima de las paredes: cada region mira una pared de una celda adelante.
 # Clave "adelante,lado,pared": adelante = celdas al frente (1 = la siguiente), lado = -1 izq / 0 / 1 der,
