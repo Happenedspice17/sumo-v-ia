@@ -39,7 +39,7 @@ Con el hub conectado al USB-C, App Lab se conecta por WiFi (el puerto no puede i
 1. **Colores**: con la app corriendo abre `http://<ip de la Q>:7000` (App Lab muestra el link). El asistente pide los 5 colores uno por uno; cada botón promedia 5 lecturas. Se guarda en `/app/colores.json` y se carga al MCU en cada arranque (`set_ref`); `refs[]` del sketch solo son los valores por defecto.
    **Sensores**: enciende con el botón presionado. La OLED muestra `r g b c`, el color detectado y las 3 distancias. Centra el robot en una celda y anota `D_LADO` y `D_FRENTE`.
 2. **Avance**: ajusta `MS_CELDA` hasta que avance 18 cm en un pasillo sin pared enfrente, y `MS_90` para giros de 90°. `MS_RAPIDA` se ajusta igual, en rectas de varias celdas. Calibra con la batería cargada. Si se desvía, ajusta `AJUSTE_DER`.
-3. **Cámara**: la página web muestra la imagen (160 × 120) con las 3 regiones: rojo = pared, verde = libre. También se guardan `/app/cal.jpg` y `/app/mask.jpg` al arrancar. Ajusta `ROI`, `PARED_LO/HI` y `UMBRAL` en `main.py` hasta que los rectángulos salgan rojos donde hay pared en la celda siguiente.
+3. **Cámara**: la página web muestra la imagen (160 × 120) con las 3 regiones: rojo = pared, verde = libre. No se guardan imágenes en `/app`: con ellas App Lab marca "failed to start". Ajusta `ROI`, `PARED_LO/HI` y `UMBRAL` en `main.py` hasta que los rectángulos salgan rojos donde hay pared en la celda siguiente.
 4. **Laberinto**: ajusta `N`, `INICIO`, `RUMBO_INI` y `META` según las reglas del día.
 
 ## Funcionamiento

@@ -305,10 +305,7 @@ def leer_camara(debug=False):
         return None
     res, mask = analiza(img, debug)
     print("cam:", " ".join("%s=%s" % (k, "P" if v else ".") for k, v in res.items()))
-    if debug:
-        cv2.imwrite("/app/cal.jpg", img)
-        cv2.imwrite("/app/mask.jpg", mask)
-    return res
+    return res                           # sin guardar imagenes en /app: App Lab falla al arrancar con ellas
 
 
 def color_piso(img):
