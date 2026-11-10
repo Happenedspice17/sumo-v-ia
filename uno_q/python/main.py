@@ -54,6 +54,7 @@ CAM_H, CAM_Y, CAM_INCL, CAM_FOV_V = 162, 32, 25, 75
 CELDA, PARED_CARA = 180, 84              # mm entre centros; cara de la pared de enfrente desde el centro (90 - 6)
 ODO_MAX = 30                             # mm: correcciones de la camara mas grandes se ignoran
 TOF_RANGO = 1000                         # mm: si el frontal ve algo mas cerca, manda el frontal y no la camara
+PARED_F = 130                            # mm: al frente, menos de esto = pared (= PARED_F del sketch)
 D_FRENTE_TOF = 55                        # mm que lee el frontal con el robot centrado y pared en su celda (= D_FRENTE del sketch)
 odo = {"falta": 0, "corr": 0, "ult": 0, "cam_mm": None, "cam_err": None, "extra": 0, "frente": None}
 PESO_CAM = 1                             # una pared vista solo por la camara cuenta como 3 celdas extra de camino
@@ -229,7 +230,9 @@ def celdas_libres():
     d = tof_frente()
     if d >= TOF_RANGO:
         return 99
-    return max(0, int((d - D_FRENTE_TOF + CELDA / 2) // CELDA))
+    if d < PARED_F:
+        return 0
+    return max(1, int((d - D_FRENTE_TOF + CELDA / 2) // CELDA))
 
 
 def avanzar(n, rapido=False):
@@ -305,10 +308,7 @@ def leer_camara(debug=False):
         return None
     res, mask = analiza(img, debug)
     print("cam:", " ".join("%s=%s" % (k, "P" if v else ".") for k, v in res.items()))
-    if debug:
-        cv2.imwrite("/app/cal.jpg", img)
-        cv2.imwrite("/app/mask.jpg", mask)
-    return res
+    return res                           # sin guardar imagenes en /app: App Lab falla al arrancar con ellas
 
 
 def color_piso(img):
@@ -423,7 +423,7 @@ def api_lectura():
 
 
 def api_tof():
-    return {"izq": rpc("odo", 6), "frente": rpc("odo", 5), "der": rpc("odo", 7), "pared": 120,
+    return {"izq": rpc("odo", 6), "frente": rpc("odo", 5), "der": rpc("odo", 7), "pared": 120, "pared_f": PARED_F,
             "libres": celdas_libres(), "falta": rpc("odo", 1), "mueve": bool(rpc("odo", 2) & 8)}
 
 

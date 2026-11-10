@@ -161,14 +161,14 @@ async function tof() {
   try {
     const d = await (await fetch("/api/tof")).json();
     const t = (mm) => (mm >= 2000 ? "nada" : mm + " mm");
-    rayo("lF", 0, -54, 0, -1, d.frente, d.pared);
+    rayo("lF", 0, -54, 0, -1, d.frente, d.pared_f || d.pared);
     rayo("lI", -43, -40, -1, 0, d.izq, d.pared);
     rayo("lD", 43, -40, 1, 0, d.der, d.pared);
     document.getElementById("tF").textContent = t(d.frente);
     document.getElementById("tI").textContent = t(d.izq);
     document.getElementById("tD").textContent = t(d.der);
     document.getElementById("tofTxt").textContent =
-      "Rojo = pared (< " + d.pared + " mm), verde = libre, gris = no ve nada\n" +
+      "Rojo = pared (lados < " + d.pared + " mm, frente < " + (d.pared_f || d.pared) + " mm), verde = libre, gris = no ve nada\n" +
       "Celdas libres al frente: " + (d.libres >= 99 ? "muchas" : d.libres) +
       (d.mueve ? "\nAvanzando, faltan " + d.falta + " mm" : "");
   } catch (e) {}
