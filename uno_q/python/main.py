@@ -5,6 +5,7 @@ import json
 import os
 import threading
 import time
+import math
 import heapq
 import base64
 
@@ -48,6 +49,11 @@ ROI = {
     "2,0,D": (0.65, 0.05, 0.75, 0.22),
 }
 REL = {"F": 0, "I": -1, "D": 1}
+# Geometria de la camara (chasis/chasis.scad): lente a CAM_H del piso, CAM_Y adelante del eje, inclinada CAM_INCL
+CAM_H, CAM_Y, CAM_INCL, CAM_FOV_V = 162, 32, 25, 75
+CELDA, PARED_CARA = 180, 84              # mm entre centros; cara de la pared de enfrente desde el centro (90 - 6)
+ODO_MAX = 60                             # mm: correcciones de la camara mas grandes se ignoran
+odo = {"falta": 0, "corr": 0, "ult": 0, "cam_mm": None, "cam_err": None, "extra": 0, "frente": None}
 PESO_CAM = 3                             # una pared vista solo por la camara cuenta como 3 celdas extra de camino
 # Piso de la celda siguiente: la camara busca ahi marcas de color antes de que llegue el sensor
 ROI_PISO = (0.30, 0.45, 0.70, 0.80)
@@ -223,10 +229,12 @@ def avanzar(n, rapido=False):
     if not frente_libre():
         return False
     origen = pos
-    precheck()
-    rpc("mover", n, int(rapido))
+    odo["extra"] = int(precheck())
+    rpc("mover", n, int(rapido), odo["extra"])
     esperar(origen, rumbo)
     pos = (pos[0] + DX[rumbo] * n, pos[1] + DY[rumbo] * n)
+    odo["corr"], odo["ult"], odo["frente"] = rpc("odo", 3), rpc("odo", 4), rpc("odo", 5)
+    print(f"Odo {pos}: camara {odo['extra']:+d} mm, sensores {odo['corr']} correcciones (ultima {odo['ult']:+d} mm)")
     return True
 
 
@@ -298,15 +306,42 @@ def color_piso(img):
     return max(range(len(COLORES)), key=votos.__getitem__) if max(votos) else 0
 
 
+def dist_camara(img):
+    """mm del eje a la base de la pared de enfrente (borde blanco/negro al centro de la imagen), o None."""
+    h, w = img.shape[:2]
+    franja = cv2.inRange(cv2.cvtColor(img[:, int(w * 0.45):int(w * 0.55)], cv2.COLOR_BGR2HSV), PARED_LO, PARED_HI)
+    blanco = franja.mean(axis=1) > 128
+    f = (h / 2) / math.tan(math.radians(CAM_FOV_V / 2))
+    for y in range(h - 1, -1, -1):       # de abajo hacia arriba: la primera fila blanca es la base de la pared
+        if blanco[y]:
+            ang = CAM_INCL + math.degrees(math.atan((y - h / 2) / f))
+            return CAM_H / math.tan(math.radians(ang)) + CAM_Y if ang > 1 else None
+    return None
+
+
+def error_camara(d):
+    """mm que le faltan para quedar centrado (+ = esta atras), segun la pared que ve la camara."""
+    if d is None or d > PARED_CARA + 2 * CELDA:     # lejos la medida ya no es confiable
+        return None
+    e = (d - PARED_CARA) - round((d - PARED_CARA) / CELDA) * CELDA
+    return e if abs(e) <= ODO_MAX else None
+
+
 def precheck():
-    nx, ny = pos[0] + DX[rumbo], pos[1] + DY[rumbo]
-    if cam is None or not dentro(nx, ny) or (nx, ny) in cam_vio:
-        return
+    """Una foto antes de avanzar: color del piso de la celda siguiente y correccion de distancia."""
+    if cam is None:
+        return 0
     img = foto()
-    if img is not None:
+    if img is None:
+        return 0
+    nx, ny = pos[0] + DX[rumbo], pos[1] + DY[rumbo]
+    if dentro(nx, ny) and (nx, ny) not in cam_vio:
         cam_vio[(nx, ny)] = color_piso(img)
         if cam_vio[(nx, ny)]:
             print(f"Camara: {COLORES[cam_vio[(nx, ny)]]} adelante en {nx},{ny}")
+    odo["cam_mm"] = dist_camara(img)
+    odo["cam_err"] = error_camara(odo["cam_mm"])
+    return odo["cam_err"] or 0
 
 
 def sensar():
@@ -361,7 +396,9 @@ def enviar_refs():
 
 def api_lectura():
     v = lectura()
-    return {"v": v, "color": COLORES[clasifica(v)], "colores": COLORES, "refs": REFS, "modo": modo}
+    vivo = {"falta": rpc("odo", 1), "frente": rpc("odo", 5), "paredes": rpc("odo", 2)}
+    return {"v": v, "color": COLORES[clasifica(v)], "colores": COLORES, "refs": REFS, "modo": modo,
+            "odo": {**odo, **vivo}}
 
 
 def api_modo(m: str):
@@ -397,9 +434,17 @@ def api_foto():
     x0, y0, x1, y1 = ROI_PISO
     cv2.rectangle(img, (int(x0 * w), int(y0 * h)), (int(x1 * w), int(y1 * h)), (255, 0, 255), 2)
     cv2.putText(img, COLORES[c], (int(x0 * w) + 2, int(y1 * h) - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 1)
+    d = dist_camara(img)
+    if d is not None:                    # linea donde la camara ve la base de la pared de enfrente
+        f = (h / 2) / math.tan(math.radians(CAM_FOV_V / 2))
+        yb = int(h / 2 + f * math.tan(math.radians(math.degrees(math.atan(CAM_H / (d - CAM_Y))) - CAM_INCL)))
+        cv2.line(img, (0, yb), (w, yb), (0, 255, 255), 2)
+        cv2.putText(img, "%d mm" % d, (4, max(yb - 4, 12)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
     img = cv2.resize(img, (160, 120))
     ok, buf = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 40])
-    return {"img": base64.b64encode(buf).decode(), "res": res}
+    vivo = {"cam_mm": round(d) if d else None, "cam_err": error_camara(d), "falta": rpc("odo", 1),
+            "frente": rpc("odo", 5), "paredes": rpc("odo", 2)}
+    return {"img": base64.b64encode(buf).decode(), "res": res, "odo": {**odo, **vivo}}
 
 
 ui = WebUI()

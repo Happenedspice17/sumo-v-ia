@@ -31,6 +31,13 @@ const int D_FRENTE = 55;      // mm al frente con el robot centrado en la celda
 const int D_LADO = 50;        // mm a una pared lateral con el robot centrado
 const float KC = 0.8;         // ganancia de centrado
 const float OFF_COLOR = 0.2;  // distancia eje->sensor de color, en celdas
+// Odometria ligera (medidas del CAD, chasis/chasis.scad; el eje de las ruedas es el centro del robot)
+const int CELDA = 180;        // mm de centro a centro de celda
+const int Y_LADO = 40;        // VL53L0X laterales adelante del eje (TOF_LADO)
+const int MEDIA_PARED = 6;    // mitad del grueso de la pared
+const int BORDE_AJ = 0;       // mm: ajuste del borde por el cono del sensor (calibrar si corrige de mas)
+const int FRENTE_ODO = 400;   // mm: hasta aqui el frontal corrige la distancia que falta
+const int MAX_CORR = 45;      // mm: correcciones mas grandes se ignoran (lectura mala)
 const uint32_t T_CTRL = 10;
 const uint32_t T_COLOR = 30;
 
@@ -72,14 +79,22 @@ const char* ESTADOS[] = {"LISTO", "EXPLORA", "REGRESO", "RAPIDO", "META", "BORRA
 int tipo = NADA;
 int dirL, dirR;
 long dur, unidad;
+long total;                   // mm del avance en curso
+long dur0;                    // duracion sin corregir
+float escala[2] = {1, 1};     // velocidad aprendida (explorar, rapido): 1.1 = va 10% mas lento que MS_CELDA
+int extraMm = 0;              // mm extra que pide Python (correccion de la camara)
+int nCorr = 0, ultCorr = 0;   // correcciones del ultimo avance y la ultima en mm
+bool ladoVe[2];               // pared vista a la izq / der (con antirrebote)
+int ladoRacha[2];
 uint32_t tIni;
 float vel;
 
 // ---------- RPC desde Python ----------
-int rpcMover(int celdas, int r) {
+int rpcMover(int celdas, int r, int extra) {
   ult = 'M';
   if (ocupado) return 0;
   arg = celdas;
+  extraMm = constrain(extra, -60, 60);
   rapido = r;
   cmd = AVANZA;
   ocupado = 1;
@@ -96,6 +111,22 @@ int rpcGirar(int cuartos) {
 }
 
 int rpcOcupado() { return ocupado; }
+
+long pActual() { return tipo == AVANZA ? total * (long)(millis() - tIni) / dur : 0; }
+
+// 0 mm recorridos, 1 mm que faltan, 2 paredes (1 izq, 2 frente, 4 der, 8 en movimiento),
+// 3 correcciones del ultimo avance, 4 ultima correccion (mm), 5 distancia al frente (mm)
+int rpcOdo(int i) {
+  long p = pActual();
+  switch (i) {
+    case 0: return p;
+    case 1: return tipo == AVANZA ? total - p : 0;
+    case 2: return (dist[0] < PARED) | (dist[1] < PARED) << 1 | (dist[2] < PARED) << 2 | (tipo != NADA) << 3;
+    case 3: return nCorr;
+    case 4: return ultCorr;
+    default: return dist[1];
+  }
+}
 
 int rpcColor() {
   int c = colorPend;
@@ -166,7 +197,11 @@ void iniciaMov() {
   if (cmd == AVANZA) {
     dirL = dirR = 1;
     unidad = rapido ? MS_RAPIDA : MS_CELDA;
-    dur = arg * unidad;
+    total = (long)arg * CELDA + extraMm;
+    dur0 = max((long)(total * unidad / CELDA * escala[rapido ? 1 : 0]), 50L);
+    dur = dur0;
+    nCorr = 0;
+    for (int i = 0; i < 2; i++) { ladoVe[i] = dist[i * 2] < PARED; ladoRacha[i] = 0; }
   } else {
     dirL = arg > 0 ? 1 : -1;
     dirR = -dirL;
@@ -180,6 +215,43 @@ void termina() {
   frena();
   tipo = NADA;
   ocupado = 0;
+}
+
+// La posicion se lleva por tiempo; una correccion recorre el reloj del movimiento
+void corrige(long pc, float g) {
+  long e = pc - pActual();
+  if (abs(e) > MAX_CORR) return;
+  e = (long)(e * g);
+  long t = millis() - tIni;
+  if (g >= 1 && pc > 30) {
+    // borde lateral: corrige la posicion y la velocidad (se recuerda para los siguientes avances)
+    dur = constrain(total * t / pc, dur0 * 7 / 10, dur0 * 14 / 10);
+    float &es = escala[rapido ? 1 : 0];
+    es = constrain(0.7f * es + 0.3f * es * dur / dur0, 0.6f, 1.6f);
+  } else {
+    tIni -= e * dur / total;
+  }
+  nCorr++;
+  ultCorr = e;
+}
+
+void odometria() {
+  // Bordes de pared a los lados: el sensor pasa por un poste justo en la frontera entre celdas
+  for (int i = 0; i < 2; i++) {
+    bool w = dist[i * 2] < PARED;
+    if (w == ladoVe[i]) { ladoRacha[i] = 0; continue; }
+    if (++ladoRacha[i] < 2) continue;
+    ladoVe[i] = w;
+    ladoRacha[i] = 0;
+    long p = pActual(), mejor = 0, dmin = 99999;
+    for (int k = 0; k < arg; k++) {
+      long pc = (long)CELDA * k + CELDA / 2 + (w ? -MEDIA_PARED : MEDIA_PARED) - Y_LADO + BORDE_AJ;
+      if (abs(pc - p) < dmin) { dmin = abs(pc - p); mejor = pc; }
+    }
+    corrige(mejor, 1.0f);
+  }
+  // Pared al frente en rango: lo que falta es la distancia menos D_FRENTE
+  if (dist[1] < FRENTE_ODO) corrige(total - (dist[1] - D_FRENTE), 0.2f);
 }
 
 float centrado() {
@@ -202,6 +274,8 @@ void control() {
   bool paredF = dist[1] < PARED;
   if (paredF && dist[1] <= D_FRENTE) { termina(); return; }
   if (t >= dur && !(paredF && t < dur + unidad / 3)) { termina(); return; }
+  odometria();
+  t = millis() - tIni;
   int vmax = rapido ? VEL_RAPIDA : VEL_EXPLORA;
   long falta = max(dur - t, 0L);
   long zona = unidad / 4;
@@ -378,6 +452,7 @@ void setup() {
   Bridge.provide("set_estado", rpcEstado);
   Bridge.provide("raw", rpcRaw);
   Bridge.provide("set_ref", rpcSetRef);
+  Bridge.provide("odo", rpcOdo);
 
   if (digitalRead(BTN) == LOW) calibracion();
 }

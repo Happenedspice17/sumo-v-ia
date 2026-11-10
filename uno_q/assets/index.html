@@ -33,6 +33,10 @@
   </div>
 </div>
 <div class="paso">
+  <div><b>Dónde está</b> (odometría)</div>
+  <div id="odo" style="font-family:monospace;font-size:15px;margin-top:6px;white-space:pre-line">...</div>
+</div>
+<div class="paso">
   <div>Modo de exploración: <b id="modo">...</b></div>
   <div class="nav" style="margin-top:8px">
     <button style="background:#1565c0" onclick="ponModo('mapa')">Mapa (inteligente)</button>
@@ -80,6 +84,15 @@ function pinta(d) {
   document.getElementById("muestra").style.background = `rgb(${r * k},${g * k},${b * k})`;
   document.getElementById("color").textContent = d.color;
   if (d.modo) document.getElementById("modo").textContent = d.modo;
+  if (d.odo) {
+    const o = d.odo, p = o.paredes || 0, si = (b) => (p & b ? "pared" : "libre");
+    const mm = (x) => (x === null || x === undefined ? "—" : Math.round(x) + " mm");
+    document.getElementById("odo").textContent =
+      (p & 8 ? "Avanzando, faltan " + mm(o.falta) : "Quieto") + "\n" +
+      "Sensores: izq " + si(1) + " · frente " + si(2) + " (" + mm(o.frente > 2000 ? null : o.frente) + ") · der " + si(4) + "\n" +
+      "Cámara: pared a " + mm(o.cam_mm) + (o.cam_err === null || o.cam_err === undefined ? "" : ", le faltan " + mm(o.cam_err)) + "\n" +
+      "Último avance: " + (o.corr || 0) + " correcciones, última " + mm(o.ult) + ", cámara " + mm(o.extra);
+  }
   document.getElementById("nums").textContent = `r ${r.toFixed(2)}  g ${g.toFixed(2)}  b ${b.toFixed(2)}  c ${c}`;
   const cont = document.getElementById("botones");
   if (!hechos) {
