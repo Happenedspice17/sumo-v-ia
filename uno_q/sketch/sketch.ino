@@ -74,6 +74,7 @@ volatile int arranque = 0;
 volatile int refresca = 1;
 volatile uint32_t nRpc = 0;   // sube cada vez que Python pregunta: si no cambia, Python no corre
 volatile char ult = '-';
+volatile int pideAlto = 0;    // Python pide parar ya (encontro el amarillo)
 
 int cuenta[NCOL] = {0};
 int estado = 0;
@@ -116,6 +117,11 @@ int rpcGirar(int cuartos) {
 }
 
 int rpcOcupado() { return ocupado; }
+
+int rpcAlto() {
+  pideAlto = 1;
+  return 1;
+}
 
 long pActual() { return tipo == AVANZA ? total * (long)(millis() - tIni) / dur : 0; }
 
@@ -470,6 +476,7 @@ void setup() {
   Bridge.provide("raw", rpcRaw);
   Bridge.provide("set_ref", rpcSetRef);
   Bridge.provide("odo", rpcOdo);
+  Bridge.provide("alto", rpcAlto);
 
   if (digitalRead(BTN) == LOW) calibracion();
 }
@@ -481,6 +488,12 @@ uint32_t tBtn = 0;
 void loop() {
   uint32_t t = millis();
 
+  if (pideAlto) {
+    pideAlto = 0;
+    cmd = NADA;
+    if (tipo != NADA) termina();
+    ocupado = 0;
+  }
   if (cmd != NADA && tipo == NADA) iniciaMov();
 
   tofLee();

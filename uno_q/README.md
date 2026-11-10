@@ -53,7 +53,7 @@ Con el hub conectado al USB-C, App Lab se conecta por WiFi (el puerto no puede i
 - **Panel web → Ver sensores ToF:** dibujo en vivo de lo que mide cada VL53L0X y cuántas celdas libres hay al frente.
 - **Los VL53L0X mandan.** Se leen en cada celda (aunque ya se conozca) y antes de cada avance: si ven pared enfrente no se avanza, y corrigen paredes del mapa en los dos sentidos. Lo que ve solo la cámara no bloquea: hace el camino `PESO_CAM` celdas más caro.
 - La cámara ve por encima de las paredes: cada región de `ROI` (`"adelante,lado,pared"`) marca una pared de una celda hasta 2 adelante, aunque haya pared enfrente. Esas paredes van al mapa como tentativas, para que el flood‑fill descarte callejones antes de entrar. Si la cámara se equivoca y bloquea todo, el robot ignora esas paredes tentativas. Sin cámara, funciona solo con los VL53L0X (OLED: `SIN CAM`).
-- **Solo modo tonto:** sigue la pared derecha con lo que leen los VL53L0X en cada celda, sin mapa ni corrida rápida. Si detecta que rodea una isla, prueba con la pared izquierda. Para al llegar al centro.
+- **Busca el amarillo:** explora sin fin hasta que el TCS34725 ve AMAR (`OBJETIVO`) y la cámara también lo vio en esa celda (sin cámara basta el sensor); entonces para con el RPC `alto`. En cada celda los ToF dicen qué salidas están libres y va a la menos visitada (empate: pared derecha); no guarda paredes. Un toque a D2 lo detiene.
 - Sin ruta conocida, explora hasta la meta y regresa solo al inicio. No lo recojas hasta que la OLED diga `LISTO`.
 - Con ruta conocida, va directo a la meta con rectas largas a velocidad alta.
 - Botón corto: siguiente corrida (pon el robot en el inicio, viendo hacia `RUMBO_INI`).

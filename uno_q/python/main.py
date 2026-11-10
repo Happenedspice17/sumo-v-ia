@@ -18,9 +18,11 @@ RUMBO_INI = 0                            # 0=N 1=E 2=S 3=O
 # centro: 1 celda si N es impar, las 4 del centro si es par
 META = {(N // 2, N // 2)} if N % 2 else {(N // 2 - 1 + i, N // 2 - 1 + j) for i in (0, 1) for j in (0, 1)}
 COLORES = ["PISO", "ROJO", "VERDE", "AZUL", "AMAR"]
-ARCHIVO = "/app/mapa.json"
-ARCH_COL = "/app/colores.json"
-ARCH_MODO = "/app/modo.json"
+DATOS = "/app/datos"                     # en una subcarpeta: archivos en la raiz de la app confunden a App Lab
+os.makedirs(DATOS, exist_ok=True)
+ARCHIVO = DATOS + "/mapa.json"
+ARCH_COL = DATOS + "/colores.json"
+ARCH_MODO = DATOS + "/modo.json"
 modo = "tonto"                           # solo se usa el modo tonto: sigue la pared con los ToF, sin mapa
 # r, g, b normalizados y brillo c; los mismos de refs[] del sketch
 REFS = [[0.33, 0.33, 0.33, 900], [0.58, 0.22, 0.20, 400], [0.26, 0.46, 0.28, 350],
@@ -34,7 +36,7 @@ BIT = [1, 2, 4, 8]
 # Los VL53L0X leen las paredes de la celda actual. La camara mira la celda
 # siguiente y adelanta sus paredes al mapa como "tentativas".
 CAM_ID = 0
-USAR_CAM = False                         # prueba sin camara: solo ToF y sensor de color
+USAR_CAM = True
 ANCHO, ALTO = 320, 240
 # La camara ve por encima de las paredes: cada region mira una pared de una celda adelante.
 # Clave "adelante,lado,pared": adelante = celdas al frente (1 = la siguiente), lado = -1 izq / 0 / 1 der,
@@ -77,21 +79,36 @@ rumbo = RUMBO_INI
 cam = None
 cam_lock = threading.Lock()
 cam_vio = {}                             # celda -> color que vio la camara (0 = solo piso)
+OBJETIVO = 4                             # explora hasta encontrar este color (4 = AMAR)
+encontrado = False
+
+
+def escribe(ruta, datos):
+    """Escribe completo o nada: si se apaga a la mitad no deja un archivo roto."""
+    with open(ruta + ".tmp", "w") as f:
+        json.dump(datos, f)
+    os.replace(ruta + ".tmp", ruta)
+
+
+def lee(ruta):
+    """None si no existe o esta roto (un archivo vacio ya no tumba la app)."""
+    try:
+        with open(ruta) as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return None
 
 
 def guardar():
-    datos = {"paredes": paredes, "visto": visto,
-             "marcas": [[x, y, c] for (x, y), c in marcas.items()]}
-    with open(ARCHIVO, "w") as f:
-        json.dump(datos, f)
+    escribe(ARCHIVO, {"paredes": paredes, "visto": visto,
+                      "marcas": [[x, y, c] for (x, y), c in marcas.items()]})
 
 
 def cargar():
     global paredes, visto
-    if not os.path.exists(ARCHIVO):
+    datos = lee(ARCHIVO)
+    if not datos:
         return
-    with open(ARCHIVO) as f:
-        datos = json.load(f)
     if len(datos["paredes"]) != N:       # mapa de otro tamano de laberinto: no sirve
         print("Mapa guardado de otro tamano: lo ignoro")
         return
@@ -184,14 +201,24 @@ def estado(e):
 
 
 def revisar_color(origen, h):
+    global encontrado
     ev = rpc("color")
     if not ev:
         return
     c, k = ev % 16, ev // 16
     x, y = origen[0] + DX[h] * k, origen[1] + DY[h] * k
+    vio = cam_vio.get((x, y))            # lo que vio la camara en esa celda (None = no la vio)
+    if c == OBJETIVO:                    # la meta: el sensor y, si hay camara, tambien la camara
+        if cam is None or vio in (None, OBJETIVO):
+            encontrado = True
+            rpc("alto")
+            print(f"{COLORES[c]} encontrado en {x},{y}: sensor" + ("" if cam is None else " y camara"))
+        else:
+            print(f"Sensor ve {COLORES[c]} pero la camara vio {COLORES[vio]}: sigo buscando")
+            return
     if (x, y) in marcas:
         return
-    if cam_vio.get((x, y)) == 0:         # la camara vio piso limpio ahi: falso positivo del sensor
+    if vio == 0:                         # la camara vio piso limpio ahi: falso positivo del sensor
         print(f"Descarto {COLORES[c]} en {x},{y}: la camara no vio color")
         return
     marcas[(x, y)] = c
@@ -453,8 +480,7 @@ def api_modo(m: str):
     global modo
     if m in ("mapa", "tonto"):
         modo = m
-        with open(ARCH_MODO, "w") as f:
-            json.dump(modo, f)
+        escribe(ARCH_MODO, modo)
         print("Modo", modo)
     return {"modo": modo}
 
@@ -466,8 +492,7 @@ def api_guardar(i: int):
         time.sleep(0.05)
     REFS[i] = [round(x, 3) for x in m[:3]] + [round(m[3])]
     enviar_refs()
-    with open(ARCH_COL, "w") as f:
-        json.dump(REFS, f)
+    escribe(ARCH_COL, REFS)
     print("Color", COLORES[i], REFS[i])
     return api_lectura()
 
@@ -547,6 +572,34 @@ def seguir_pared(objetivos, mano=1):
     return False
 
 
+def buscar_color():
+    """Explora sin fin hasta encontrar el color OBJETIVO: los ToF dicen que salidas estan libres y
+    entre ellas va a la celda menos visitada (empate: pared derecha). Un toque a D2 lo detiene."""
+    global encontrado
+    encontrado = False
+    estado(1)
+    mano, visitas = 1, {}
+    while not encontrado:
+        if rpc("arranque"):
+            print("Detenido con el boton")
+            return False
+        visitas[pos] = visitas.get(pos, 0) + 1
+        time.sleep(0.06)
+        p = rpc("paredes")
+        libre = {-1: not p & 1, 0: not p & 2, 1: not p & 4, 2: True}
+        # entre las salidas que los ToF ven libres, la celda menos visitada; empate: pared derecha
+        # (no guarda paredes: solo cuenta visitas, asi no se mete en ciclos de islas)
+        opciones = [r for r in (mano, 0, -mano, 2) if libre[r]]
+        def veces(r):
+            h = (rumbo + r) % 4
+            return visitas.get((pos[0] + DX[h], pos[1] + DY[h]), 0)
+        rel = min(opciones, key=lambda r: (veces(r), opciones.index(r)))
+        girar_a((rumbo + rel) % 4)
+        if not encontrado:
+            avanzar(1)
+    return True
+
+
 def ruta_conocida():
     d = flood(META, True, usar_cam=False)
     return d if d[INICIO[0]][INICIO[1]] < N * N else None
@@ -592,9 +645,7 @@ def borrar():
 
 def iniciar():
     global REFS, modo
-    if os.path.exists(ARCH_COL):
-        with open(ARCH_COL) as f:
-            REFS = json.load(f)
+    REFS = lee(ARCH_COL) or lee("/app/colores.json") or REFS   # tambien los de la version anterior
     enviar_refs()
     bordes()
     cargar()
@@ -619,11 +670,8 @@ def loop():
         return
     pos, rumbo = INICIO, RUMBO_INI
     t = time.time()
-    # solo modo tonto: pared derecha; si rodea una isla, prueba con la izquierda
-    if seguir_pared(META, 1) or seguir_pared(META, -1):
-        estado(4)
-    else:
-        estado(0)
+    # explora sin fin (pared derecha, cambia de mano en islas) hasta el amarillo
+    estado(4 if buscar_color() else 0)
     guardar()
     print(f"Corrida: {time.time() - t:.1f} s, marcas {cuenta[1:]}")
 
