@@ -167,7 +167,11 @@ async function tof() {
     document.getElementById("tD").textContent = t(d.der);
     document.getElementById("tofTxt").textContent =
       "Rojo = pared (lados < " + d.pared + " mm, frente < " + (d.pared_f || d.pared) + " mm), verde = libre, gris = no ve nada\n" +
-      "Celdas libres al frente: " + (d.libres >= 99 ? "muchas" : d.libres) +
+      "Celdas libres al frente: " + (d.libres >= 99 ? "muchas" : d.libres) + "\n" +
+      "Cámara en puntos ciegos (diagonales): " + (d.ciego && d.ciego.izq !== null
+        ? "izq " + (d.ciego.izq ? "ALGO" : "libre") + " · der " + (d.ciego.der ? "ALGO" : "libre") +
+          (d.cam_mm ? " · pared al frente a " + Math.round(d.cam_mm) + " mm" : "")
+        : "sin dato (se revisa antes de cada avance)") +
       (d.mueve ? "\nAvanzando, faltan " + d.falta + " mm" : "");
   } catch (e) {}
   setTimeout(tof, 150);
