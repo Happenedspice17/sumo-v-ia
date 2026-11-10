@@ -36,7 +36,7 @@ BIT = [1, 2, 4, 8]
 # Los VL53L0X leen las paredes de la celda actual. La camara mira la celda
 # siguiente y adelanta sus paredes al mapa como "tentativas".
 CAM_ID = 0
-USAR_CAM = False                         # prueba sin camara: solo ToF y sensor de color
+USAR_CAM = True
 ANCHO, ALTO = 320, 240
 # La camara ve por encima de las paredes: cada region mira una pared de una celda adelante.
 # Clave "adelante,lado,pared": adelante = celdas al frente (1 = la siguiente), lado = -1 izq / 0 / 1 der,
@@ -79,6 +79,8 @@ rumbo = RUMBO_INI
 cam = None
 cam_lock = threading.Lock()
 cam_vio = {}                             # celda -> color que vio la camara (0 = solo piso)
+OBJETIVO = 4                             # explora hasta encontrar este color (4 = AMAR)
+encontrado = False
 
 
 def escribe(ruta, datos):
@@ -199,14 +201,24 @@ def estado(e):
 
 
 def revisar_color(origen, h):
+    global encontrado
     ev = rpc("color")
     if not ev:
         return
     c, k = ev % 16, ev // 16
     x, y = origen[0] + DX[h] * k, origen[1] + DY[h] * k
+    vio = cam_vio.get((x, y))            # lo que vio la camara en esa celda (None = no la vio)
+    if c == OBJETIVO:                    # la meta: el sensor y, si hay camara, tambien la camara
+        if cam is None or vio in (None, OBJETIVO):
+            encontrado = True
+            rpc("alto")
+            print(f"{COLORES[c]} encontrado en {x},{y}: sensor" + ("" if cam is None else " y camara"))
+        else:
+            print(f"Sensor ve {COLORES[c]} pero la camara vio {COLORES[vio]}: sigo buscando")
+            return
     if (x, y) in marcas:
         return
-    if cam_vio.get((x, y)) == 0:         # la camara vio piso limpio ahi: falso positivo del sensor
+    if vio == 0:                         # la camara vio piso limpio ahi: falso positivo del sensor
         print(f"Descarto {COLORES[c]} en {x},{y}: la camara no vio color")
         return
     marcas[(x, y)] = c
@@ -560,6 +572,34 @@ def seguir_pared(objetivos, mano=1):
     return False
 
 
+def buscar_color():
+    """Explora sin fin hasta encontrar el color OBJETIVO: los ToF dicen que salidas estan libres y
+    entre ellas va a la celda menos visitada (empate: pared derecha). Un toque a D2 lo detiene."""
+    global encontrado
+    encontrado = False
+    estado(1)
+    mano, visitas = 1, {}
+    while not encontrado:
+        if rpc("arranque"):
+            print("Detenido con el boton")
+            return False
+        visitas[pos] = visitas.get(pos, 0) + 1
+        time.sleep(0.06)
+        p = rpc("paredes")
+        libre = {-1: not p & 1, 0: not p & 2, 1: not p & 4, 2: True}
+        # entre las salidas que los ToF ven libres, la celda menos visitada; empate: pared derecha
+        # (no guarda paredes: solo cuenta visitas, asi no se mete en ciclos de islas)
+        opciones = [r for r in (mano, 0, -mano, 2) if libre[r]]
+        def veces(r):
+            h = (rumbo + r) % 4
+            return visitas.get((pos[0] + DX[h], pos[1] + DY[h]), 0)
+        rel = min(opciones, key=lambda r: (veces(r), opciones.index(r)))
+        girar_a((rumbo + rel) % 4)
+        if not encontrado:
+            avanzar(1)
+    return True
+
+
 def ruta_conocida():
     d = flood(META, True, usar_cam=False)
     return d if d[INICIO[0]][INICIO[1]] < N * N else None
@@ -630,11 +670,8 @@ def loop():
         return
     pos, rumbo = INICIO, RUMBO_INI
     t = time.time()
-    # solo modo tonto: pared derecha; si rodea una isla, prueba con la izquierda
-    if seguir_pared(META, 1) or seguir_pared(META, -1):
-        estado(4)
-    else:
-        estado(0)
+    # explora sin fin (pared derecha, cambia de mano en islas) hasta el amarillo
+    estado(4 if buscar_color() else 0)
     guardar()
     print(f"Corrida: {time.time() - t:.1f} s, marcas {cuenta[1:]}")
 

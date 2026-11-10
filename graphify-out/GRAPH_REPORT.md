@@ -1,17 +1,17 @@
 # Graph Report - sumo-v-ia  (2026-11-10)
 
 ## Corpus Check
-- 42 files · ~45,700 words
+- 42 files · ~45,964 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 22 file(s) not represented in the graph (top: .stl 12, (none) 4, .csv 2)
 
 ## Summary
-- 545 nodes · 976 edges · 27 communities (22 shown, 5 thin omitted)
+- 548 nodes · 983 edges · 27 communities (22 shown, 5 thin omitted)
 - Extraction: 88% EXTRACTED · 12% INFERRED · 0% AMBIGUOUS · INFERRED: 115 edges (avg confidence: 0.86)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `1338da69`
+- Built from commit: `c95da2fa`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -48,25 +48,25 @@
 1. `regAddr` - 59 edges
 2. `VL53L0X` - 46 edges
 3. `Oled` - 21 edges
-4. `calibracion()` - 18 edges
-5. `main()` - 18 edges
-6. `rpc()` - 18 edges
+4. `rpc()` - 19 edges
+5. `calibracion()` - 18 edges
+6. `main()` - 18 edges
 7. `manual_ensamble()` - 16 edges
 8. `Robot de laberinto: Arduino UNO Q` - 15 edges
 9. `planta_piso1()` - 13 edges
-10. `3. Parte A: UNO R3 con Microchip Studio` - 12 edges
+10. `avanzar()` - 12 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `4.7 Agregar las librerías del sketch` --references--> `VL53L0X`  [INFERRED]
   docs/GUIA_PROGRAMACION.md → atmega328p/laberinto/VL53L0X.h
 - `Programación (Arduino App Lab)` --references--> `VL53L0X`  [INFERRED]
   uno_q/README.md → atmega328p/laberinto/VL53L0X.h
-- `2. Dos cerebros` --references--> `arranque()`  [INFERRED]
-  docs/manual_tecnico.md → atmega328p/laberinto/twi.cpp
 - `Robot de laberinto – Microcontroladores 2` --references--> `pdf()`  [INFERRED]
   README.md → chasis/generar_pdf.py
 - `4.10 Cómo funciona Bridge (en dos frases y un ejemplo)` --references--> `girar()`  [INFERRED]
   docs/GUIA_PROGRAMACION.md → atmega328p/laberinto/main.cpp
+- `2. Dos cerebros` --references--> `arranque()`  [INFERRED]
+  docs/manual_tecnico.md → atmega328p/laberinto/twi.cpp
 
 ## Import Cycles
 - None detected.
@@ -74,8 +74,8 @@
 ## Communities (27 total, 5 thin omitted)
 
 ### Community 0 - "main.cpp"
-Cohesion: 0.06
-Nodes (62): acota(), avanzar(), bordes(), borrar(), calibracion(), cargar(), centrado(), clasifica() (+54 more)
+Cohesion: 0.07
+Nodes (54): acota(), avanzar(), bordes(), borrar(), calibracion(), cargar(), centrado(), clasifica() (+46 more)
 
 ### Community 1 - "regAddr"
 Cohesion: 0.03
@@ -95,7 +95,7 @@ Nodes (39): w(), 1. Qué hay en el repositorio y qué placa usa qué código, 2.
 
 ### Community 5 - "main.py"
 Cohesion: 0.07
-Nodes (44): abrir_camara(), analiza(), api_foto(), api_guardar(), api_lectura(), api_modo(), api_tof(), avanzar() (+36 more)
+Nodes (45): abrir_camara(), analiza(), api_foto(), api_guardar(), api_lectura(), api_modo(), api_tof(), avanzar() (+37 more)
 
 ### Community 6 - "generar_pdf.py"
 Cohesion: 0.15
@@ -114,8 +114,8 @@ Cohesion: 0.09
 Nodes (22): 10. Cambio de placa R3 ↔ Q, 11. Ruedas, 12. Pruebas de alimentación, 13. Pendientes, 14. Fuentes, 1. Plan, 2. Hardware, 3. Comunicación MCU ↔ Linux (Bridge) (+14 more)
 
 ### Community 10 - "manual_tecnico.md"
-Cohesion: 0.18
-Nodes (10): 10. Glosario, 1. Qué hace el robot, 2. Dos cerebros, 3. Sensores de distancia, 4. Sensor de color, 5. Cámara (opcional), 6. Cómo se mueve, 7. Cómo encuentra el camino (+2 more)
+Cohesion: 0.16
+Nodes (18): datos(), arranque(), espera(), twiAlto(), twiByte(), twiEscribeReg(), twiInicio(), twiLeeReg() (+10 more)
 
 ### Community 11 - "SequenceStepTimeouts"
 Cohesion: 0.22
@@ -163,20 +163,20 @@ Nodes (8): 1. Revisa antes de prender, 2. Prende, 3. El botón D2, 4. Calibra lo
 
 ## Knowledge Gaps
 - **87 isolated node(s):** `SYSRANGE_START`, `SYSTEM_THRESH_HIGH`, `SYSTEM_THRESH_LOW`, `SYSTEM_SEQUENCE_CONFIG`, `SYSTEM_RANGE_CONFIG` (+82 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 270 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 272 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **5 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `VL53L0X` connect `VL53L0X` to `main.cpp`, `regAddr`, `3. Parte A: UNO R3 con Microchip Studio`, `SequenceStepTimeouts`, `Iteración B – Arduino UNO Q (con cámara)`?**
-  _High betweenness centrality (0.258) - this node is a cross-community bridge._
+  _High betweenness centrality (0.257) - this node is a cross-community bridge._
 - **Are the 2 inferred relationships involving `VL53L0X` (e.g. with `4.7 Agregar las librerías del sketch` and `Programación (Arduino App Lab)`) actually correct?**
   _`VL53L0X` has 2 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `SYSRANGE_START`, `SYSTEM_THRESH_HIGH`, `SYSTEM_THRESH_LOW` to the rest of the system?**
   _87 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `main.cpp` be split into smaller, more focused modules?**
-  _Cohesion score 0.06320109439124487 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.06912280701754386 - nodes in this community are weakly interconnected._
 - **Why does `regAddr` connect `regAddr` to `VL53L0X`?**
   _High betweenness centrality (0.159) - this node is a cross-community bridge._
 - **Are the 11 inferred relationships involving `calibracion()` (e.g. with `oledBorra()` and `oledDec()`) actually correct?**
