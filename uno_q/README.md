@@ -45,7 +45,7 @@ Con el hub conectado al USB-C, App Lab se conecta por WiFi (el puerto no puede i
 ## Funcionamiento
 
 - Los VL53L0X leen las paredes de la celda actual, mantienen el robot centrado y lo detienen a `D_FRENTE` cuando hay pared enfrente.
-- La cámara mira la celda siguiente y adelanta sus paredes al mapa como tentativas, para que el flood‑fill descarte callejones antes de entrar. Si la cámara se equivoca y bloquea todo, el robot ignora esas paredes tentativas. Sin cámara, funciona solo con los VL53L0X (OLED: `SIN CAM`).
+- La cámara ve por encima de las paredes: cada región de `ROI` (`"adelante,lado,pared"`) marca una pared de una celda hasta 2 adelante, aunque haya pared enfrente. Esas paredes van al mapa como tentativas, para que el flood‑fill descarte callejones antes de entrar. Si la cámara se equivoca y bloquea todo, el robot ignora esas paredes tentativas. Sin cámara, funciona solo con los VL53L0X (OLED: `SIN CAM`).
 - Sin ruta conocida, explora hasta la meta y regresa solo al inicio. No lo recojas hasta que la OLED diga `LISTO`.
 - Con ruta conocida, va directo a la meta con rectas largas a velocidad alta.
 - Botón corto: siguiente corrida (pon el robot en el inicio, viendo hacia `RUMBO_INI`).

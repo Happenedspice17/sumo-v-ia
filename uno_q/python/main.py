@@ -32,12 +32,19 @@ BIT = [1, 2, 4, 8]
 CAM_ID = 0
 USAR_CAM = True
 ANCHO, ALTO = 320, 240
-# Regiones (x0, y0, x1, y1) en fraccion de la imagen; ajustar con /app/cal.jpg
+# La camara ve por encima de las paredes: cada region mira una pared de una celda adelante.
+# Clave "adelante,lado,pared": adelante = celdas al frente (1 = la siguiente), lado = -1 izq / 0 / 1 der,
+# pared = F (fondo), I (izquierda), D (derecha) de esa celda. Valor = (x0, y0, x1, y1) en fraccion de la imagen.
+# Ajustar viendo la camara en el panel web (rojo = ve pared, verde = libre).
 ROI = {
-    "frente2": (0.35, 0.05, 0.65, 0.25),   # pared del fondo de la celda siguiente
-    "izq2":    (0.05, 0.25, 0.25, 0.55),   # pared izquierda de la celda siguiente
-    "der2":    (0.75, 0.25, 0.95, 0.55),   # pared derecha de la celda siguiente
+    "1,0,F": (0.35, 0.05, 0.65, 0.25),
+    "1,0,I": (0.05, 0.25, 0.25, 0.55),
+    "1,0,D": (0.75, 0.25, 0.95, 0.55),
+    "2,0,F": (0.42, 0.00, 0.58, 0.06),
+    "2,0,I": (0.25, 0.05, 0.35, 0.22),
+    "2,0,D": (0.65, 0.05, 0.75, 0.22),
 }
+REL = {"F": 0, "I": -1, "D": 1}
 PARED_LO = (0, 0, 170)                   # HSV de la pared (blanca por defecto)
 PARED_HI = (180, 60, 255)
 UMBRAL = 0.35
@@ -212,6 +219,7 @@ def analiza(img, dibuja=False):
         res[k] = mask[a[1]:b[1], a[0]:b[0]].mean() / 255 > UMBRAL
         if dibuja:
             cv2.rectangle(img, a, b, (0, 0, 255) if res[k] else (0, 255, 0), 2)
+            cv2.putText(img, k, (a[0] + 2, b[1] - 3), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255, 255, 0), 1)
     return res, mask
 
 
@@ -240,15 +248,18 @@ def sensar():
             set_pared(x, y, (rumbo + rel) % 4)
     visto[x][y] = True
 
-    nx, ny = x + DX[rumbo], y + DY[rumbo]
-    if p & 2 or not dentro(nx, ny) or visto[nx][ny]:
-        return
-    c = leer_camara()
+    c = leer_camara()                    # ve por arriba: tambien detras de una pared de enfrente
     if c is None:
         return
-    for k, rel in (("frente2", 0), ("izq2", -1), ("der2", 1)):
-        if c[k]:
-            set_pared(nx, ny, (rumbo + rel) % 4, tentativo)
+    der = (rumbo + 1) % 4
+    for k, v in c.items():
+        if not v:
+            continue
+        a, l, w = k.split(",")
+        cx = x + DX[rumbo] * int(a) + DX[der] * int(l)
+        cy = y + DY[rumbo] * int(a) + DY[der] * int(l)
+        if dentro(cx, cy) and not visto[cx][cy]:
+            set_pared(cx, cy, (rumbo + REL[w]) % 4, tentativo)
 
 
 # ---------- Dashboard de colores (http://<ip de la Q>:7000) ----------
