@@ -18,9 +18,11 @@ RUMBO_INI = 0                            # 0=N 1=E 2=S 3=O
 # centro: 1 celda si N es impar, las 4 del centro si es par
 META = {(N // 2, N // 2)} if N % 2 else {(N // 2 - 1 + i, N // 2 - 1 + j) for i in (0, 1) for j in (0, 1)}
 COLORES = ["PISO", "ROJO", "VERDE", "AZUL", "AMAR"]
-ARCHIVO = "/app/mapa.json"
-ARCH_COL = "/app/colores.json"
-ARCH_MODO = "/app/modo.json"
+DATOS = "/app/datos"                     # en una subcarpeta: archivos en la raiz de la app confunden a App Lab
+os.makedirs(DATOS, exist_ok=True)
+ARCHIVO = DATOS + "/mapa.json"
+ARCH_COL = DATOS + "/colores.json"
+ARCH_MODO = DATOS + "/modo.json"
 modo = "tonto"                           # solo se usa el modo tonto: sigue la pared con los ToF, sin mapa
 # r, g, b normalizados y brillo c; los mismos de refs[] del sketch
 REFS = [[0.33, 0.33, 0.33, 900], [0.58, 0.22, 0.20, 400], [0.26, 0.46, 0.28, 350],
@@ -79,19 +81,32 @@ cam_lock = threading.Lock()
 cam_vio = {}                             # celda -> color que vio la camara (0 = solo piso)
 
 
-def guardar():
-    datos = {"paredes": paredes, "visto": visto,
-             "marcas": [[x, y, c] for (x, y), c in marcas.items()]}
-    with open(ARCHIVO, "w") as f:
+def escribe(ruta, datos):
+    """Escribe completo o nada: si se apaga a la mitad no deja un archivo roto."""
+    with open(ruta + ".tmp", "w") as f:
         json.dump(datos, f)
+    os.replace(ruta + ".tmp", ruta)
+
+
+def lee(ruta):
+    """None si no existe o esta roto (un archivo vacio ya no tumba la app)."""
+    try:
+        with open(ruta) as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return None
+
+
+def guardar():
+    escribe(ARCHIVO, {"paredes": paredes, "visto": visto,
+                      "marcas": [[x, y, c] for (x, y), c in marcas.items()]})
 
 
 def cargar():
     global paredes, visto
-    if not os.path.exists(ARCHIVO):
+    datos = lee(ARCHIVO)
+    if not datos:
         return
-    with open(ARCHIVO) as f:
-        datos = json.load(f)
     if len(datos["paredes"]) != N:       # mapa de otro tamano de laberinto: no sirve
         print("Mapa guardado de otro tamano: lo ignoro")
         return
@@ -453,8 +468,7 @@ def api_modo(m: str):
     global modo
     if m in ("mapa", "tonto"):
         modo = m
-        with open(ARCH_MODO, "w") as f:
-            json.dump(modo, f)
+        escribe(ARCH_MODO, modo)
         print("Modo", modo)
     return {"modo": modo}
 
@@ -466,8 +480,7 @@ def api_guardar(i: int):
         time.sleep(0.05)
     REFS[i] = [round(x, 3) for x in m[:3]] + [round(m[3])]
     enviar_refs()
-    with open(ARCH_COL, "w") as f:
-        json.dump(REFS, f)
+    escribe(ARCH_COL, REFS)
     print("Color", COLORES[i], REFS[i])
     return api_lectura()
 
@@ -592,9 +605,7 @@ def borrar():
 
 def iniciar():
     global REFS, modo
-    if os.path.exists(ARCH_COL):
-        with open(ARCH_COL) as f:
-            REFS = json.load(f)
+    REFS = lee(ARCH_COL) or lee("/app/colores.json") or REFS   # tambien los de la version anterior
     enviar_refs()
     bordes()
     cargar()
