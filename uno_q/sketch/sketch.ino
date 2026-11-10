@@ -26,7 +26,8 @@ const int VEL_MIN = 80;
 const int AJUSTE_DER = 0;     // suma PWM al motor derecho si se desvia
 const bool INV_IZQ = true;    // true si ese motor gira al reves (en vez de voltear cables)
 const bool INV_DER = true;
-const int PARED = 120;        // mm: lectura menor = hay pared
+const int PARED = 120;        // mm: lectura menor = hay pared (lados)
+const int PARED_F = 130;      // mm: al frente, menos de esto = pared (de 140 para arriba no hay)
 const int D_FRENTE = 55;      // mm al frente con el robot centrado en la celda
 const int D_LADO = 50;        // mm a una pared lateral con el robot centrado
 const float KC = 0.8;         // ganancia de centrado
@@ -121,7 +122,7 @@ int rpcOdo(int i) {
   switch (i) {
     case 0: return p;
     case 1: return tipo == AVANZA ? total - p : 0;
-    case 2: return (dist[0] < PARED) | (dist[1] < PARED) << 1 | (dist[2] < PARED) << 2 | (tipo != NADA) << 3;
+    case 2: return (dist[0] < PARED) | (dist[1] < PARED_F) << 1 | (dist[2] < PARED) << 2 | (tipo != NADA) << 3;
     case 3: return nCorr;
     case 4: return ultCorr;
     case 6: return dist[0];
@@ -157,7 +158,7 @@ int rpcArranque() {
 // bit0 izq, bit1 frente, bit2 der; -1 si no hay sensores
 int rpcParedes() {
   if (!tofOk) return -1;
-  return (dist[0] < PARED) | (dist[1] < PARED) << 1 | (dist[2] < PARED) << 2;
+  return (dist[0] < PARED) | (dist[1] < PARED_F) << 1 | (dist[2] < PARED) << 2;
 }
 
 int rpcCuenta(int idx, int n) {
@@ -273,7 +274,7 @@ void control() {
     return;
   }
   // Con pared enfrente se detiene por distancia; si no, por tiempo
-  bool paredF = dist[1] < PARED;
+  bool paredF = dist[1] < PARED_F;
   if (paredF && dist[1] <= D_FRENTE) { termina(); return; }
   if (t >= dur && !(paredF && t < dur + unidad / 3)) { termina(); return; }
   odometria();
