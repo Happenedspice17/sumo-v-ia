@@ -1,11 +1,11 @@
 from arduino.app_utils import *
 from arduino.app_bricks.web_ui import WebUI
-from collections import deque
 import cv2
 import json
 import os
 import threading
 import time
+import heapq
 import base64
 
 print("Python OK, cv2", cv2.__version__)
@@ -48,6 +48,7 @@ ROI = {
     "2,0,D": (0.65, 0.05, 0.75, 0.22),
 }
 REL = {"F": 0, "I": -1, "D": 1}
+PESO_CAM = 3                             # una pared vista solo por la camara cuenta como 3 celdas extra de camino
 # Piso de la celda siguiente: la camara busca ahi marcas de color antes de que llegue el sensor
 ROI_PISO = (0.30, 0.45, 0.70, 0.80)
 SAT_MIN, VAL_MIN, FRAC_COLOR = 90, 70, 0.08   # pixel "de color": saturado y no oscuro (piso negro, pared blanca)
@@ -82,7 +83,11 @@ def cargar():
         return
     with open(ARCHIVO) as f:
         datos = json.load(f)
+    if len(datos["paredes"]) != N:       # mapa de otro tamano de laberinto: no sirve
+        print("Mapa guardado de otro tamano: lo ignoro")
+        return
     paredes, visto = datos["paredes"], datos["visto"]
+    bordes()
     for x, y, c in datos["marcas"]:
         marcas[(x, y)] = c
         cuenta[c] += 1
@@ -98,6 +103,13 @@ def set_pared(x, y, h, grid=None):
     nx, ny = x + DX[h], y + DY[h]
     if dentro(nx, ny):
         grid[nx][ny] |= BIT[(h + 2) % 4]
+
+
+def quita_pared(x, y, h):
+    nx, ny = x + DX[h], y + DY[h]
+    if dentro(nx, ny):                   # los bordes del laberinto nunca se quitan
+        paredes[x][y] &= ~BIT[h]
+        paredes[nx][ny] &= ~BIT[(h + 2) % 4]
 
 
 def bordes():
@@ -116,28 +128,36 @@ def bloqueado(x, y, h, solo_conocido, usar_cam=True):
         return True
     if solo_conocido:
         return not (visto[x][y] and visto[nx][ny])
-    if not usar_cam or visto[x][y] or visto[nx][ny]:
-        return False
-    return bool(tentativo[x][y] & BIT[h])
+    return False
+
+
+def costo(x, y, h, usar_cam):
+    # la camara no bloquea: una pared que solo ella vio hace el paso mas caro, los sensores deciden
+    nx, ny = x + DX[h], y + DY[h]
+    if usar_cam and not visto[x][y] and not visto[nx][ny] and tentativo[x][y] & BIT[h]:
+        return 1 + PESO_CAM
+    return 1
 
 
 def flood(objetivos, solo_conocido, usar_cam=True):
-    inf = N * N
+    inf = N * N * (2 + PESO_CAM)
     d = [[inf] * N for _ in range(N)]
-    q = deque()
+    q = []
     for x, y in objetivos:
         d[x][y] = 0
-        q.append((x, y))
+        q.append((0, x, y))
     while q:
-        x, y = q.popleft()
+        dist, x, y = heapq.heappop(q)
+        if dist > d[x][y]:
+            continue
         for h in range(4):
-            if bloqueado(x, y, h, solo_conocido, usar_cam):
+            if bloqueado(x, y, h, solo_conocido):
                 continue
             nx, ny = x + DX[h], y + DY[h]
-            if d[nx][ny] <= d[x][y] + 1:
-                continue
-            d[nx][ny] = d[x][y] + 1
-            q.append((nx, ny))
+            nd = dist + costo(x, y, h, usar_cam)
+            if nd < d[nx][ny]:
+                d[nx][ny] = nd
+                heapq.heappush(q, (nd, nx, ny))
     return d
 
 
@@ -187,13 +207,27 @@ def girar_a(h):
     rumbo = h
 
 
+def frente_libre():
+    """Los VL53L0X mandan: si ven pared enfrente no se avanza, aunque el mapa o la camara digan que no hay."""
+    time.sleep(0.06)
+    p = rpc("paredes")
+    if p >= 0 and p & 2:
+        set_pared(pos[0], pos[1], rumbo)
+        print(f"Sensor: pared enfrente en {pos}, no avanzo")
+        return False
+    return True
+
+
 def avanzar(n, rapido=False):
     global pos
+    if not frente_libre():
+        return False
     origen = pos
     precheck()
     rpc("mover", n, int(rapido))
     esperar(origen, rumbo)
     pos = (pos[0] + DX[rumbo] * n, pos[1] + DY[rumbo] * n)
+    return True
 
 
 # ---------- Vision ----------
@@ -277,13 +311,16 @@ def precheck():
 
 def sensar():
     x, y = pos
+    time.sleep(0.06)                     # deja que los VL53L0X den una lectura nueva
+    p = rpc("paredes")                   # siempre, aunque la celda ya se conozca: los sensores mandan
+    if p >= 0:
+        for bit, rel in ((1, -1), (2, 0), (4, 1)):
+            if p & bit:
+                set_pared(x, y, (rumbo + rel) % 4)
+            else:                        # el sensor ve libre: corrige un mapa viejo
+                quita_pared(x, y, (rumbo + rel) % 4)
     if visto[x][y]:
         return
-    time.sleep(0.06)                     # deja que los VL53L0X den una lectura nueva
-    p = rpc("paredes")
-    for bit, rel in ((1, -1), (2, 0), (4, 1)):
-        if p & bit:
-            set_pared(x, y, (rumbo + rel) % 4)
     visto[x][y] = True
 
     c = leer_camara()                    # ve por arriba: tambien detras de una pared de enfrente
@@ -379,9 +416,7 @@ def explorar(objetivos, est):
         sensar()
         d = flood(objetivos, False)
         x, y = pos
-        if d[x][y] >= N * N:
-            d = flood(objetivos, False, usar_cam=False)   # la camara pudo ver paredes falsas
-        if d[x][y] >= N * N:
+        if d[x][y] >= len(d) * len(d) * (2 + PESO_CAM):
             print("Sin camino")
             return False
         mejor = None
@@ -392,7 +427,7 @@ def explorar(objetivos, est):
             if dentro(nx, ny) and (mejor is None or d[nx][ny] < d[mejor[1]][mejor[2]]):
                 mejor = (h, nx, ny)
         girar_a(mejor[0])
-        avanzar(1)
+        avanzar(1)                       # si el sensor ve pared, no avanza y se vuelve a planear
     sensar()
     guardar()
     return True
@@ -415,13 +450,14 @@ def seguir_pared(objetivos):
             if not paredes[x][y] & BIT[h] and dentro(x + DX[h], y + DY[h]):
                 break
         girar_a(h)
-        avanzar(1)
+        if not avanzar(1):
+            vistos.discard((pos, rumbo))
     print("La pared derecha no llega a la meta (isla): cambio a mapa")
     return False
 
 
 def ruta_conocida():
-    d = flood(META, True)
+    d = flood(META, True, usar_cam=False)
     return d if d[INICIO[0]][INICIO[1]] < N * N else None
 
 
@@ -438,7 +474,9 @@ def ruta_rapida(d):
             cx, cy = cx + DX[h], cy + DY[h]
             n += 1
         girar_a(h)
-        avanzar(n, rapido=True)
+        if not avanzar(n, rapido=True):
+            return False
+    return True
 
 
 # ---------- Principal ----------
@@ -493,8 +531,12 @@ def loop():
     t = time.time()
     d = ruta_conocida()
     if d:
-        ruta_rapida(d)
-        estado(4)
+        if ruta_rapida(d):
+            estado(4)
+        else:                            # el mapa estaba mal: vuelve a explorar desde aqui
+            explorar(META, 1)
+            explorar({INICIO}, 2)
+            estado(0)
     else:
         if modo != "tonto" or not seguir_pared(META):
             explorar(META, 1)
