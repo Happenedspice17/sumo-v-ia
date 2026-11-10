@@ -52,13 +52,20 @@ ROI = {
 }
 REL = {"F": 0, "I": -1, "D": 1}
 # Geometria de la camara (chasis/chasis.scad): lente a CAM_H del piso, CAM_Y adelante del eje, inclinada CAM_INCL
-CAM_H, CAM_Y, CAM_INCL, CAM_FOV_V = 162, 32, 25, 75
+CAM_H, CAM_Y, CAM_INCL, CAM_FOV_V, CAM_FOV_H = 162, 32, 25, 75, 100
+# Puntos ciegos de los VL53L0X (CAD: frontal en (0, 54) mirando al frente, laterales en (+-43, 40) mirando a los
+# lados, cono de ~25 grados): las diagonales de enfrente no las ve nadie. La camara revisa ahi el piso por donde
+# va a pasar el robot (x, y en mm desde el eje; x+ derecha, y+ adelante).
+CIEGOS = {"izq": (-60, -25, 120, 220), "der": (25, 60, 120, 220)}   # la camara ve el piso desde y = 116
+CIEGO_UMBRAL = 0.15                      # fraccion de blanco en la zona para decir "hay algo"
+CAM_CERCA = 230                          # mm: si el frontal no ve nada pero la camara ve pared mas cerca, es pared
 CELDA, PARED_CARA = 180, 84              # mm entre centros; cara de la pared de enfrente desde el centro (90 - 6)
 ODO_MAX = 30                             # mm: correcciones de la camara mas grandes se ignoran
 TOF_RANGO = 1000                         # mm: si el frontal ve algo mas cerca, manda el frontal y no la camara
 PARED_F = 130                            # mm: al frente, menos de esto = pared (= PARED_F del sketch)
 D_FRENTE_TOF = 130                       # mm que lee el frontal con el robot centrado y pared en su celda (= D_FRENTE del sketch)
-odo = {"falta": 0, "corr": 0, "ult": 0, "cam_mm": None, "cam_err": None, "extra": 0, "frente": None}
+odo = {"falta": 0, "corr": 0, "ult": 0, "cam_mm": None, "cam_err": None, "extra": 0, "frente": None,
+       "ciego": {"izq": None, "der": None}}
 PESO_CAM = 1                             # una pared vista solo por la camara cuenta como 3 celdas extra de camino
 # Piso de la celda siguiente: la camara busca ahi marcas de color antes de que llegue el sensor
 ROI_PISO = (0.30, 0.45, 0.70, 0.80)
@@ -253,9 +260,13 @@ def tof_frente():
 
 
 def celdas_libres():
-    """Cuantas celdas puede avanzar segun el frontal (99 si no ve nada)."""
+    """Cuantas celdas puede avanzar segun el frontal (99 si no ve nada).
+    Si el frontal no ve nada (lectura perdida) y la camara ve la pared cerca, manda la camara."""
     d = tof_frente()
     if d >= TOF_RANGO:
+        if odo["cam_mm"] is not None and odo["cam_mm"] < CAM_CERCA:
+            print(f"Frontal sin lectura; la camara ve pared a {odo['cam_mm']:.0f} mm")
+            return 0
         return 99
     if d < PARED_F:
         return 0
@@ -265,6 +276,11 @@ def celdas_libres():
 def avanzar(n, rapido=False):
     """Los VL53L0X mandan: nunca avanza mas celdas de las que el frontal ve libres."""
     global pos
+    odo["extra"] = int(precheck())     # primero la foto: la usan celdas_libres y los puntos ciegos
+    ciego = [k for k, v in odo["ciego"].items() if v]
+    if ciego:
+        print(f"Camara: algo en el punto ciego {'/'.join(ciego)} de los ToF en {pos}, no avanzo")
+        return False
     libres = celdas_libres()
     if libres == 0:
         set_pared(pos[0], pos[1], rumbo)
@@ -278,7 +294,6 @@ def avanzar(n, rapido=False):
     completo = libres >= n
     n = min(n, libres)
     origen = pos
-    odo["extra"] = int(precheck())
     rpc("mover", n, int(rapido), odo["extra"])
     esperar(origen, rumbo)
     pos = (pos[0] + DX[rumbo] * n, pos[1] + DY[rumbo] * n)
@@ -385,13 +400,45 @@ def hacia_objetivo(img):
     return i - 1 if tercios[i] >= FRAC_COLOR / 2 else None
 
 
+def piso_a_px(x, y, w, h):
+    """Pixel (u, v) donde la camara ve el punto del piso (x, y) del robot, con la geometria del CAD."""
+    dy = y - CAM_Y
+    if dy <= 0:
+        return None
+    ang = math.atan2(CAM_H, dy) - math.radians(CAM_INCL)          # bajo el eje optico
+    prof = dy * math.cos(math.radians(CAM_INCL)) + CAM_H * math.sin(math.radians(CAM_INCL))
+    fv = (h / 2) / math.tan(math.radians(CAM_FOV_V / 2))
+    fh = (w / 2) / math.tan(math.radians(CAM_FOV_H / 2))
+    return int(w / 2 + fh * x / prof), int(h / 2 + fv * math.tan(ang))
+
+
+def zona_px(zona, w, h):
+    x0, x1, y0, y1 = zona
+    pts = [piso_a_px(x, y, w, h) for x in (x0, x1) for y in (y0, y1)]
+    us, vs = [p[0] for p in pts], [p[1] for p in pts]
+    return max(0, min(us)), max(0, min(vs)), min(w, max(us)), min(h, max(vs))
+
+
+def ciegos(img):
+    """Pared (blanco) en los puntos ciegos de los ToF: {"izq": bool, "der": bool}."""
+    h, w = img.shape[:2]
+    mask = cv2.inRange(cv2.cvtColor(img, cv2.COLOR_BGR2HSV), PARED_LO, PARED_HI)
+    res = {}
+    for k, z in CIEGOS.items():
+        u0, v0, u1, v1 = zona_px(z, w, h)
+        res[k] = bool(u1 > u0 and v1 > v0 and mask[v0:v1, u0:u1].mean() / 255 > CIEGO_UMBRAL)
+    return res
+
+
 def precheck():
-    """Una foto antes de avanzar: color del piso de la celda siguiente y correccion de distancia."""
+    """Una foto antes de avanzar: color del piso de la celda siguiente, puntos ciegos y correccion de distancia."""
+    odo["ciego"], odo["cam_mm"] = {"izq": None, "der": None}, None
     if cam is None:
         return 0
     img = foto()
     if img is None:
         return 0
+    odo["ciego"] = ciegos(img)
     nx, ny = pos[0] + DX[rumbo], pos[1] + DY[rumbo]
     if dentro(nx, ny) and (nx, ny) not in cam_vio:
         cam_vio[(nx, ny)] = color_piso(img)
@@ -485,7 +532,7 @@ def api_tof():
     accion, rel, n = que_haria(izq, frente, der, mueve)
     return {"izq": izq, "frente": frente, "der": der, "pared": 120, "pared_f": PARED_F,
             "libres": celdas_libres(), "falta": rpc("odo", 1), "mueve": mueve,
-            "accion": accion, "rel": rel, "modo": modo}
+            "accion": accion, "rel": rel, "modo": modo, "ciego": odo["ciego"], "cam_mm": odo["cam_mm"]}
 
 
 def api_modo(m: str):
@@ -514,11 +561,15 @@ def api_foto():
     if img is None:
         return {"img": None}
     c = color_piso(img)
+    cg = ciegos(img)                     # antes de dibujar encima
     res, _ = analiza(img, True)
     h, w = img.shape[:2]
     x0, y0, x1, y1 = ROI_PISO
     cv2.rectangle(img, (int(x0 * w), int(y0 * h)), (int(x1 * w), int(y1 * h)), (255, 0, 255), 2)
     cv2.putText(img, COLORES[c], (int(x0 * w) + 2, int(y1 * h) - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 1)
+    for k, z in CIEGOS.items():          # puntos ciegos de los ToF que cubre la camara
+        u0, v0, u1, v1 = zona_px(z, w, h)
+        cv2.rectangle(img, (u0, v0), (u1, v1), (0, 0, 255) if cg[k] else (255, 128, 0), 1)
     d = dist_camara(img)
     if d is not None:                    # linea donde la camara ve la base de la pared de enfrente
         f = (h / 2) / math.tan(math.radians(CAM_FOV_V / 2))
@@ -590,7 +641,7 @@ def buscar_color():
     global encontrado
     encontrado = False
     estado(1)
-    mano, visitas = 1, {}
+    mano, visitas, bloq = 1, {}, set()   # bloq: salidas donde no pudo avanzar (ToF o punto ciego)
     while not encontrado:
         if rpc("arranque"):
             print("Detenido con el boton")
@@ -601,7 +652,7 @@ def buscar_color():
         libre = {-1: not p & 1, 0: not p & 2, 1: not p & 4, 2: True}
         # entre las salidas que los ToF ven libres, la celda menos visitada; empate: pared derecha
         # (no guarda paredes: solo cuenta visitas, asi no se mete en ciclos de islas)
-        opciones = [r for r in (mano, 0, -mano, 2) if libre[r]]
+        opciones = [r for r in (mano, 0, -mano) if libre[r] and (pos, (rumbo + r) % 4) not in bloq] or [2]
         def veces(r):
             h = (rumbo + r) % 4
             return visitas.get((pos[0] + DX[h], pos[1] + DY[h]), 0)
@@ -612,8 +663,8 @@ def buscar_color():
         if ve is not None and rel == ve:
             print(f"Camara: {COLORES[OBJETIVO]} hacia", {-1: "la izquierda", 0: "el frente", 1: "la derecha"}[ve])
         girar_a((rumbo + rel) % 4)
-        if not encontrado:
-            avanzar(1)
+        if not encontrado and not avanzar(1):
+            bloq.add((pos, rumbo))       # no la vuelve a intentar desde esta celda
     return True
 
 
