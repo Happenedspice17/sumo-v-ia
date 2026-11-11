@@ -63,7 +63,8 @@ ANCHO, ALTO = 320, 240
 ARCH_CAM = DATOS + "/camara.json"
 # Calibracion de la camara (se ajusta en la web y se guarda): exposicion (0 = automatica; unidades UVC de 100 us),
 # columna del punto de fuga con el robot derecho (x0), radianes por pixel (k) y, experimental, fila -> mm
-camcal = {"expo": 0, "x0": ANCHO / 2, "k": 0.008, "filas": {}}
+camcal = {"expo": 0, "gain": -1, "x0": ANCHO / 2, "k": 0.008, "filas": {}}   # gain -1: no la toca
+cam_leido = {}
 # Blanco = pared (piso negro). Umbral de gris automatico (Otsu) acotado: una imagen toda negra no inventa blanco
 UMBRAL_MIN, UMBRAL_MAX = 100, 220
 ZONA_PASO = (0.30, 0.55, 0.70, 1.00)     # piso por donde va a pasar, en fraccion de la imagen
@@ -324,9 +325,17 @@ def aplica_expo():
         return
     if camcal["expo"] > 0:
         cam.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1)        # V4L2: 1 manual, 3 automatica
+        if cam.get(cv2.CAP_PROP_AUTO_EXPOSURE) != 1:
+            cam.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.25)  # algunos drivers usan la escala vieja de OpenCV
         cam.set(cv2.CAP_PROP_EXPOSURE, camcal["expo"])
     else:
         cam.set(cv2.CAP_PROP_AUTO_EXPOSURE, 3)
+    if camcal.get("gain", -1) >= 0:
+        cam.set(cv2.CAP_PROP_GAIN, camcal["gain"])
+    # lo que la camara dice que quedo: si no cambia, el driver ignora el ajuste
+    cam_leido.update(modo=cam.get(cv2.CAP_PROP_AUTO_EXPOSURE), expo=cam.get(cv2.CAP_PROP_EXPOSURE),
+                     gain=cam.get(cv2.CAP_PROP_GAIN))
+    print("Camara: exposicion", cam_leido, flush=True)
 
 
 def umbral(g):
@@ -570,7 +579,7 @@ def api_foto():
     ok, buf = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 40])
     return limpio({"img": base64.b64encode(buf).decode(), "blanco": round(v["blanco"], 2), "umbral": v["umbral"],
                    "ang": v["ang"], "virtual": v.get("virtual"), "abre": v.get("abre"), "exp": EXPERIMENTAL,
-                   "cal": camcal})
+                   "cal": camcal, "leido": cam_leido})
 
 
 def guarda_cam():
@@ -578,9 +587,10 @@ def guarda_cam():
     return api_foto()
 
 
-def api_cam_expo(v: int):
-    """Exposicion fija (0 = automatica)."""
+def api_cam_expo(v: int, g: int = -1):
+    """Exposicion fija (0 = automatica) y ganancia (-1 = no la toca)."""
     camcal["expo"] = max(v, 0)
+    camcal["gain"] = max(g, -1)
     with cam_lock:
         aplica_expo()
     return guarda_cam()
