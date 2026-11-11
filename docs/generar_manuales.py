@@ -685,8 +685,8 @@ def manual_ensamble():
     H += [fig("Fig. 5. Hub, repisa y cables USB de la UNO Q."),
           *lista(["<b>Cables USB:</b> el cable USB-C corto en ángulo recto va del hub a la entrada USB-C de la UNO Q. "
                   "El cable de la cámara va al hub.",
-                  "La placa se alimenta por VIN con la batería. Alimenta el hub por su entrada PD: el USB-C de la Q no da "
-                  "suficiente corriente para la cámara. Conecta cámara y hub antes de darle Run."], num=True),
+                  "La placa se alimenta por VIN con la batería. Alimenta el hub por su puerto PD: con VIN, el USB-C de la Q no le da 5 V. "
+                  "Conecta cámara y hub antes de darle Run."], num=True),
           verifica("el VCC del bus está en 3V3, el hub no se mueve al tocarlo y los cables USB no rozan las ruedas ni el pedestal."),
           Spacer(1, 4), raya(), Spacer(1, 2)]
     H += [h2("Cambio R3 ↔ UNO Q"),
@@ -731,8 +731,8 @@ def manual_ensamble():
           *lista([
               "La Q recibe 7–24 V por VIN. Con la batería por debajo de 7 V queda fuera de rango: recarga a 7.2 V o más.",
               "Prueba <b>sin módulo PD</b>: batería → interruptor → fusible → VIN. Revisa en App Lab que la cámara aparezca.",
-              "Si no aparece (la Q arranca como dispositivo USB), usa el módulo PD opcional: batería → interruptor → "
-              "fusible de 3 A → módulo (entrada desde 6 V, salida USB-C 5 V / 3 A) → USB-C de la Q. Ver docs/uno_q.md, sección 7.",
+              "Si no aparece, el hub no tiene energía: alimenta el hub por su puerto PD (cargador PD o módulo PD opcional: batería → interruptor → "
+              "fusible de 3 A → módulo (entrada desde 6 V, salida USB-C 5 V / 3 A) → puerto PD del hub). Ver docs/uno_q.md, sección 7.",
               "No uses módulos «trigger», «decoy» o «señuelo»: consumen en vez de dar energía.",
           ]),
           h1("7. Solución de problemas"),
@@ -744,7 +744,8 @@ def manual_ensamble():
                  ["Un motor no gira", "Borne flojo o ENA/ENB", "Aprieta OUT y revisa D5/D6"],
                  ["Una rueda roza", "Cable de motor o rueda muy adentro", "Acomoda el cable; saca la rueda 1 mm"],
                  ["El sensor de color baila", "Ranura grande", "Calza con cinta; reimprime con RANURA menor"],
-                 ["Q: no aparece la cámara", "Q en modo dispositivo con VIN, hub o cable USB", "Revisa los cables USB; prueba el módulo PD (6.4)"],
+                 ["Q: no aparece la cámara", "Hub sin energía PD (con VIN) o cable USB", "Mide ≥ 4.8 V en el hub; alimenta su puerto PD (6.4)"],
+                 ["Q: OLED dice SIN CAM", "La cámara no se encontró al arrancar", "El robot funciona sin ella; revisa lo anterior"],
                  ["Q: I2C no responde o se calienta", "VCC del bus en 5V", "Apaga, pasa el jumper a 3V3 y revisa los pines SDA/SCL"]],
                 [48, 56, 72]),
           h1("8. Uso seguro"),

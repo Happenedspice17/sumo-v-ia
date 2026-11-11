@@ -100,7 +100,7 @@ Geometría fija dentro de la capucha, LED encendido.
 1. **Blanco:** sin saturación (ATIME 24 ms, cuenta máxima 10240).
 2. **Oscuridad:** offset con negro mate.
 3. **Balance de blancos:** ganancias para que el blanco dé R = G = B.
-4. **Colores:** en el panel web (`http://<ip>:7000`), un asistente pide cada color; promedia 5 lecturas y guarda en `/app/colores.json`. Python lo manda al MCU en cada arranque.
+4. **Colores:** en el panel web (`http://<ip>:7000`), un asistente pide cada color; promedia 5 lecturas y guarda en `/app/datos/colores.json`. Python lo manda al MCU en cada arranque.
 5. **En la sede:** repetir el asistente sobre la pista real.
 
 Clasificación: referencia más cercana en RGB normalizado + brillo. `refs[]` del sketch solo son los valores por defecto.
@@ -118,6 +118,8 @@ Al alimentar por VIN, el puerto USB-C puede arrancar en modo dispositivo y no ve
 
 - **Workaround comunitario:** forzar modo host por debugfs: https://github.com/Psalmustrack/arduino-uno-q-usb-fix
 - **Método oficial:** hub con entrada PD que alimenta el Q.
+
+Con la Q alimentada por VIN, su USB-C no da 5 V al hub: el hub debe recibir energía por su puerto PD (cargador PD; 5 V ≥ 3 A del regulador del robot a un cable USB-C cortado conectado al puerto PD del hub; o módulo DC-DC con salida USB-C PD desde la batería). Alimentar solo la cámara con 5 V externos no basta.
 
 ### Ruta PD en el robot
 
@@ -180,7 +182,7 @@ Parámetros CAD actuales: `D_RUEDA` = 45 mm, `A_RUEDA` = 17 mm.
 
 1. Q alimentado por VIN desde la batería. Hub sin alimentar. Cámara conectada al hub.
 2. Ejecutar `lsusb` y `v4l2-ctl --list-devices`.
-3. Si la cámara no aparece: probar el workaround de modo host.
+3. Si la cámara no aparece: medir ≥ 4.8 V en el hub; revisar `adb shell lsusb` y `adb shell ls /dev/video*`; reconectar el hub; revisar soldaduras; cargar la batería. Si sigue, probar el workaround de modo host.
 4. Si el hub tiene entrada PD: probar con su cargador.
 
 | Paso | Resultado |

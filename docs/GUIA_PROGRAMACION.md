@@ -627,6 +627,11 @@ En este proyecto se usa igual: el sketch ofrece `mover`, `girar`, `paredes`, `co
 
 **Verifica (Parte B completa):** Run funciona, la OLED muestra texto, `v4l2-ctl --list-devices` ve la cámara.
 
+### 4.11 Página web y arranque automático (Q)
+
+- Con la app corriendo, la página de calibración está en `http://<IP>:7000` (ver 5.4). La IP cambia según la red: App Lab la muestra al darle Run, o con `adb shell hostname -I`. La laptop o el celular y la placa deben estar en la misma red WiFi.
+- Para que la app arranque sola al encender, en la terminal del Q (4.9): `arduino-app-cli properties set default user:laberinto2`.
+
 ---
 
 ## 5. Calibración
@@ -683,7 +688,7 @@ En el UNO Q, además, la cámara tiene su propia calibración en `main.py` (`ROI
 
 1. Con la app corriendo, abre en la laptop o el celular (mismo WiFi) la dirección que muestra App Lab, con `:7000` al final (por ejemplo `http://192.168.3.66:7000`).
 2. Sigue el asistente: pide piso, rojo, verde, azul y amarillo. Pon el sensor encima de cada uno, en la pista real, y aprieta **Guardar**.
-3. Se guarda en `/app/colores.json` y se carga solo en cada arranque; no hay que tocar `refs[]`.
+3. Se guarda en `/app/datos/colores.json` y se carga solo en cada arranque (los guardados tienen prioridad). Sin archivo guardado usa los valores de fábrica de `REFS` en `main.py`; no hay que tocar `refs[]`.
 4. Abajo sale la imagen de la cámara con 3 cuadros: rojo = ve pared, verde = libre. Úsala para ajustar `ROI` en `main.py`.
 
 Requisito: el brick **WebUI - HTML** agregado a la app y la carpeta `assets/` con `index.html`.
@@ -732,8 +737,8 @@ make cargar PUERTO=COM3
 | Studio no encuentra el `.hex` | Compilaste en otra configuración (Debug en vez de Release) | Compila de nuevo y abre la carpeta de salida que corresponda. `$(TargetDir)` apunta a la configuración activa |
 | OLED en blanco | Cable SDA/SCL invertido, falta alimentación del bus, puente VCC mal, o dirección I2C distinta | Revisa SDA y SCL, GND común, que el puente VCC del bus esté en 5V (R3) o 3V3 (Q). Revisa que el módulo sea un SSD1306 de 128x64 |
 | OLED dice `SIN VL53L0X` | Un sensor de distancia no responde | Revisa que los tres XSHUT estén en A0, A1 y A2; que SDA/SCL y VCC lleguen a los tres sensores; y que no haya cables flojos. Los tres sensores deben alimentarse con el voltaje correcto de tu placa |
-| OLED dice `SIN CAM` (solo Q) | El programa Python no ve la cámara | Es un aviso: el robot funciona sin cámara. Para arreglarlo revisa la sección siguiente |
-| La cámara no se detecta en el Q (`lsusb` no la lista) | Alimentación por VIN: el USB-C puede quedar en modo dispositivo y no ve la cámara. Cable o hub defectuoso | Pruébala con el Q alimentado por **USB-C con hub PD** en vez de VIN. Revisa `docs/uno_q.md`, secciones 7 y 12. Prueba otro hub o cable |
+| OLED dice `SIN CAM` (solo Q) | El programa Python no encontró la cámara al arrancar | Es un aviso: el robot funciona sin cámara. Un hilo revisa cada 2 s si sigue conectada y la busca si no está; la OLED pasa a `LISTO` cuando la encuentra. Si nunca aparece, revisa la fila siguiente |
+| La cámara no se detecta en el Q (`lsusb` no la lista) | Hub sin energía: con la Q por VIN, su USB-C no da 5 V al hub. También puede ser cable o hub defectuoso | Alimenta el hub por su **puerto PD** (cargador PD o módulo, ver `docs/uno_q.md`, secciones 7 y 12). Mide ≥ 4.8 V en el hub; revisa `adb shell lsusb` y `adb shell ls /dev/video*`; reconecta el hub; revisa soldaduras; carga la batería. Prueba otro hub o cable |
 | App Lab no encuentra la placa | Cable de solo carga, la placa aún está arrancando, o falta permiso en la PC | Usa un cable **de datos**, espera 1 a 2 minutos tras conectar, prueba otro puerto USB y reinicia App Lab. En Windows, si pide permiso o driver, acéptalo |
 | Run falla compilando el sketch | Falta una librería | Revisa la sección 4.7. Instala las cuatro librerías y vuelve a pulsar Run |
 | Puente VCC del bus en la posición equivocada | Se cambió de placa sin mover el puente | **R3: 5V. Q: 3V3.** Con 5V en el Q se dañan sus pines I2C. Apaga todo antes de moverlo |
@@ -741,6 +746,16 @@ make cargar PUERTO=COM3
 | El robot se detiene a media celda sin razón | Batería baja (VIN necesita al menos 7 V) | Recarga la batería al llegar a 7.2 V |
 
 (Los mensajes de avrdude pueden variar un poco según la versión.)
+
+### Contraseña olvidada de la placa (Q)
+
+1. Prueba la contraseña `arduino`.
+2. Si no funciona, reflashea con `arduino-flasher-cli flash latest` con la placa en modo EDL (jumper según la guía oficial). **Borra todo**: antes respalda la app con `adb pull /home/arduino/ArduinoApps/laberinto2 .`.
+3. En Linux, si se queda en `Waiting for EDL device`: `sudo rmmod qcserial`.
+
+### Problema resuelto: FastAPI y numpy (Q)
+
+FastAPI no serializa los tipos de numpy (por ejemplo `float32`). La función `limpio()` de `main.py` los convierte a tipos de Python antes de mandar la respuesta. Si agregas un dato nuevo al panel y da error de serialización, pásalo por `limpio()`.
 
 ---
 

@@ -558,21 +558,9 @@ def api_guardar(i: int):
     return api_lectura()
 
 
-reintento = 0
-
-
 def api_foto():
-    global cam, reintento
-    if cam is None and USAR_CAM and time.time() > reintento:   # la camara pudo conectarse despues de arrancar
-        reintento = time.time() + 5
-        with cam_lock:
-            abrir_camara()
-    img = foto() if cam is not None else None
+    img = foto() if cam is not None else None   # vigilar_cam la busca si no esta
     if img is None:
-        if cam is not None:              # se desconecto: la vuelve a buscar
-            with cam_lock:
-                cam.release()
-                cam = None
         return {"img": None}
     c = color_piso(img)
     cg = ciegos(img)                     # antes de dibujar encima
@@ -738,28 +726,31 @@ def iniciar():
     cargar()
     for c in range(1, len(COLORES)):
         rpc("set_cuenta", c, cuenta[c])
-    fin = time.time() + 30               # el hub puede tardar en levantar la camara
-    while USAR_CAM and not abrir_camara() and time.time() < fin:
-        print("Buscando camara...")
-        time.sleep(2)
-    if cam is not None:
+    if USAR_CAM and abrir_camara():
         leer_camara(debug=True)
         estado(0)
     else:
         print("Sin camara: la sigo buscando")
         estado(6)
-        threading.Thread(target=buscar_cam, daemon=True).start()
+    if USAR_CAM:                         # en segundo plano: no frena el arranque de la app
+        threading.Thread(target=vigilar_cam, daemon=True).start()
 
 
-def buscar_cam():
-    """Sigue buscando la camara cada 3 s hasta encontrarla."""
-    while cam is None:
-        time.sleep(3)
+def vigilar_cam():
+    """Cada 2 s: si no hay camara la busca; si la hay, revisa que siga conectada."""
+    global cam
+    while True:
+        time.sleep(2)
         with cam_lock:
             if cam is None:
-                abrir_camara()
-    print("Camara encontrada")
-    estado(0)
+                if abrir_camara():
+                    print("Camara encontrada")
+                    estado(0)
+            elif not cam.grab():
+                print("Camara desconectada: la sigo buscando")
+                cam.release()
+                cam = None
+                estado(6)
 
 
 def loop():

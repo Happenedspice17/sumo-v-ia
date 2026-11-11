@@ -108,9 +108,9 @@
     "semantic_hash": ""
   },
   "docs/generar_manuales.py": {
-    "mtime": 1794254181.3497338,
-    "seen": 1794254265.5928426,
-    "ast_hash": "482fff1f92e6167b05b146f3a06f6343",
+    "mtime": 1794361604.199421,
+    "seen": 1794361624.8459525,
+    "ast_hash": "4ecf50e2ee649f577a87f7b99007d61f",
     "semantic_hash": ""
   },
   "uno_q/app.yaml": {
@@ -120,9 +120,9 @@
     "semantic_hash": ""
   },
   "uno_q/python/main.py": {
-    "mtime": 1794358823.1447499,
-    "seen": 1794358830.1514611,
-    "ast_hash": "7b04c4f014fc1cb0a686f0b6aef71f34",
+    "mtime": 1794363155.616884,
+    "seen": 1794363166.093673,
+    "ast_hash": "b1f8ff6a82edaa099d98cd426a5e544d",
     "semantic_hash": ""
   },
   "uno_q/sketch/oled.h": {
@@ -156,21 +156,21 @@
     "semantic_hash": ""
   },
   "docs/GUIA_PROGRAMACION.md": {
-    "mtime": 1794254155.9858727,
-    "seen": 1794254265.5928724,
-    "ast_hash": "c4db4fd1c9c3c5bd4c3c75cc23cc6069",
+    "mtime": 1794363164.702556,
+    "seen": 1794363166.0937014,
+    "ast_hash": "9602326bbe4aa53fa0650446477079bd",
     "semantic_hash": ""
   },
   "docs/uno_q.md": {
-    "mtime": 1794254140.9260893,
-    "seen": 1794254265.5928788,
-    "ast_hash": "3eee2df40763234603c092c6159908c8",
+    "mtime": 1794361604.1974745,
+    "seen": 1794361624.8459847,
+    "ast_hash": "3df7182096af3733ad32500a6f442674",
     "semantic_hash": ""
   },
   "uno_q/README.md": {
-    "mtime": 1794348198.538709,
-    "seen": 1794348199.9898872,
-    "ast_hash": "91a710cec81eed86f2ad1717e265d172",
+    "mtime": 1794363164.6984022,
+    "seen": 1794363166.0937123,
+    "ast_hash": "6bbd1bb7591e98d0a87e654a9fd7510c",
     "semantic_hash": ""
   },
   "uno_q/python/requirements.txt": {
@@ -186,15 +186,15 @@
     "semantic_hash": ""
   },
   "docs/manual_ensamble.pdf": {
-    "mtime": 1794254240.0544338,
-    "seen": 1794254265.5928876,
-    "ast_hash": "0fc652be9f0222b8e89935a9876919e9",
+    "mtime": 1794361618.9814706,
+    "seen": 1794361624.8459926,
+    "ast_hash": "5903b829c3c013ec8d8bff8db95c56a7",
     "semantic_hash": ""
   },
   "docs/manual_uso.pdf": {
-    "mtime": 1794254240.222434,
-    "seen": 1794254265.5928888,
-    "ast_hash": "12bc7da63654ecd8a5c52e78f849ce17",
+    "mtime": 1794361619.1974707,
+    "seen": 1794361624.8459935,
+    "ast_hash": "f44846d8510725d047d8d9fdcd1ba9ab",
     "semantic_hash": ""
   },
   "atmega328p/img/conexiones_nano.png": {
@@ -444,9 +444,9 @@
     "semantic_hash": ""
   },
   "docs/manual_uso.md": {
-    "mtime": 1794327228.6450162,
-    "seen": 1794327236.3873024,
-    "ast_hash": "8f4b3b75bab4a3e3d8dd809ad8195c2a",
+    "mtime": 1794361608.4896238,
+    "seen": 1794361624.8459826,
+    "ast_hash": "bd6dd39dec4825e4f2e18606ca061d8b",
     "semantic_hash": ""
   },
   "docs/md_pdf.js": {
@@ -462,9 +462,9 @@
     "semantic_hash": ""
   },
   "docs/manual_tecnico.md": {
-    "mtime": 1794254108.4064262,
-    "seen": 1794254265.5928745,
-    "ast_hash": "508928318c9e7be9e4315cd58f7d3d09",
+    "mtime": 1794363164.7051072,
+    "seen": 1794363166.0937037,
+    "ast_hash": "d1c7ac6409d8f44e34eb86c3d6b1806b",
     "semantic_hash": ""
   },
   "docs/prompt_pdf.md": {

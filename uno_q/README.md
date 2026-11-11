@@ -30,13 +30,17 @@ GND común entre todo. No alimentes el UNO Q con el regulador de 5 V del L298N. 
 3. Agrega el brick **WebUI - HTML** (panel Bricks). Sin él no hay página web.
 4. En las librerías del sketch agrega `Adafruit SSD1306`, `Adafruit GFX Library`, `Adafruit TCS34725` y `VL53L0X` (de Pololu).
 5. Pulsa **Run**. App Lab carga el sketch al STM32 y arranca el Python.
-6. Marca la app para que arranque sola: `arduino-app-cli properties set default user:laberinto`.
+6. Marca la app para que arranque sola: `arduino-app-cli properties set default user:laberinto2`.
+
+La página web se ve por WiFi en `http://<IP>:7000`. La IP cambia según la red: App Lab la muestra al darle Run, o con `adb shell hostname -I`. La laptop o el celular y la placa deben estar en la misma red.
 
 Con el hub conectado al USB-C, App Lab se conecta por WiFi (el puerto no puede ir a la laptop y al hub a la vez). Conecta cámara y hub antes de Run.
 
+**Alimentación del hub:** con la Q alimentada por VIN, su USB-C no da 5 V al hub. El hub debe recibir energía por su puerto PD: cargador PD, o 5 V ≥ 3 A del regulador del robot a un cable USB-C cortado conectado al puerto PD del hub, o módulo DC-DC con salida USB-C PD desde la batería. Alimentar solo la cámara con 5 V externos no basta.
+
 ## Calibración
 
-1. **Colores**: con la app corriendo abre `http://<ip de la Q>:7000` (App Lab muestra el link). El asistente pide los 5 colores uno por uno; cada botón promedia 5 lecturas. Se guarda en `/app/colores.json` y se carga al MCU en cada arranque (`set_ref`); `refs[]` del sketch solo son los valores por defecto.
+1. **Colores**: con la app corriendo abre `http://<ip de la Q>:7000` (App Lab muestra el link). El asistente pide los 5 colores uno por uno; cada botón promedia 5 lecturas. Se guarda en `/app/datos/colores.json` y se carga al MCU en cada arranque (`set_ref`). Los guardados tienen prioridad. Sin archivo guardado se usan los valores de fábrica (`REFS` en `main.py`, igual a `refs[]` del sketch): PISO 0.282,0.379,0.333,153; ROJO 0.602,0.208,0.188,581; VERDE 0.155,0.535,0.309,636; AZUL 0.16,0.329,0.508,354; AMAR 0.409,0.449,0.142,1836.
    **Sensores**: enciende con el botón presionado. La OLED muestra `r g b c`, el color detectado y las 3 distancias. Centra el robot en una celda y anota `D_LADO` y `D_FRENTE`.
 2. **Avance**: ajusta `MS_CELDA` hasta que avance 18 cm en un pasillo sin pared enfrente, y `MS_90` para giros de 90°. `MS_RAPIDA` se ajusta igual, en rectas de varias celdas. Calibra con la batería cargada. Si se desvía, ajusta `AJUSTE_DER`.
 3. **Cámara**: la página web muestra la imagen (160 × 120) con las 3 regiones: rojo = pared, verde = libre. No se guardan imágenes en `/app`: con ellas App Lab marca "failed to start". Ajusta `ROI`, `PARED_LO/HI` y `UMBRAL` en `main.py` hasta que los rectángulos salgan rojos donde hay pared en la celda siguiente.
@@ -60,3 +64,4 @@ Con el hub conectado al USB-C, App Lab se conecta por WiFi (el puerto no puede i
 - Botón corto: siguiente corrida (pon el robot en el inicio, viendo hacia `RUMBO_INI`).
 - Botón sostenido más de 2 s: borra mapa y conteo (laberinto nuevo).
 - Una marca se cuenta solo si el color se sostiene 3 lecturas y antes se vio piso. Además se guarda la celda y no se vuelve a contar.
+- **Cámara al arrancar:** la busca una vez (OLED `LISTO` si la encuentra, `SIN CAM` si no). Un hilo en segundo plano revisa cada 2 s: si no hay cámara la busca, y si la hay revisa que siga conectada (si se desconecta pone `SIN CAM` y la vuelve a buscar; al encontrarla pone `LISTO`).
