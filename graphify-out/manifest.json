@@ -120,9 +120,9 @@
     "semantic_hash": ""
   },
   "uno_q/python/main.py": {
-    "mtime": 1794362210.4842715,
-    "seen": 1794362215.2968585,
-    "ast_hash": "10e3321471713085532292255c023f2e",
+    "mtime": 1794363155.616884,
+    "seen": 1794363166.093673,
+    "ast_hash": "b1f8ff6a82edaa099d98cd426a5e544d",
     "semantic_hash": ""
   },
   "uno_q/sketch/oled.h": {
@@ -156,9 +156,9 @@
     "semantic_hash": ""
   },
   "docs/GUIA_PROGRAMACION.md": {
-    "mtime": 1794361604.1981573,
-    "seen": 1794361624.8459797,
-    "ast_hash": "ca38f11d25665b2c127afb19068b543c",
+    "mtime": 1794363164.702556,
+    "seen": 1794363166.0937014,
+    "ast_hash": "9602326bbe4aa53fa0650446477079bd",
     "semantic_hash": ""
   },
   "docs/uno_q.md": {
@@ -168,9 +168,9 @@
     "semantic_hash": ""
   },
   "uno_q/README.md": {
-    "mtime": 1794362213.930635,
-    "seen": 1794362215.2968955,
-    "ast_hash": "1663eaf871d3c87fe41b1b2ce42b749c",
+    "mtime": 1794363164.6984022,
+    "seen": 1794363166.0937123,
+    "ast_hash": "6bbd1bb7591e98d0a87e654a9fd7510c",
     "semantic_hash": ""
   },
   "uno_q/python/requirements.txt": {
@@ -462,9 +462,9 @@
     "semantic_hash": ""
   },
   "docs/manual_tecnico.md": {
-    "mtime": 1794361604.1984773,
-    "seen": 1794361624.8459811,
-    "ast_hash": "a2423f2ba8bc0d8c8dc51f5ff5025123",
+    "mtime": 1794363164.7051072,
+    "seen": 1794363166.0937037,
+    "ast_hash": "d1c7ac6409d8f44e34eb86c3d6b1806b",
     "semantic_hash": ""
   },
   "docs/prompt_pdf.md": {

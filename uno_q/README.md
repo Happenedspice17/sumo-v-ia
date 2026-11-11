@@ -64,4 +64,4 @@ Con el hub conectado al USB-C, App Lab se conecta por WiFi (el puerto no puede i
 - Botón corto: siguiente corrida (pon el robot en el inicio, viendo hacia `RUMBO_INI`).
 - Botón sostenido más de 2 s: borra mapa y conteo (laberinto nuevo).
 - Una marca se cuenta solo si el color se sostiene 3 lecturas y antes se vio piso. Además se guarda la celda y no se vuelve a contar.
-- **Cámara al arrancar:** la busca una vez (OLED `LISTO` si la encuentra, `SIN CAM` si no). Si no la encuentra, un hilo la sigue buscando cada 2 s en segundo plano, sin frenar el arranque, y pone la OLED en `LISTO` al encontrarla. La página web (`/api/foto`) reintenta abrirla cada 5 s y la reabre si se desconecta.
+- **Cámara al arrancar:** la busca una vez (OLED `LISTO` si la encuentra, `SIN CAM` si no). Un hilo en segundo plano revisa cada 2 s: si no hay cámara la busca, y si la hay revisa que siga conectada (si se desconecta pone `SIN CAM` y la vuelve a buscar; al encontrarla pone `LISTO`).
