@@ -84,7 +84,7 @@ flowchart LR
 | **Tiempo real** (STM32) | Lazo de control de 10 ms, lectura de ToF y color, frenado ante pared o amarillo | Necesita latencia determinista. Un GC de Python o una consulta web no pueden retrasar un frenado |
 | **Decisión** (Linux) | Máquina de estados, mapa, BFS, visión, persistencia, servidor web | Necesita memoria, archivos, OpenCV y red. Decide **con el robot quieto**, así que su latencia no afecta la dinámica |
 
-**Principio de diseño:** el STM32 ejecuta cada orden de forma **autónoma y segura**. Frena solo a 130 mm de una pared y al confirmar amarillo, sin esperar a Linux. Si el procesador de aplicaciones se retrasa, el robot se queda quieto en lugar de chocar.
+**Principio de diseño:** el STM32 ejecuta cada orden de forma **autónoma y segura**. Frena solo a 35 mm de una pared y al confirmar amarillo, sin esperar a Linux. Si el procesador de aplicaciones se retrasa, el robot se queda quieto en lugar de chocar.
 
 ---
 
@@ -122,7 +122,7 @@ Cada decisión vino de un fallo observado en pista. La bitácora completa está 
 **Solución:** cada lectura suma **+1 (pared)** o **−1 (libre)** a cada lado de la celda, saturando en ±5. Es en esencia un **filtro de mayoría con histéresis**, una forma discreta del mapa de ocupación log-odds. Una lectura mala no alcanza para revertir tres buenas, y las celdas recorridas quedan como "libre seguro" (−5).
 
 ### 3. Umbrales con margen medido
-Con la pared en su propia celda el frontal lee ~130 mm, y con la pared una celda más allá, ~310 mm. El umbral original de 150 mm dejaba **20 mm de margen** contra un ruido de ±15 mm. Se movió al punto medio, **220 mm (margen de 90 mm)**. Para los laterales (pared ~50, libre > 200) el umbral de 120 mm deja 70 mm de margen.
+Sin calibrar, el frontal leía ~130 mm con la pared en su propia celda y ~310 mm con la pared una celda más allá. El umbral original de 150 mm dejaba **20 mm de margen** contra un ruido de ±15 mm; se movió al punto medio. Después, la calibración en pista mostró que el frontal medía **~87 mm de más**: con el sensor calibrado los mismos umbrales quedaron en milímetros reales, frena a **35 mm** y el frente cuenta como libre desde **130 mm** (a la mitad entre ~35-45 y ~215-225). Para los laterales (pared ~50, libre > 200) el umbral de 120 mm deja 70 mm de margen.
 
 ### 4. Detección de discontinuidades ("saltos")
 Si un ToF lateral cambia ≥ 120 mm **en dos lecturas consecutivas**, se abrió un pasillo. Pedir dos lecturas elimina los picos de una muestra. El robot avanza **124 mm más** (90 mm al centro de celda + 40 mm de adelanto del sensor respecto al eje − 6 mm de media pared, medidos en el CAD) para quedar centrado en la intersección. La discontinuidad también sirve como **landmark** que corrige la posición.

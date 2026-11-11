@@ -31,7 +31,7 @@ author:
 - Una **pequeña y muy puntual**, que mueve los motores y lee los sensores cien veces por segundo.
 - Una **grande con Linux**, que decide el camino, guarda el mapa y mira con la cámara.
 
-Se pasan mensajes entre ellas. El STM32 ejecuta cada movimiento por su cuenta y frena solo (a 130 mm de una pared, o al ver amarillo), así que el robot nunca queda fuera de control si Linux tarda.
+Se pasan mensajes entre ellas. El STM32 ejecuta cada movimiento por su cuenta y frena solo (a 35 mm de una pared, o al ver amarillo), así que el robot nunca queda fuera de control si Linux tarda.
 :::
 
 | Dominio | Procesador | Sistema | Tareas |
@@ -69,7 +69,7 @@ Linux sirve una página en el puerto 7000 (brick `web_ui`), que se abre desde el
 | Cámara | Imagen 160 × 120 en gris con la zona de paso en rojo (blanco) o verde (negro) | |
 | Corrida | Fase, celda, mapa y meta; durante la corrida usa la última lectura del robot y no llama al Bridge | |
 
-Se aplica en el STM32, antes de cualquier decisión, para que el control de 10 ms, los saltos y el alto a 130 mm usen milímetros reales.
+Se aplica en el STM32, antes de cualquier decisión, para que el control de 10 ms, los saltos y el alto a 35 mm usen milímetros reales.
 
 Separar los dominios aísla la latencia no determinista de Linux (planificador, E/S, visión) del lazo de control.
 
@@ -88,7 +88,7 @@ Separar los dominios aísla la latencia no determinista de Linux (planificador, 
 - **Sensores:** 3 × VL53L0X, tiempo de vuelo a 940 nm.
 - **Direcciones I²C:** los tres traen la misma (0x29), que además comparte el sensor de color. Al arrancar se mantienen apagados con XSHUT (A0–A2). Se encienden uno por uno y cada uno se reasigna a 0x30–0x32 antes de `init()`.
 - **Lectura:** modo continuo con *timing budget* de 20 ms (≈ 50 Hz por sensor), no bloqueante.
-- **Umbrales:** lateral con menos de 120 mm (`PARED`) = pared. Frontal con menos de 130 mm (`PARED_F`) = pared.
+- **Umbrales:** lateral con menos de 120 mm (`PARED`) = pared. Frontal con menos de 55 mm reales (`PARED_F`) = pared en su celda; con 130 mm o más (`FRENTE_LIBRE`) el frente cuenta como salida.
 - **Lecturas mínimas:** Python toma 3 lecturas de cada ToF y usa la menor (5 tras un cambio brusco). Una lectura mala no deja pasar al robot.
 
 # 4. Sensor de color
@@ -138,7 +138,7 @@ El resultado es "piso" si la menor distancia es mayor que 0.02 o si el brillo es
 ## 5.1 Técnicas 1 a 3 (versión estable)
 
 1. **Exposición fija.** Con exposición automática, la cámara cambia su ganancia según lo que tenga enfrente (una pared blanca cerca la oscurece, la ropa de la gente la aclara), y un mismo piso cambia de gris entre fotos. Desde la web se fija la exposición (`CAP_PROP_AUTO_EXPOSURE` en manual, `CAP_PROP_EXPOSURE` en unidades UVC de 100 µs) y se guarda en `/app/datos/camara.json`.
-2. **Umbral automático (Otsu) con contraste y sensibilidad.** Antes de Otsu, el gris se **estira**: el 2 % más oscuro de la mitad de abajo pasa a 0 y el 2 % más claro a 255 (si la imagen es casi uniforme no se estira, para no inventar contraste). Con poca luz o exposición baja, piso y pared quedan bien separados. La **sensibilidad** (web, de −80 a 80) baja el umbral de Otsu esos niveles de gris: más alta, ve blanco antes. El histograma de gris de la escena es **bimodal**: piso negro y pared blanca. El método de Otsu elige el umbral que maximiza la varianza entre las dos clases, en cada foto, sin calibrar un número. Se calcula sobre la mitad de abajo de la imagen (el piso cercano) después de un filtro de mediana de 5 × 5, que quita reflejos de un píxel. Para que una imagen toda negra no "invente" blanco, el umbral se acota a [`UMBRAL_MIN`, `UMBRAL_MAX`] = [100, 220]. Con él se mide la fracción de blanco en `ZONA_PASO`: si pasa de `BLANCO_MAX` (15 %), Python pide `mover(mm, 1)` (lento) y lee el frontal como doble check; el sketch para a 130 mm si la pared es real.
+2. **Umbral automático (Otsu) con contraste y sensibilidad.** Antes de Otsu, el gris se **estira**: el 2 % más oscuro de la mitad de abajo pasa a 0 y el 2 % más claro a 255 (si la imagen es casi uniforme no se estira, para no inventar contraste). Con poca luz o exposición baja, piso y pared quedan bien separados. La **sensibilidad** (web, de −80 a 80) baja el umbral de Otsu esos niveles de gris: más alta, ve blanco antes. El histograma de gris de la escena es **bimodal**: piso negro y pared blanca. El método de Otsu elige el umbral que maximiza la varianza entre las dos clases, en cada foto, sin calibrar un número. Se calcula sobre la mitad de abajo de la imagen (el piso cercano) después de un filtro de mediana de 5 × 5, que quita reflejos de un píxel. Para que una imagen toda negra no "invente" blanco, el umbral se acota a [`UMBRAL_MIN`, `UMBRAL_MAX`] = [100, 220]. Con él se mide la fracción de blanco en `ZONA_PASO`: si pasa de `BLANCO_MAX` (15 %), Python pide `mover(mm, 1)` (lento) y lee el frontal como doble check; el sketch para a 35 mm si la pared es real.
 3. **Rumbo por punto de fuga.** En cada fila de `ZONA_BORDES` (45 % a 95 % de la altura) se busca, desde el centro hacia cada lado, el primer píxel blanco: la base de la pared izquierda y la derecha. Cada pared se ajusta a una recta *x = a·y + c* por mínimos cuadrados con rechazo de atípicos (empieza con la mitad más cercana, la más confiable, y descarta los puntos a más de 5 px, como el fondo de un pasillo lateral). Las dos rectas, paralelas en el piso, se cortan en la imagen en el **punto de fuga** del pasillo. Con una cámara de proyección central, la columna del punto de fuga depende **solo del ángulo** entre el robot y el pasillo, no de la posición lateral del robot ni de la inclinación de la cámara: *θ = atan(k · (x_f − x₀))*, donde *x₀* es la columna con el robot derecho y *k* los radianes por píxel. Las dos se miden en la web (robot derecho, y girado 15° a mano), así que no hace falta conocer la inclinación de la cámara ni su lente.
    - Si |θ| ≥ `ANG_MIN` (4°), Python llama `ajustar(θ)` antes de avanzar. Si |θ| > `ANG_MAX` (20°), la lectura se descarta como mala.
    - **Con MPU-6050:** no gira. El giroscopio deriva con el tiempo, y la cámara ve el error real respecto al pasillo; `ajustar` mueve el rumbo deseado (`ref`) y el control de recta (`KG`) lo corrige durante el avance, sin perder tiempo. La cámara corrige la deriva de la integral y el giroscopio da la respuesta rápida, como un filtro complementario.
@@ -176,7 +176,7 @@ Son experimentales porque dependen de que la calibración por filas sea estable 
 **Avance** (lazo a 100 Hz, *T* = 10 ms):
 
 1. **Por distancia.** Al iniciar toma el frontal; si lee menos de 1 m (`RANGO`) avanza hasta que haya bajado 180 mm (`CELDA`). Si no ve nada a ese alcance avanza por tiempo (`MS_CELDA`) y, si a medio camino aparece una pared, sigue por distancia.
-2. **Alto y retroceso.** Se detiene al leer 130 mm al frente (`D_FRENTE`). Si queda por debajo de 120 mm (`D_FRENTE − D_CERCA`) se hace para atrás hasta 130 mm. Si hay pared y la distancia ya no baja en 300 ms, también para. Desde 230 mm frena de forma proporcional (`FRENA_K`).
+2. **Alto y retroceso.** Se detiene al leer 35 mm reales al frente (`D_FRENTE`, frontal calibrado). Si queda por debajo de 30 mm (`D_FRENTE − D_CERCA`) se hace para atrás hasta 35 mm. Si hay pared y la distancia ya no baja en 300 ms, también para. Desde 135 mm frena de forma proporcional (`FRENA_K`).
 3. **Perfil de velocidad.** Rampa de +6 PWM por ciclo hasta `VEL_EXPLORA` (o `VEL_LENTO`), y desaceleración lineal en el último cuarto de celda, con piso en `VEL_MIN`.
 4. **Cambios bruscos.** Si una lectura de un ToF cambia `SALTO` = 120 mm o más y la siguiente lo confirma, se reconoce un cambio brusco (se abrió un lateral o saltó el frontal).
    - Si se abre un lateral, el robot avanza `TRAS_SALTO` = 124 mm más y para en el centro de esa celda, para escanearla (fase `ESCANEA`).
@@ -368,7 +368,7 @@ La bitácora completa de cambios, problemas y soluciones está en `historial_cam
 - **V1:** movimiento por tiempo, sin encoders, con *flood fill* sobre un mapa de 16 × 16 celdas y respaldo en UNO R3 (ATmega328P).
 - **Sensores:** 3 × VL53L0X reasignados de dirección I²C y sensor de color TCS34725 con calibración desde el panel web.
 - **Cámara:** primero detectaba paredes para anticipar caminos; después buscó también el amarillo; con la cámara monocromática OV9281 detecta blanco (pared) con umbral automático y corrige el rumbo con el punto de fuga del pasillo; la versión experimental además mide distancias y aberturas.
-- **Avance por distancia:** el frontal mide la celda, para a 130 mm y retrocede si queda muy cerca; sin pared va por tiempo.
+- **Avance por distancia:** el frontal mide la celda, para a 35 mm reales y retrocede si queda muy cerca; sin pared va por tiempo.
 - **Cambios bruscos** de los ToF (`SALTO`): el robot se centra en la celda abierta y la escanea.
 - **Decisión:** pasó de *flood fill* con paredes de la cámara, y luego de reglas de pared, a una máquina de estados `SENSA → DECIDE → GIRA → AVANZA` con prioridad frente, izquierda, derecha; después, regla de la mano izquierda pura (izquierda, frente, derecha).
 - **Mapa:** votos ±5 por pared y colores por celda; ruta corta por BFS en la siguiente corrida.
