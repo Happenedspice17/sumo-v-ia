@@ -212,7 +212,7 @@ Son experimentales porque dependen de que la calibración por filas sea estable 
 | **Alinear antes de avanzar** | `alinear(45)`: si el rumbo se desvió 3° a 45°, gira en su lugar hasta `ref` antes de arrancar | `ALIN_MIN` = 3° |
 | **Verificar cada giro** | Python lee el desvío (`odo(8)`); si pasa de 10° termina el giro con `alinear(180)` (2 intentos). Si aun así quedó 45° o más fuera, acepta el rumbo real: corrige el mapa en cuartos de vuelta y mueve `ref` | — |
 | **Giro atorado** | Si girando pasan 400 ms sin 2° de giro, una esquina está trabada: retrocede 200 ms y sigue (hasta 2 veces) | `ATORADO_MS` = 400 ms |
-| **Choque** | Cada 10 ms mide la aceleración horizontal menos un promedio lento (quita la inclinación del montaje). Más de 0.6 g en un avance, pasados los primeros 150 ms, es un choque: retrocede 450 ms a PWM 110 y termina. Python se aleja de la pared más cercana (gira 20°, avanza 50 mm, regresa al rumbo) antes de seguir | `CHOQUE_G` = 0.6 g, `RETRO_MS` = 450 ms |
+| **Choque** | Cada 10 ms mide la aceleración horizontal menos un promedio lento (quita la inclinación del montaje). Un golpe de más de 0.8 g en un avance (pasados los primeros 150 ms) solo hace sospechar: es choque si en los 250 ms siguientes el frontal no bajó 10 mm (el robot dejó de avanzar). Sin pared enfrente a la vista solo cuenta un golpe de más de 2.5 g. Confirmado, retrocede 450 ms a PWM 110 y termina; si quedó a menos de 35 mm de una pared lateral, Python se aleja (gira 20°, avanza 50 mm, regresa al rumbo) | `CHOQUE_G` = 0.8 g, `CHOQUE_FUERTE` = 2.5 g, `CONFIRMA_MS` = 250 ms, `RETRO_MS` = 450 ms |
 | **Levantado** | Si la aceleración vertical baja de 0.8 g durante 150 ms (inclinado o en el aire), apaga los motores y Python termina la corrida | `LEVANTA_G` = 0.8 g |
 | **Fusión con la cámara** | La cámara mide el ángulo real respecto al pasillo y `ajustar` mueve `ref`: corrige la deriva lenta del giroscopio, que da la respuesta rápida (filtro complementario) | `ANG_MIN` = 4° |
 
@@ -312,7 +312,7 @@ Valores tal como están en `sketch.ino` y `main.py`.
 | `D_LADO` | 41 mm | Lectura lateral con el robot centrado en el carril (84 − 43, CAD) |
 | `KC` / `KD` | 0.8 / 0.3 | Centrado (posición / velocidad de acercamiento) |
 | `KG` | 2.0 PWM/° | Sostener rumbo en recta (con MPU-6050) |
-| `CHOQUE_G` / `LEVANTA_G` | 0.6 g / 0.8 g | Golpe horizontal que cuenta como choque / vertical debajo de la cual está levantado (150 ms) |
+| `CHOQUE_G` / `CHOQUE_FUERTE` / `LEVANTA_G` | 0.8 / 2.5 / 0.8 g | Golpe que hace sospechar un choque / golpe que cuenta sin pared enfrente / vertical debajo de la cual está levantado (150 ms) |
 | `RETRO_MS` / `ATORADO_MS` | 450 / 400 ms | Retroceso tras un choque / giro sin moverse 2° que cuenta como atorado |
 | `ALIN_MIN` | 3° | Con MPU, desvío desde el que endereza en su lugar antes de avanzar |
 | `ADELANTO` | 6° | Corta el giro antes por la inercia (si se pasa, subir) |

@@ -112,14 +112,17 @@ float ref = 0;                // rumbo deseado (derecha +), valido con signo con
 float yaw0;                   // yaw al iniciar el giro
 uint32_t tGyro;
 // Acelerometro: choques, robot levantado. Giroscopio: giro atorado
-const float CHOQUE_G = 0.6;   // g: golpe horizontal sobre el promedio que cuenta como choque (calibrar con el pico del log)
+const float CHOQUE_G = 0.8;   // g: golpe horizontal sobre el promedio que hace sospechar un choque (calibrar con el log)
+const float CHOQUE_FUERTE = 2.5;  // g: sin pared enfrente para confirmarlo, solo un golpe asi cuenta como choque
+const int CONFIRMA_MS = 250;  // ms despues del golpe: si el frontal no bajo 10 mm, el robot esta trabado = choque
 const float LEVANTA_G = 0.8;  // g: si la vertical baja de esto 150 ms seguidos, lo levantaron o se volteo
 const int RETRO_MS = 450;     // ms para atras despues de un choque (a VEL_RETRO)
 const int VEL_RETRO = 110;
 const int ATORADO_MS = 400;   // ms girando sin que el giroscopio vea 2 grados: atorado contra la pared
 float axF = 0, ayF = 0, pico = 0;
 int choque = 0, levantado = 0, atorones = 0;
-uint32_t tRetro = 0, tLev = 0, tGiroMov = 0, tDes = 0;
+uint32_t tRetro = 0, tLev = 0, tGiroMov = 0, tDes = 0, tChoque = 0;
+int fChoque = 0;
 float yawMov = 0;
 
 // ---------- RPC desde Python ----------
@@ -295,6 +298,7 @@ void iniciaMov() {
     choque = 0;
     pico = 0;
     tRetro = 0;
+    tChoque = 0;
     dMin = 9999;
     tBaja = millis();
     tCen = 0;
@@ -393,7 +397,18 @@ void control() {
     motores(dirL * v, dirR * v);
     return;
   }
-  // Choque (acelerometro): atras RETRO_MS y termina; Python vuelve a leer y se endereza antes de avanzar
+  // Golpe del acelerometro: es choque solo si el robot dejo de avanzar (el frontal no bajo 10 mm en CONFIRMA_MS).
+  // Sin pared enfrente a la vista no se puede confirmar asi: solo cuenta un golpe muy fuerte.
+  // (En pista, golpes de 0.75 a 1.5 g sin chocar: vibracion de los motores y del arranque.)
+  if (tChoque && millis() - tChoque > CONFIRMA_MS) {
+    bool trabado = fChoque < RANGO ? fChoque - dist[1] < 10 : pico > CHOQUE_FUERTE;
+    tChoque = 0;
+    if (trabado) {
+      choque = 1;
+      tRetro = millis() + RETRO_MS;
+    }
+  }
+  // Choque: atras RETRO_MS y termina; Python vuelve a leer y se aleja de la pared antes de avanzar
   if (tRetro) {
     if (millis() < tRetro) { motores(-VEL_RETRO, -VEL_RETRO); return; }
     tRetro = 0;
@@ -488,9 +503,9 @@ void leeAccel() {
   ayF += 0.05f * (a[1] - ayF);
   if (tipo == AVANZA) {
     pico = max(pico, g);
-    if (!tRetro && millis() - tIni > 150 && g > CHOQUE_G) {   // los primeros 150 ms son el arranque
-      choque = 1;
-      tRetro = millis() + RETRO_MS;
+    if (!tRetro && !tChoque && millis() - tIni > 150 && g > CHOQUE_G) {   // los primeros 150 ms son el arranque
+      tChoque = millis();                // sospecha: se confirma en control() si el robot dejo de avanzar
+      fChoque = dist[1];
     }
   }
   if (fabs(a[2]) < LEVANTA_G) {     // inclinado o en el aire

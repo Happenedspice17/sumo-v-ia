@@ -51,6 +51,7 @@ BRILLO_MIN = 1.3                         # una marca refleja al menos 1.3 veces 
 DX = [0, 1, 0, -1]
 DY = [1, 0, -1, 0]
 CELDA = 180                              # mm por avance; la posicion solo sirve para contar visitas
+LADO_CERCA = 35                          # mm: lateral mas cerca que esto tras un choque = pegado a esa pared
 PARED = 120                              # mm: lateral con esto o mas = libre
 PARED_F = 55                             # mm reales (frontal calibrado): menos de esto = pared (= PARED_F del sketch)
 FRENTE_LIBRE = 120                       # mm reales: a la mitad entre pared en su celda (~30) y en la siguiente (~210)
@@ -270,7 +271,7 @@ def vuelve_al_carril():
     """Tras un choque (casi siempre una esquina contra una pared lateral): se aleja de la pared mas cercana.
     Gira 20 grados hacia el otro lado, avanza 50 mm (unos 17 mm de lado) y regresa al rumbo deseado. Con MPU."""
     izq, _, der = tof3(2)
-    if min(izq, der) >= PARED:
+    if min(izq, der) >= LADO_CERCA:      # centrado (~41 mm) o mas lejos: no hace falta
         return
     g = 20 if izq < der else -20         # pared a la izquierda: gira a la derecha (+)
     print(f"Carril: pared {'izquierda' if g > 0 else 'derecha'} a {min(izq, der)} mm, me alejo")
