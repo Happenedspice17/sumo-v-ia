@@ -1,6 +1,10 @@
 ---
 title: Manual técnico
 subtitle: Robot de laberinto · Microcontroladores 2
+author:
+  - Manuel Harari López
+  - Víctor Miguel Vázquez
+  - Carlos Emiliano Escamilla Garibay
 ---
 
 ::: {.nota}

@@ -4,6 +4,7 @@ body { font-size: var(--fs, 10.5pt); font-family: "DejaVu Sans", Helvetica, Aria
 header#title-block-header { background: linear-gradient(135deg, var(--azul), #3a7bd5); color:#fff; padding: 18mm 12mm; border-radius: 6px; margin-bottom: 8mm; }
 header#title-block-header h1.title { font-size: 28pt; margin:0; color:#fff; border:none; }
 header#title-block-header p.subtitle { font-size: 14pt; margin: 4px 0 0; opacity:.9; }
+header#title-block-header p.author { display:inline-block; font-size: 10.5pt; margin: 8px 14px 0 0; padding: 2px 10px; background: rgba(255,255,255,.18); border-radius: 12px; }
 h1 { font-size: 16pt; color: var(--azul); border-bottom: 3px solid var(--azul); padding-bottom: 3px; margin: 9mm 0 3mm; break-after: avoid; }
 h2, h3 { color: var(--azul); break-after: avoid; }
 p, li { orphans: 3; widows: 3; }

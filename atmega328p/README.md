@@ -73,7 +73,7 @@ o directamente: `avrdude -c arduino -p m328p -P /dev/ttyACM0 -b 115200 -U flash:
 
 Nano con bootloader viejo: usa `-b 57600` (o `make cargar BAUD=57600`).
 
-El paso a paso completo está en `docs/manual_uso.pdf`.
+El paso a paso completo está en `docs/GUIA_PROGRAMACION.md`.
 
 ## Funcionamiento
 

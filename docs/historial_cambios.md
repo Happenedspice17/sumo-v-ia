@@ -1,6 +1,13 @@
-# Bitácora de diseño: cambios, problemas y soluciones
+---
+title: Bitácora de diseño
+subtitle: Cambios, problemas y soluciones · Robot de laberinto
+author:
+  - Manuel Harari López
+  - Víctor Miguel Vázquez
+  - Carlos Emiliano Escamilla Garibay
+---
 
-Este documento cuenta cómo se construyó el robot de laberinto de Microcontroladores 2, del 19 de octubre al 11 de noviembre de 2026, a partir del historial de commits del repositorio , de los análisis de la última sesión de trabajo (11-nov), que no quedaron en commits, y de las respuestas del equipo sobre sus pruebas en pista. El robot recorre un laberinto de celdas de 18 cm, encuentra una marca amarilla (la meta), cuenta marcas de color en el piso y en una segunda corrida debe ir por el camino más corto que conoce.
+Este documento cuenta cómo se construyó el robot de laberinto de Microcontroladores 2, del 19 de octubre al 11 de noviembre de 2026, a partir del historial de commits del repositorio, de los análisis de la última sesión de trabajo (11-nov), que no quedaron en commits, y de las respuestas del equipo sobre sus pruebas en pista. El robot recorre un laberinto de celdas de 18 cm, encuentra una marca amarilla (la meta), cuenta marcas de color en el piso y en una segunda corrida debe ir por el camino más corto que conoce.
 
 Hubo dos iteraciones sobre un mismo chasis impreso en 3D, de modo que el chasis acepta ambas placas:
 
@@ -284,7 +291,7 @@ Etapa menor de documentación. `docs/diagrama_conexiones.py` (matplotlib) genera
 
 ### Etapa 17. Manuales (8-nov)
 
-Etapa menor de documentación. `docs/manual_uso.md` (uso y calibración: batería de al menos 7.4 V, unos 20 s de arranque, botón D2 con toque corto para arrancar y más de 2 s para borrar el mapa), reordenado como secuencia (sanidad, calibrar, ensayo, competencia) para poder seguirlo sin entender el sistema. Primero se escribió un manual para jueces y luego uno técnico (`manual_tecnico.md`) con explicaciones simples. Se agregan `prompt_pdf.md`, `md_pdf.sh/.css/.js` y los PDF a color en `docs/pdf/`. Los criterios de operación (batería de al menos 7.4 V; con menos de 7 V el L298N pierde fuerza; unos 20 s de arranque) los escribió el equipo; los commits no dicen cómo se midieron.
+Etapa menor de documentación. `docs/manual_uso.md` (uso y calibración: batería de al menos 7.4 V, unos 20 s de arranque, botón D2 con toque corto para arrancar y más de 2 s para borrar el mapa), reordenado como secuencia (sanidad, calibrar, ensayo, competencia) para poder seguirlo sin entender el sistema. Primero se escribió un manual para jueces y luego uno técnico (`manual_tecnico.md`) con explicaciones simples. Se agregan `prompt_pdf.md` (retirado después), `md_pdf.sh/.css/.js` y los PDF a color en `docs/pdf/`. Los criterios de operación (batería de al menos 7.4 V; con menos de 7 V el L298N pierde fuerza; unos 20 s de arranque) los escribió el equipo; los commits no dicen cómo se midieron.
 
 **Commits.** 989c327, 7a4781a, f3b0647, c0c54fb, 7a015f0
 
