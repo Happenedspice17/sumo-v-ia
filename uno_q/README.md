@@ -16,6 +16,7 @@ El STM32 mueve los motores, lee los sensores y maneja la OLED (`sketch/`). Linux
 | VL53L0X ×3 (VCC), TCS34725 (VIN), OLED | VCC / GND | 3.3V / GND |
 | TCS34725 (morado) | LED / INT | sin conectar (LED siempre encendido) |
 | Botón de arranque | a GND | D2 |
+| MPU-6050 (GY-521), opcional | SDA / SCL, VCC 3.3V, GND (AD0 a GND o suelto: 0x68) | SDA / SCL |
 | Batería 2S 18650 (conector T) | + | interruptor → VIN |
 | Cámara USB | | hub USB‑C |
 
@@ -27,6 +28,7 @@ GND común entre todo. No alimentes el UNO Q con el regulador de 5 V del L298N. 
 
 1. Crea una app nueva llamada `Laberinto`.
 2. Copia `sketch/sketch.ino`, `python/main.py`, `python/requirements.txt` y `assets/index.html` (carpeta `assets/` en la raíz de la app).
+   Hay 2 versiones del sketch: `sketch/` (con MPU-6050; si no lo encuentra al arrancar, va por tiempo igual) y `sketch_sin_mpu/` (sin el código del MPU, giros y rectas solo por tiempo). Copia una de las dos, con su `oled.h`. El Python es el mismo para las dos.
 3. Agrega el brick **WebUI - HTML** (panel Bricks). Sin él no hay página web.
 4. En las librerías del sketch agrega `Adafruit SSD1306`, `Adafruit GFX Library`, `Adafruit TCS34725` y `VL53L0X` (de Pololu).
 5. Pulsa **Run**. App Lab carga el sketch al STM32 y arranca el Python.
@@ -42,25 +44,37 @@ Con el hub conectado al USB-C, App Lab se conecta por WiFi (el puerto no puede i
 
 1. **Colores**: con la app corriendo abre `http://<ip de la Q>:7000` (App Lab muestra el link). El asistente pide los 5 colores uno por uno; cada botón promedia 5 lecturas. Se guarda en `/app/datos/colores.json` y se carga al MCU en cada arranque (`set_ref`). Los guardados tienen prioridad. Sin archivo guardado se usan los valores de fábrica (`REFS` en `main.py`, igual a `refs[]` del sketch): PISO 0.282,0.379,0.333,153; ROJO 0.602,0.208,0.188,581; VERDE 0.155,0.535,0.309,636; AZUL 0.16,0.329,0.508,354; AMAR 0.409,0.449,0.142,1836.
    **Sensores**: enciende con el botón presionado. La OLED muestra `r g b c`, el color detectado y las 3 distancias. Centra el robot en una celda y anota `D_LADO` y `D_FRENTE`.
-2. **Avance**: con pared enfrente a menos de 1 m (`RANGO`) avanza por distancia y no hay que calibrar. Sin pared a la vista avanza por tiempo: ajusta `MS_CELDA` hasta que avance 18 cm, y `MS_90` para giros de 90°. Calibra con la batería cargada. Si se desvía, ajusta `AJUSTE_DER`.
-3. **Cámara**: solo busca el amarillo (`HUE_AMAR` en `main.py`). La página web muestra la imagen (160 × 120) con un recuadro donde lo ve. No se guardan imágenes en `/app`: con ellas App Lab marca "failed to start".
+2. **Distancia (VL53L0X)**: en la web, "Ver sensores ToF" → "Calibrar distancia". Pon una pared a una distancia medida desde la cara del sensor, escribe los mm y aprieta el sensor (promedia 10 lecturas). Mide cada sensor a 50, 100 y 150 mm con el vernier; el frontal también a 250–300 mm con flexómetro, porque sus umbrales viven ahí (`FRENTE_LIBRE` 220, pared en la celda siguiente ~310). Con 2 o más puntos ajusta una recta `real = a·crudo + b` (con 1 punto, solo el desfase). Se guarda en `/app/datos/tof.json`, se manda al STM32 (`set_tof`) en cada arranque y el panel muestra la lectura sin calibrar (`odo(9..11)`). **Después de calibrar revisa los umbrales** (`D_FRENTE`, `PARED_F`, `PARED`, `D_LADO_MIN`, `FRENTE_LIBRE`): se ajustaron con lecturas sin calibrar.
+3. **Avance**: con pared enfrente a menos de 1 m (`RANGO`) avanza por distancia y no hay que calibrar. Sin pared a la vista avanza por tiempo: ajusta `MS_CELDA` hasta que avance 18 cm, y `MS_90` para giros de 90°. Calibra con la batería cargada. Si se desvía, ajusta `AJUSTE_DER`.
+4. **Cámara**: busca el amarillo (`HUE_AMAR`) y el blanco de las paredes en el piso por donde va a pasar (`ZONA_PASO`, `BLANCO_LO/HI`, `BLANCO_MAX` en `main.py`). La página web muestra la imagen (160 × 120): recuadro amarillo donde ve el amarillo, y el camino en rojo si ve blanco o verde si ve negro. Ajusta `ZONA_PASO` para que en un pasillo libre salga verde. No se guardan imágenes en `/app`: con ellas App Lab marca "failed to start".
 
 ## Funcionamiento
 
 **Sketch (STM32)**, solo mueve el robot:
 
 - Avanza por distancia: al arrancar toma la lectura del frontal y para cuando bajó 180 mm (`CELDA`). Si el frontal no ve nada a menos de 1 m va por tiempo (`MS_CELDA`), y si a medio avance aparece una pared sigue por distancia. Siempre para a 130 mm de la pared de enfrente (`D_FRENTE`) y se hace para atrás si queda más cerca.
+- **Cambio brusco** (una lectura cambia `SALTO` = 120 mm o más y se repite en la siguiente): si se abre un lateral, para al centro de esa celda (`TRAS_SALTO` = 124 mm después) para escanearla; si salta el frontal, vuelve a medir lo que falta. Python lo lee con `odo(3)`.
+- Con `mover(mm, lento)` baja a `VEL_LENTO` (la pide Python cuando la cámara ve blanco).
 - En recta solo corrige el rumbo si un lateral lee menos de 90 mm (`D_LADO_MIN`).
-- Gira 90° por tiempo (`MS_90`).
-- Lee los ToF y el sensor de color y se los da al Python. RPC `odo(i)`: 0 mm recorridos, 1 mm que faltan, 5/6/7 frente/izq/der.
+- **Giros:** con MPU-6050 gira hasta el ángulo; sin él, por tiempo (`MS_90`). El mismo sketch sirve para los dos: al arrancar busca el MPU en 0x68 (OLED `G` abajo si lo encontró). Enciende el robot quieto: mide el bias del giroscopio.
+  - Con MPU el rumbo es absoluto: cada giro va al ángulo deseado acumulado, así que corrige lo que se pasó o le faltó el anterior. En recta sostiene ese rumbo (`KG`), además del centrado con paredes. El sentido del montaje lo aprende en el primer giro; antes de ese giro no sostiene rumbo.
+  - Calibrar `ADELANTO`: si se pasa del giro, súbelo; si le falta, bájalo. `odo(8)` da el desvío en grados.
+  - La OLED no se refresca en movimiento (tarda ~25 ms y estorba al control).
+- Lee los ToF y el sensor de color y se los da al Python. RPC `odo(i)`: 0 mm recorridos, 1 mm que faltan, 3 saltos (1 izq, 2 frente, 4 der), 5/6/7 frente/izq/der.
 
 **Python**, decide en cada paso:
 
-1. Lee los 3 ToF, la menor de 3 lecturas de cada uno.
-2. Mano izquierda: izquierda libre (lateral ≥ 120 mm) → gira a la izquierda y avanza; si no, frente ≥ 150 mm → avanza; si no, derecha; si no, media vuelta.
-3. Si ya pasó 3 veces por esa celda (rodea una isla) toma la salida que ha usado menos; la cámara desempata hacia el amarillo. La celda sale de los mm que de verdad avanzó.
-4. Si el sensor de color lee amarillo 3 veces seguidas se detiene: llegó a la meta (OLED `META`).
+Es una máquina de estados: `SENSA` → `DECIDE` → `GIRA` → `AVANZA` → `SENSA` (`ESCANEA` en lugar de `SENSA` tras un salto). Todo se decide con el robot quieto; el color se revisa todo el tiempo. La fase sale en la OLED junto al estado y en la web.
 
-- Botón corto: corrida nueva (pon el robot en el inicio). Otro toque la detiene. Sostenido más de 2 s: borra el conteo de colores.
+1. Lee los 3 ToF, la menor de 3 lecturas de cada uno (5 si en el avance hubo un cambio brusco). Cada lectura vota pared (+1) o libre (−1) en el mapa, con tope ±`VOTO_MAX`: una lectura mala no borra lo que vieron las demás. Por donde pasó queda libre seguro.
+2. Prioridad: de frente (≥ 220 mm, `FRENTE_LIBRE`: a la mitad entre pared en su celda ~130 y en la siguiente ~310); si no, izquierda (lateral ≥ 120 mm); si no, derecha; si no, media vuelta.
+3. Tras un cambio brusco va a la salida libre que lleve a una celda que no está en el mapa, la de lectura más lejana.
+4. Si ya pasó 3 veces por esa celda (rodea una isla) toma la salida que ha usado menos; la cámara desempata hacia el amarillo. La celda sale de los mm que de verdad avanzó.
+5. Antes de cada avance la cámara revisa el piso del camino: negro → normal; blanco (pared) → va lento y el frontal hace el doble check (el sketch para a 130 mm si de verdad hay pared).
+6. Cada color que lee el TCS34725 (3 lecturas seguidas) va al mapa en la celda donde está el sensor y se cuenta una vez. Amarillo = meta: el STM32 para solo en cuanto lo confirma, sin esperar al Python (OLED `META`).
+7. El mapa (paredes, colores y meta) se guarda en `/app/datos/mapa.json`. En la siguiente corrida, si conoce la meta, va por el camino más corto conocido (BFS, OLED `RAPIDO`); si algo no cuadra, sigue explorando desde ahí.
+
+- Botón corto: corrida nueva (pon el robot en el inicio). Otro toque la detiene. Sostenido más de 2 s: borra el mapa y el conteo (laberinto nuevo). Cada corrida empieza en la misma celda y viendo al mismo lado.
+- **Web durante una corrida:** no llama al Bridge; muestra la última lectura que tomó el robot y su última foto, para no quitarle tiempo ni la cámara.
 - **Panel web → Ver sensores ToF:** dibujo en vivo de lo que mide cada VL53L0X y qué haría el robot.
 - **Cámara al arrancar:** la busca una vez (OLED `LISTO` si la encuentra, `SIN CAM` si no). Un hilo revisa cada 2 s: si no hay cámara la busca y si se desconecta pone `SIN CAM`.

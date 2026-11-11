@@ -49,6 +49,21 @@
     <div style="margin-top:10px;font-size:20px">Qué haría: <b id="accion">...</b></div>
     <div style="font-size:14px;color:#666">Simulación: tapa o acerca un sensor con la mano y mira qué decide. No mueve el robot.</div>
     <div id="tofTxt" style="font-family:monospace;font-size:15px;margin-top:8px;white-space:pre-line"></div>
+    <div style="margin-top:14px;border-top:1px solid #ccc;padding-top:10px">
+      <b>Calibrar distancia</b> (con el robot quieto): pon una pared a la distancia medida con el vernier desde la cara del sensor, escribe los mm y aprieta el sensor. Mide 50, 100 y 150 mm (y 250-300 mm con flexómetro para el frontal).
+      <div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap">
+        <input id="calMm" type="number" value="50" min="1" style="width:80px;font-size:18px;padding:6px"> mm
+        <button style="background:#455a64;padding:10px 14px" onclick="calTof(0)">Izq</button>
+        <button style="background:#455a64;padding:10px 14px" onclick="calTof(1)">Frente</button>
+        <button style="background:#455a64;padding:10px 14px" onclick="calTof(2)">Der</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+        <button style="background:#888;padding:6px 10px;font-size:14px" onclick="calTof(0, 0)">Borrar izq</button>
+        <button style="background:#888;padding:6px 10px;font-size:14px" onclick="calTof(1, 0)">Borrar frente</button>
+        <button style="background:#888;padding:6px 10px;font-size:14px" onclick="calTof(2, 0)">Borrar der</button>
+      </div>
+      <div id="calTxt" style="font-family:monospace;font-size:14px;margin-top:8px;white-space:pre-line"></div>
+    </div>
   </div>
 </div>
 <div class="paso">
@@ -56,10 +71,10 @@
   <div id="odo" style="font-family:monospace;font-size:15px;margin-top:6px;white-space:pre-line">...</div>
 </div>
 <div class="paso">
-  <div>Mano izquierda con los 3 ToF (la menor de 3 lecturas); si pasa 3 veces por una celda toma la salida menos usada. Para al leer amarillo.</div>
+  <div>De frente, luego mano izquierda, con los 3 ToF (la menor de 3 lecturas). Tras un cambio brusco en un ToF va a la salida nueva más lejana; si pasa 3 veces por una celda, a la menos usada. Mapea paredes y colores; para al leer amarillo y la siguiente corrida va directo.</div>
 </div>
 <div class="paso">
-  <div>Cámara (recuadro amarillo = donde ve el amarillo):</div>
+  <div>Cámara (amarillo = donde ve el amarillo; camino rojo = blanco/pared, va lento; verde = negro):</div>
   <img id="cam" alt="sin cámara" style="width:100%;max-width:320px;image-rendering:pixelated;background:#000;border-radius:8px;margin-top:8px">
 </div>
 <div class="paso">
@@ -102,9 +117,10 @@ function pinta(d) {
     const o = d.odo, p = o.paredes || 0, si = (b) => (p & b ? "pared" : "libre");
     const mm = (x) => (x === null || x === undefined ? "—" : Math.round(x) + " mm");
     document.getElementById("odo").textContent =
-      (p & 8 ? "Avanzando, faltan " + mm(o.falta) : "Quieto") + "\n" +
+      (o.fase ? "En corrida (datos de la última lectura del robot)" : p & 8 ? "Avanzando, faltan " + mm(o.falta) : "Quieto") + "\n" +
       "Sensores: izq " + si(1) + " · frente " + si(2) + " (" + mm(o.frente > 2000 ? null : o.frente) + ") · der " + si(4) + "\n" +
-      "Último avance: " + mm(o.mm);
+      "Último avance: " + mm(o.mm) + (o.saltos ? " · salto en ToF " + o.saltos : "") + "\n" +
+      "Fase " + (o.fase || "—") + " · celda " + o.pos + " · mapa " + o.celdas + " celdas · meta " + (o.meta || "sin encontrar");
   }
   document.getElementById("nums").textContent = `r ${r.toFixed(2)}  g ${g.toFixed(2)}  b ${b.toFixed(2)}  c ${c}`;
   const cont = document.getElementById("botones");
@@ -165,9 +181,24 @@ async function tof() {
     document.getElementById("tD").textContent = t(d.der);
     document.getElementById("tofTxt").textContent =
       "Rojo = pared (lados < " + d.pared + " mm, frente < " + (d.pared_f || d.pared) + " mm), verde = libre, gris = no ve nada\n" +
+      (d.crudos ? "Sin calibrar: izq " + d.crudos[0] + " · frente " + d.crudos[1] + " · der " + d.crudos[2] + " mm\n" : "") +
       (d.mueve ? "\nAvanzando, faltan " + d.falta + " mm" : "");
+    if (d.cal) pintaCal(d.cal);
   } catch (e) {}
   setTimeout(tof, 150);
+}
+
+function pintaCal(c) {
+  document.getElementById("calTxt").textContent = Object.entries(c).map(([n, v]) =>
+    n + ": real = " + v.a + " × crudo " + (v.b < 0 ? "- " + -v.b : "+ " + v.b) + "   puntos (real: crudo) " +
+    (Object.entries(v.puntos).map(([r, x]) => r + ":" + x).join("  ") || "ninguno")).join("\n");
+}
+
+async function calTof(s, mm) {
+  if (mm === undefined) mm = parseInt(document.getElementById("calMm").value) || 0;
+  document.getElementById("msg").textContent = mm ? "Midiendo sensor " + ["izq", "frente", "der"][s] + " a " + mm + " mm..." : "Borrando...";
+  try { pintaCal(await (await fetch("/api/tof_cal?s=" + s + "&mm=" + mm)).json()); } catch (e) {}
+  document.getElementById("msg").textContent = "Listo ✔";
 }
 
 async function ciclo() {

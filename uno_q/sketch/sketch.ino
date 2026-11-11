@@ -17,8 +17,9 @@ const uint8_t XSHUT[3] = {A0, A1, A2};   // izq, frente, der
 
 // ---------- Calibracion ----------
 const long MS_CELDA = 600;    // ms por celda de 18 cm (solo si el frontal no ve pared: avanza por tiempo)
-const long MS_90 = 250;       // ms por giro de 90 grados
+const long MS_90 = 250;       // ms por giro de 90 grados (solo sin MPU-6050)
 const int VEL_EXPLORA = 140;
+const int VEL_LENTO = 100;    // cuando la camara ve blanco (pared) en el camino
 const int VEL_GIRO = 130;
 const int VEL_MIN = 80;
 const int AJUSTE_DER = 0;     // suma PWM al motor derecho si se desvia
@@ -35,6 +36,8 @@ const float KD = 0.3;         // ganancia de rumbo: corrige segun que tan rapido
 const int D_LADO_MIN = 90;    // mm: solo corrige si un lateral lee menos de esto (se aleja de esa pared)
 const int CELDA = 180;        // mm de centro a centro de celda
 const int RANGO = 1000;       // mm: con el frontal leyendo menos, avanza por distancia; mas lejos, por tiempo
+const int SALTO = 120;        // mm: cambio brusco entre 2 lecturas (50 -> 200, 100 -> 300)
+const int TRAS_SALTO = 124;   // mm tras abrirse un lateral: centro de esa celda (90 + 40 del sensor - 6 de media pared)
 const uint32_t T_CTRL = 10;
 const uint32_t T_COLOR = 30;
 
@@ -56,6 +59,8 @@ Oled oled(128, 64, &Wire, -1);
 Adafruit_TCS34725 tcs(TCS34725_INTEGRATIONTIME_24MS, TCS34725_GAIN_4X);
 VL53L0X tof[3];
 int dist[3] = {9999, 9999, 9999};
+int crudo[3] = {9999, 9999, 9999};   // lectura sin calibrar
+float tofA[3] = {1, 1, 1}, tofB[3] = {0, 0, 0};   // mm reales = A * crudo + B (los manda Python, calibrados con vernier)
 bool tofOk = false;
 
 enum { NADA, AVANZA, GIRA };
@@ -72,6 +77,9 @@ volatile int pideAlto = 0;    // Python pide parar ya (encontro el amarillo)
 int cuenta[NCOL] = {0};
 int estado = 0;
 const char* ESTADOS[] = {"LISTO", "EXPLORA", "REGRESO", "RAPIDO", "META", "BORRADO", "SIN CAM"};
+const char* FASES[] = {"", "SENSA", "DECIDE", "GIRA", "AVANZA", "ESCANEA"};
+int fase = 0;
+const int AMAR = 4;           // refs[4]: la meta; el sketch para solo, sin esperar al Python
 
 int tipo = NADA;
 int dirL, dirR;
@@ -79,16 +87,33 @@ long dur;
 long total;                   // mm del avance en curso
 int objetivo = -1;            // lectura del frontal donde parar; -1 = no ve pared, va por tiempo
 long hecho = 0;               // mm que recorrio el ultimo avance
+int vmax = VEL_EXPLORA;
+int saltos = 0;               // ToF que saltaron hacia lejos en este avance (1 izq, 2 frente, 4 der)
+int nSalto[3];                // lecturas seguidas con cambio brusco (cuenta a la 2a: una lectura mala no)
 uint32_t tIni;
 float vel;
 int dMin;                     // menor distancia al frente en este avance
 uint32_t tBaja;               // ultima vez que bajo: si ya no baja con pared enfrente, esta empujando la pared
 
+// ---------- MPU-6050 (opcional) ----------
+// Si responde en 0x68 al arrancar, gira por angulo y sostiene el rumbo en recta; si no, todo va por tiempo.
+const int MPU = 0x68;
+const float LSB_DPS = 65.5;   // +-500 grados/s
+const float ADELANTO = 6;     // grados: corta el giro antes por la inercia (calibrar: si se pasa, sube)
+const float KG = 2.0;         // PWM por grado de desvio en recta
+bool mpuOk = false;
+float yaw = 0, bias = 0;      // grados con el signo del montaje
+int signo = 0;                // +1/-1 segun como quedo montado; lo aprende en el primer giro (0 = aun no)
+float ref = 0;                // rumbo deseado (derecha +), valido con signo conocido
+float yaw0;                   // yaw al iniciar el giro
+uint32_t tGyro;
+
 // ---------- RPC desde Python ----------
-int rpcMover(int mm) {
+int rpcMover(int mm, int lento) {
   ult = 'M';
   if (ocupado) return 0;
   arg = mm;
+  vmax = lento ? VEL_LENTO : VEL_EXPLORA;
   cmd = AVANZA;
   ocupado = 1;
   return 1;
@@ -122,12 +147,15 @@ long falta() {
 }
 
 // 0 mm recorridos (en curso o el ultimo avance), 1 mm que faltan, 2 paredes (1 izq, 2 frente, 4 der,
-// 8 en movimiento), 5/6/7 distancia frente/izq/der (mm)
+// 8 en movimiento), 3 saltos del avance, 5/6/7 distancia frente/izq/der (mm)
 int rpcOdo(int i) {
   switch (i) {
     case 0: return tipo == AVANZA ? total - falta() : hecho;
     case 1: return falta();
     case 2: return (dist[0] < PARED) | (dist[1] < PARED_F) << 1 | (dist[2] < PARED) << 2 | (tipo != NADA) << 3;
+    case 3: return saltos;
+    case 8: return signo ? (int)(signo * yaw - ref) : 0;   // desvio del rumbo deseado (grados)
+    case 9: case 10: case 11: return crudo[i - 9];           // izq, frente, der sin calibrar
     case 6: return dist[0];
     case 7: return dist[2];
     default: return dist[1];
@@ -143,6 +171,14 @@ int rpcColor() {
 volatile uint16_t raw[4];   // r g b c de la ultima lectura (para el dashboard)
 
 int rpcRaw(int i) { return raw[constrain(i, 0, 3)]; }
+
+// a en milesimas, b en decimas de mm
+int rpcSetTof(int i, int a, int b) {
+  if (i < 0 || i > 2) return 0;
+  tofA[i] = a / 1000.0f;
+  tofB[i] = b / 10.0f;
+  return 1;
+}
 
 // r, g, b en milesimas
 int rpcSetRef(int i, int r, int g, int b, int c) {
@@ -160,6 +196,12 @@ int rpcArranque() {
 
 int rpcCuenta(int idx, int n) {
   if (idx > 0 && idx < NCOL) cuenta[idx] = n;
+  refresca = 1;
+  return 1;
+}
+
+int rpcFase(int f) {
+  fase = constrain(f, 0, 5);
   refresca = 1;
   return 1;
 }
@@ -199,6 +241,7 @@ void iniciaMov() {
     total = max((long)arg, 1L);
     dur = max(total * MS_CELDA / CELDA, 50L);
     objetivo = dist[1] < RANGO ? max(dist[1] - (int)total, D_FRENTE) : -1;
+    saltos = 0;
     dMin = 9999;
     tBaja = millis();
     tCen = 0;
@@ -206,12 +249,38 @@ void iniciaMov() {
     dirL = arg > 0 ? 1 : -1;
     dirR = -dirL;
     dur = abs(arg) * MS_90;
+    yaw0 = yaw;
+    if (signo) ref += arg * 90;
   }
   cmd = NADA;
 }
 
+// Deja el avance con f mm por recorrer (antes faltaban fAntes): por el frontal o, sin pared a la vista, por tiempo
+void faltan(long fAntes, long f) {
+  total += f - fAntes;
+  if (dist[1] < RANGO) {
+    objetivo = max(dist[1] - (int)f, D_FRENTE);
+  } else {
+    objetivo = -1;
+    tIni = millis() - (total - f) * MS_CELDA / CELDA;
+    dur = max(total * MS_CELDA / CELDA, 50L);
+  }
+}
+
+// Cambio brusco en un ToF durante un avance. Se abre un lateral: para al centro de esa celda para escanearla.
+// Salta el frontal: vuelve a medir lo que falta desde la nueva lectura.
+void salto(int i, int antes, long f) {
+  if (dist[i] > antes) saltos |= 1 << i;
+  if (i == 1) faltan(f, f);
+  else if (dist[i] > antes && dist[i] >= PARED) faltan(f, TRAS_SALTO);
+}
+
 void termina() {
   if (tipo == AVANZA) hecho = total - falta();
+  if (tipo == GIRA && mpuOk && !signo && fabs(yaw - yaw0) > 30) {
+    signo = (yaw - yaw0) * dirL > 0 ? 1 : -1;   // primer giro: aprende hacia donde crece el yaw
+    ref = signo * yaw0 + arg * 90;
+  }
   frena();
   tipo = NADA;
   ocupado = 0;
@@ -238,8 +307,16 @@ float centrado() {
 void control() {
   long t = millis() - tIni;
   if (tipo == GIRA) {
-    if (t >= dur) termina();
-    else motores(dirL * VEL_GIRO, dirR * VEL_GIRO);
+    if (!mpuOk) {
+      if (t >= dur) termina();
+      else motores(dirL * VEL_GIRO, dirR * VEL_GIRO);
+      return;
+    }
+    // con MPU: hasta el rumbo deseado (absoluto: corrige lo que se paso o le falto en giros anteriores)
+    float f = signo ? (ref - signo * yaw) * dirL : abs(arg) * 90 - fabs(yaw - yaw0);
+    if (f <= ADELANTO || t >= 3 * dur) { termina(); return; }
+    int v = f < 25 ? (VEL_GIRO + VEL_MIN) / 2 : VEL_GIRO;
+    motores(dirL * v, dirR * v);
     return;
   }
   // Avanza por distancia con el frontal; sin pared a la vista, por tiempo
@@ -256,11 +333,51 @@ void control() {
   long f = falta();
   if (f <= 0 || t > 3 * dur) { termina(); return; }   // 3 * dur: seguro si el frontal deja de bajar
   const float zona = CELDA / 4.0f;
-  float tope = f < zona ? VEL_MIN + (VEL_EXPLORA - VEL_MIN) * f / zona : VEL_EXPLORA;
+  float tope = f < zona ? VEL_MIN + (vmax - VEL_MIN) * f / zona : vmax;
   if (dist[1] < D_FRENTE + 100) tope = min(tope, (float)VEL_MIN + FRENA_K * (dist[1] - D_FRENTE));   // frena al acercarse
   vel = min(vel + 6.0f, tope);
   float corr = centrado();
+  if (mpuOk && signo) corr += constrain(KG * (signo * yaw - ref), -20.0f, 20.0f);   // sostiene el rumbo
   motores(vel - corr, vel + corr);
+}
+
+// ---------- MPU-6050 ----------
+void mpuEscribe(uint8_t reg, uint8_t v) {
+  Wire.beginTransmission(MPU);
+  Wire.write(reg);
+  Wire.write(v);
+  Wire.endTransmission();
+}
+
+int16_t gz() {
+  Wire.beginTransmission(MPU);
+  Wire.write(0x47);               // GYRO_ZOUT_H
+  Wire.endTransmission(false);
+  Wire.requestFrom(MPU, 2);
+  uint8_t hi = Wire.read();
+  uint8_t lo = Wire.read();
+  return (int16_t)(hi << 8 | lo);
+}
+
+// Quieto al arrancar: mide el bias del giroscopio
+bool mpuInit() {
+  Wire.beginTransmission(MPU);
+  if (Wire.endTransmission() != 0) return false;
+  mpuEscribe(0x6B, 0);            // despierta
+  mpuEscribe(0x1A, 3);            // filtro ~44 Hz
+  mpuEscribe(0x1B, 0x08);         // +-500 grados/s
+  delay(100);
+  long s = 0;
+  for (int i = 0; i < 200; i++) { s += gz(); delay(3); }
+  bias = s / 200.0f;
+  tGyro = micros();
+  return true;
+}
+
+void leeGyro() {
+  uint32_t t = micros();
+  yaw += (gz() - bias) / LSB_DPS * (t - tGyro) * 1e-6f;
+  tGyro = t;
 }
 
 // ---------- VL53L0X ----------
@@ -288,7 +405,17 @@ void tofLee() {
   for (int i = 0; i < 3; i++) {
     if ((tof[i].readReg(VL53L0X::RESULT_INTERRUPT_STATUS) & 0x07) == 0) continue;
     int d = tof[i].readRangeContinuousMillimeters();
-    dist[i] = (d == 0 || d > 2000) ? 9999 : d;
+    if (d == 0 || d > 2000) d = 9999;
+    crudo[i] = d;
+    if (d != 9999) d = max((int)(tofA[i] * d + tofB[i] + 0.5f), 1);
+    bool brusco = abs(d - dist[i]) >= SALTO;
+    if (!brusco) nSalto[i] = 0;
+    else if (++nSalto[i] < 2) continue;
+    else nSalto[i] = 0;
+    int antes = dist[i];
+    long f = falta();               // con la lectura vieja
+    dist[i] = d;
+    if (brusco && tipo == AVANZA) salto(i, antes, f);
   }
 }
 
@@ -331,6 +458,7 @@ void leeColor() {
   } else if (armado) {
     armado = false;
     colorPend = k;
+    if (k == AMAR && tipo != NADA) termina();
   }
 }
 
@@ -339,8 +467,9 @@ void pinta() {
   oled.clearDisplay();
   oled.setTextSize(1);
   oled.setCursor(0, 0);
-  oled.print("LABERINTO  ");
-  oled.println(ESTADOS[estado]);
+  oled.print(ESTADOS[estado]);
+  oled.print(" ");
+  oled.println(FASES[fase]);
   oled.drawLine(0, 10, 127, 10, SSD1306_WHITE);
   int total = 0;
   for (int i = 1; i < NCOL; i++) {
@@ -355,6 +484,7 @@ void pinta() {
   oled.print(nRpc);
   oled.print(" ");
   oled.print(ult);
+  oled.print(mpuOk ? " G" : "");
   oled.setCursor(90, 54);
   oled.print("T:");
   oled.print(total);
@@ -415,6 +545,7 @@ void setup() {
   tofOk = tofInit();
   if (!tofOk) falla("SIN VL53L0X");
   if (!tcs.begin()) falla("SIN SENSOR COLOR");
+  mpuOk = mpuInit();              // opcional: sin el, giros y rectas por tiempo
 
   Bridge.begin();
   Monitor.begin();
@@ -425,8 +556,10 @@ void setup() {
   Bridge.provide("arranque", rpcArranque);
   Bridge.provide("set_cuenta", rpcCuenta);
   Bridge.provide("set_estado", rpcEstado);
+  Bridge.provide("set_fase", rpcFase);
   Bridge.provide("raw", rpcRaw);
   Bridge.provide("set_ref", rpcSetRef);
+  Bridge.provide("set_tof", rpcSetTof);
   Bridge.provide("odo", rpcOdo);
   Bridge.provide("alto", rpcAlto);
 
@@ -449,6 +582,7 @@ void loop() {
   if (cmd != NADA && tipo == NADA) iniciaMov();
 
   tofLee();
+  if (mpuOk && micros() - tGyro >= 2000) leeGyro();
 
   if (t - tCtrl >= T_CTRL) {
     tCtrl = t;
@@ -476,7 +610,7 @@ void loop() {
     refresca = 1;
   }
 
-  if (refresca) {
+  if (refresca && tipo == NADA && cmd == NADA) {   // la OLED tarda ~25 ms: nunca en movimiento
     refresca = 0;
     pinta();
   }

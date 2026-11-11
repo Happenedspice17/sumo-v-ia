@@ -23,6 +23,7 @@ Mismo chasis, mismas piezas impresas y misma huella. El Q solo agrega:
 - **MPU:** Qualcomm QRB2210, corre Debian Linux.
 - **MCU:** STM32U585, corre sketches de Arduino.
 - Ambos se comunican por un enlace interno que administra el servicio `arduino-router` en Linux, con MessagePack RPC.
+- Montaje: la placa va vertical, sujeta con cinchos al chasis, para conservar los 12 cm y que el adaptador OTG quede dentro del contorno del robot.
 
 ### R3 frente a Q
 
@@ -53,15 +54,15 @@ Reparto propuesto:
 
 | Lado | Responsabilidad |
 |---|---|
-| MCU (sketch) | Motores (L298N), 3× VL53L0X, TCS34725, OLED, botón. Expone `avanza(n)`, `gira(dir)`, `lee_sensores()`. Notifica `color` y `pared`. |
+| MCU (sketch) | Motores (L298N), 3× VL53L0X, TCS34725, OLED, botón, MPU-6050 opcional. Expone `mover(mm, lento)`, `odo(i)` y `set_ref`; Python los llama con `Bridge.call`. |
 | Linux (Python) | Cámara USB, OpenCV, mapa, ruta más corta, guarda el mapa entre corridas. |
 
 ## 4. Estrategia de corridas
 
 | Corrida | Qué hace |
 |---|---|
-| 1 | Explora y arma el mapa: paredes por celda + color. |
-| 2 | Calcula la ruta más corta (flood fill o BFS) y corre rápido. |
+| 1 | Explora y arma el mapa: paredes por celda y colores. Se guarda en `/app/datos/mapa.json`. |
+| 2 y siguientes | Si ya conoce la meta (amarillo), va por el camino más corto conocido (BFS, OLED `RAPIDO`). Si algo no cuadra, sigue explorando desde ahí. |
 
 Funciona sin cámara: el R3 puede hacerlo solo. Un mapa de 16×16 ocupa ~512 bytes de los 2 KB de RAM.
 
@@ -70,13 +71,12 @@ Funciona sin cámara: el R3 puede hacerlo solo. Un mapa de 16×16 ocupa ~512 byt
 - Cámara USB UVC de 32×32 mm, lente gran angular M12, agujeros M2 a 28 mm.
 - No es MIPI-CSI porque el Q necesita la Media Carrier board (más grande, 1.8 V) para usar CSI.
 
-Qué aporta:
+Qué hace hoy (no calcula paredes por cámara):
 
+- Busca el amarillo (`HUE_AMAR`): si lo ve, anticipa la meta. El TCS34725 confirma antes de parar.
+- Revisa el piso del camino (`ZONA_PASO`): blanco (`BLANCO_LO/HI`) = pared, negro = libre. Con blanco el robot va lento y el frontal hace el doble check.
 - No ve el laberinto completo de antemano: las paredes bloquean la vista.
-- Ve 2–3 celdas adelante. Acelera la exploración y anticipa colores.
-- La cámara anticipa; el TCS34725 confirma.
-
-Geometría actual:
+- Geometría actual:
 
 | Parámetro | Valor |
 |---|---|
@@ -87,7 +87,7 @@ Geometría actual:
 
 Montaje: marco de 33 × 33 mm, 4 M2 a 28 mm con ±1 mm de juego y tuerca atrás, hueco para el conector USB arriba a la izquierda (visto por atrás) y paso de cables de alimentación abajo al centro.
 
-La Q busca la cámara de `/dev/video0` a `video11`; `video0` y `video1` son internos de la placa. Las regiones `ROI` se ajustan viendo la imagen en el panel web.
+La Q busca la cámara de `/dev/video0` a `video11`; `video0` y `video1` son internos de la placa. `ZONA_PASO`, `HUE_AMAR` y `BLANCO_LO/HI` se ajustan viendo la imagen en el panel web.
 
 ## 6. Sensor de color (TCS34725)
 
@@ -120,6 +120,8 @@ Al alimentar por VIN, el puerto USB-C puede arrancar en modo dispositivo y no ve
 - **Método oficial:** hub con entrada PD que alimenta el Q.
 
 Con la Q alimentada por VIN, su USB-C no da 5 V al hub: el hub debe recibir energía por su puerto PD (cargador PD; 5 V ≥ 3 A del regulador del robot a un cable USB-C cortado conectado al puerto PD del hub; o módulo DC-DC con salida USB-C PD desde la batería). Alimentar solo la cámara con 5 V externos no basta.
+
+En la práctica (pruebas en pista del equipo) el UNO Q no siempre reconocía la cámara aunque tuviera 5 V y estuviera conectada; se resolvió con un adaptador OTG "tonto" de USB-C a USB-A.
 
 ### Ruta PD en el robot
 
@@ -157,6 +159,7 @@ Batería → interruptor → fusible de 3 A → módulo DC-DC con salida USB-C P
 | Botón | D2 |
 | XSHUT izq / frente / der | A0 / A1 / A2 |
 | I2C | SDA / SCL (header junto a AREF) |
+| MPU-6050 (opcional, GY-521) | Mismo bus I2C, dirección 0x68 (AD0 a GND o suelto); VCC a 3V3 |
 | Alimentación | VIN, GND |
 
 ## 10. Cambio de placa R3 ↔ Q
@@ -180,6 +183,8 @@ Parámetros CAD actuales: `D_RUEDA` = 45 mm, `A_RUEDA` = 17 mm.
 
 ### Test 1: sin PD (en casa, hub UGREEN)
 
+Nota: en la práctica se resolvió con un adaptador OTG "tonto" USB-C a USB-A (ver sección 7).
+
 1. Q alimentado por VIN desde la batería. Hub sin alimentar. Cámara conectada al hub.
 2. Ejecutar `lsusb` y `v4l2-ctl --list-devices`.
 3. Si la cámara no aparece: medir ≥ 4.8 V en el hub; revisar `adb shell lsusb` y `adb shell ls /dev/video*`; reconectar el hub; revisar soldaduras; cargar la batería. Si sigue, probar el workaround de modo host.
@@ -196,12 +201,13 @@ Parámetros CAD actuales: `D_RUEDA` = 45 mm, `A_RUEDA` = 17 mm.
 | # | Pendiente | Qué decide | Estado |
 |---|---|---|---|
 | 1 | Mástil | Pedestal impreso 20 × 20 con inserto M4 | Resuelto |
-| 2 | Altura de la pared | Ajuste de `ROI` (lente a 162 mm) | En la sede |
+| 2 | Altura de la pared | Ajuste de `ZONA_PASO` (lente a 162 mm) | En la sede |
 | 3 | Rueda real: diámetro y ancho | `D_RUEDA`, `A_RUEDA`, pozo, límite de 120 mm, `T_CELDA`, `T_90` | Pendiente |
 | 4 | Referencia y dimensiones del hub | Repisa y espacio. Candidato: Arduino USB-C Hub 8-in-1 (https://www.robotshop.com/products/arduino-usb-c-hub-8in-1-for-uno-q) | Pendiente |
 | 5 | Resultado del test sin PD | Si se compra el módulo PD | Pendiente |
 | 6 | Posición exacta del USB-C del UNO Q | Repisa, mástil y cable | Medir |
 | 7 | Alinear `uno_q/README.md` con el mapa de pines de la sección 9 | Ya coinciden | Resuelto |
+| 8 | Conseguir MPU-6050 (GY-521) | Giros por ángulo (`ADELANTO`, `KG`) en lugar de solo por tiempo (`MS_90`). Sin él el robot gira por tiempo | Pendiente |
 
 ## 14. Fuentes
 
