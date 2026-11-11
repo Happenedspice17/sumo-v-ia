@@ -59,6 +59,8 @@ Oled oled(128, 64, &Wire, -1);
 Adafruit_TCS34725 tcs(TCS34725_INTEGRATIONTIME_24MS, TCS34725_GAIN_4X);
 VL53L0X tof[3];
 int dist[3] = {9999, 9999, 9999};
+int crudo[3] = {9999, 9999, 9999};   // lectura sin calibrar
+float tofA[3] = {1, 1, 1}, tofB[3] = {0, 0, 0};   // mm reales = A * crudo + B (los manda Python, calibrados con vernier)
 bool tofOk = false;
 
 enum { NADA, AVANZA, GIRA };
@@ -153,6 +155,7 @@ int rpcOdo(int i) {
     case 2: return (dist[0] < PARED) | (dist[1] < PARED_F) << 1 | (dist[2] < PARED) << 2 | (tipo != NADA) << 3;
     case 3: return saltos;
     case 8: return signo ? (int)(signo * yaw - ref) : 0;   // desvio del rumbo deseado (grados)
+    case 9: case 10: case 11: return crudo[i - 9];           // izq, frente, der sin calibrar
     case 6: return dist[0];
     case 7: return dist[2];
     default: return dist[1];
@@ -168,6 +171,14 @@ int rpcColor() {
 volatile uint16_t raw[4];   // r g b c de la ultima lectura (para el dashboard)
 
 int rpcRaw(int i) { return raw[constrain(i, 0, 3)]; }
+
+// a en milesimas, b en decimas de mm
+int rpcSetTof(int i, int a, int b) {
+  if (i < 0 || i > 2) return 0;
+  tofA[i] = a / 1000.0f;
+  tofB[i] = b / 10.0f;
+  return 1;
+}
 
 // r, g, b en milesimas
 int rpcSetRef(int i, int r, int g, int b, int c) {
@@ -395,6 +406,8 @@ void tofLee() {
     if ((tof[i].readReg(VL53L0X::RESULT_INTERRUPT_STATUS) & 0x07) == 0) continue;
     int d = tof[i].readRangeContinuousMillimeters();
     if (d == 0 || d > 2000) d = 9999;
+    crudo[i] = d;
+    if (d != 9999) d = max((int)(tofA[i] * d + tofB[i] + 0.5f), 1);
     bool brusco = abs(d - dist[i]) >= SALTO;
     if (!brusco) nSalto[i] = 0;
     else if (++nSalto[i] < 2) continue;
@@ -546,6 +559,7 @@ void setup() {
   Bridge.provide("set_fase", rpcFase);
   Bridge.provide("raw", rpcRaw);
   Bridge.provide("set_ref", rpcSetRef);
+  Bridge.provide("set_tof", rpcSetTof);
   Bridge.provide("odo", rpcOdo);
   Bridge.provide("alto", rpcAlto);
 

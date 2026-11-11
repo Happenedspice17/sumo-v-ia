@@ -15,6 +15,9 @@ DATOS = "/app/datos"                     # en una subcarpeta: archivos en la rai
 os.makedirs(DATOS, exist_ok=True)
 ARCH_COL = DATOS + "/colores.json"
 ARCH_MAPA = DATOS + "/mapa.json"
+ARCH_TOF = DATOS + "/tof.json"
+TOF_NOM = ["izq", "frente", "der"]
+tof_cal = {n: {} for n in TOF_NOM}       # sensor -> {mm reales: lectura cruda promedio}
 # r, g, b normalizados y brillo c; los mismos de refs[] del sketch
 REFS = [[0.282, 0.379, 0.333, 153], [0.602, 0.208, 0.188, 581], [0.155, 0.535, 0.309, 636],
         [0.16, 0.329, 0.508, 354], [0.409, 0.449, 0.142, 1836]]
@@ -308,6 +311,48 @@ def enviar_refs():
         rpc("set_ref", i, round(f[0] * 1000), round(f[1] * 1000), round(f[2] * 1000), round(f[3]))
 
 
+def ajuste(puntos):
+    """Recta real = a * crudo + b por minimos cuadrados. 1 punto: solo desfase. Sin puntos: sin cambio."""
+    if not puntos:
+        return 1.0, 0.0
+    xs, ys = [c for c in puntos.values()], [float(r) for r in puntos]
+    n, mx, my = len(xs), sum(xs) / len(xs), sum(ys) / len(ys)
+    sxx = sum((x - mx) ** 2 for x in xs)
+    a = sum((x - mx) * (y - my) for x, y in zip(xs, ys)) / sxx if n > 1 and sxx else 1.0
+    return a, my - a * mx
+
+
+def enviar_tof():
+    for i, n in enumerate(TOF_NOM):
+        a, b = ajuste(tof_cal[n])
+        rpc("set_tof", i, round(a * 1000), round(b * 10))
+
+
+def api_tof_cal(s: int, mm: int):
+    """Guarda un punto: el sensor s (0 izq, 1 frente, 2 der) a mm reales. mm = 0 borra sus puntos."""
+    n = TOF_NOM[s]
+    if mm <= 0:
+        tof_cal[n].clear()
+    else:
+        lect = []
+        for _ in range(10):
+            time.sleep(0.04)
+            c = rpc("odo", 9 + s)
+            if c < 2000:
+                lect.append(c)
+        if lect:
+            tof_cal[n][str(mm)] = round(sum(lect) / len(lect), 1)
+    enviar_tof()
+    escribe(ARCH_TOF, tof_cal)
+    print("ToF", n, tof_cal[n], "a=%.3f b=%.1f" % ajuste(tof_cal[n]))
+    return estado_tof_cal()
+
+
+def estado_tof_cal():
+    return {n: {"puntos": tof_cal[n], "a": round(ajuste(tof_cal[n])[0], 3), "b": round(ajuste(tof_cal[n])[1], 1)}
+            for n in TOF_NOM}
+
+
 def api_lectura():
     mapa = {"pos": pos, "celdas": len(muros), "meta": meta, "fase": fase_act}
     if corriendo:                        # sin Bridge: no le quita tiempo al robot
@@ -336,12 +381,15 @@ def que_haria(izq, frente, der, mueve):
 def api_tof():
     if corriendo:                        # ultima lectura de tof3 (la que uso para decidir)
         izq, frente, der, mueve, falta = vivo["izq"], vivo["frente"], vivo["der"], fase_act in ("GIRA", "AVANZA"), None
+        crudos = None
     else:
         izq, frente, der = rpc("odo", 6), rpc("odo", 5), rpc("odo", 7)
         mueve, falta = bool(rpc("odo", 2) & 8), rpc("odo", 1)
+        crudos = [rpc("odo", 9 + i) for i in range(3)]
     accion, rel = que_haria(izq, frente, der, mueve)
     return limpio({"izq": izq, "frente": frente, "der": der, "pared": PARED, "pared_f": PARED_F,
-                   "falta": falta, "mueve": mueve, "accion": accion, "rel": rel, "fase": fase_act})
+                   "falta": falta, "mueve": mueve, "accion": accion, "rel": rel, "fase": fase_act,
+                   "crudos": crudos, "cal": estado_tof_cal()})
 
 
 def api_guardar(i: int):
@@ -385,6 +433,7 @@ ui.expose_api("GET", "/api/lectura", api_lectura)
 ui.expose_api("GET", "/api/guardar", api_guardar)
 ui.expose_api("GET", "/api/foto", api_foto)
 ui.expose_api("GET", "/api/tof", api_tof)
+ui.expose_api("GET", "/api/tof_cal", api_tof_cal)
 
 
 # ---------- Estrategia ----------
@@ -475,6 +524,10 @@ def iniciar():
     global REFS
     REFS = lee(ARCH_COL) or lee("/app/colores.json") or REFS   # tambien los de la version anterior
     enviar_refs()
+    for n, p in (lee(ARCH_TOF) or {}).items():
+        if n in tof_cal:
+            tof_cal[n].update(p)
+    enviar_tof()
     cargar()
     for c in range(1, len(COLORES)):
         rpc("set_cuenta", c, cuenta[c])
