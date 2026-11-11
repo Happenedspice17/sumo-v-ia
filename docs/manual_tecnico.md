@@ -64,7 +64,7 @@ Linux sirve una página en el puerto 7000 (brick `web_ui`), que se abre desde el
 | Colores | Asistente de 5 pasos; cada color promedia 5 lecturas del TCS34725 y se manda al STM32 (`set_ref`) | `colores.json` |
 | Distancia | Por sensor, puntos (mm reales con vernier, lectura cruda promedio de 10); ajuste por mínimos cuadrados `real = a × crudo + b` (con 1 punto, solo desfase) que se manda al STM32 (`set_tof`) | `tof.json` |
 | Simulador | Dibuja lo que mide cada ToF y lo que haría el robot (`que_haria()`) sin moverlo | |
-| Cámara | Imagen 160 × 120 con el amarillo detectado y la zona de paso en rojo (blanco) o verde (negro) | |
+| Cámara | Imagen 160 × 120 en gris con la zona de paso en rojo (blanco) o verde (negro) | |
 | Corrida | Fase, celda, mapa y meta; durante la corrida usa la última lectura del robot y no llama al Bridge | |
 
 Se aplica en el STM32, antes de cualquier decisión, para que el control de 10 ms, los saltos y el alto a 130 mm usen milímetros reales.
@@ -121,14 +121,14 @@ El resultado es "piso" si la menor distancia es mayor que 0.02 o si el brillo es
 # 5. Cámara (opcional)
 
 ::: {.simple}
-**En simple:** la cámara va arriba de un poste y mira el piso por donde va a pasar. Hace dos cosas: busca el **amarillo** (la meta) y detecta si el piso adelante es **blanco**, que es una pared (el piso es negro). Si ve blanco, el robot avanza más despacio, y el sensor láser frontal confirma si de verdad hay pared. La cámara nunca manda sobre los láser. Sin cámara, el robot funciona igual.
+**En simple:** la cámara va arriba de un poste y mira el piso por donde va a pasar. Es **monocromática** (ve en gris, no en colores), así que hace una sola cosa: detecta si el piso adelante es **blanco**, que es una pared (el piso es negro). Si ve blanco, el robot avanza más despacio, y el sensor láser frontal confirma si de verdad hay pared. La cámara nunca manda sobre los láser. Sin cámara, el robot funciona igual.
 :::
 
 - **Captura:** innomaker U20CAM-9281M (OV9281, 1 MP monocromática, obturador global, hasta 720p a 120 fps, lente M12 gran angular), UVC a 320 × 240, OpenCV con V4L2. El obturador global evita la deformación por movimiento (*rolling shutter*) de las cámaras comunes.
-- **Blanco (pared):** fracción de píxeles blancos (HSV `BLANCO_LO`/`BLANCO_HI`) en `ZONA_PASO`, el piso por donde va a pasar. Si pasa de `BLANCO_MAX` (15 %), Python pide `mover(mm, 1)`: avance lento a `VEL_LENTO`. **Doble check:** Python también lee el frontal (`odo(5)`) y lo reporta; el sketch para a 130 mm si la pared es real. Si la cámara ve blanco y el frontal no ve nada, igual va lento.
-- **Amarillo:** el tono `HUE_AMAR` en la mitad de abajo de la imagen, partida en tercios. Solo se usa para desempatar salidas en una isla (sección 7); la meta la confirma el sensor de color.
-- **Montaje:** módulo de 32 × 32 mm sobre un pedestal impreso de 20 × 20 × 75 mm, inclinado hacia abajo para ver el piso adelante del eje. Se conecta por un hub USB-C con entrada de alimentación: con la Q alimentada por VIN, su USB-C no da 5 V al hub, así que el hub se alimenta por su puerto PD.
-- **Ajuste:** el panel web muestra la imagen a 160 × 120 (JPEG calidad 40) con un recuadro amarillo donde ve el amarillo y el camino en rojo (blanco) o verde (negro). Un candado comparte la cámara entre el robot y el panel. Al arrancar la busca una vez; un hilo revisa cada 2 s si sigue conectada y la vuelve a buscar si se desconecta (OLED `SIN CAM`).
+- **Blanco (pared):** fracción de píxeles con gris ≥ `BLANCO_MIN` (170 de 255) en `ZONA_PASO`, el piso por donde va a pasar. Si pasa de `BLANCO_MAX` (15 %), Python pide `mover(mm, 1)`: avance lento a `VEL_LENTO`. **Doble check:** Python también lee el frontal (`odo(5)`) y lo reporta; el sketch para a 130 mm si la pared es real. Si la cámara ve blanco y el frontal no ve nada, igual va lento.
+- **Sin amarillo:** el sensor OV9281 no tiene filtro de color (matriz de Bayer), así que no puede distinguir el amarillo por su tono. Antes se buscaba con HSV para desempatar islas; se quitó al cambiar a esta cámara. La meta siempre la confirmó el TCS34725, así que no se pierde capacidad. A cambio, el sensor monocromático recibe toda la luz en cada píxel (más sensibilidad y menos ruido), y el contraste blanco/negro, que es lo único que se usa, sale más limpio.
+- **Montaje:** módulo (medida por confirmar; el CAD usa 32 × 32 mm) sobre un pedestal impreso de 20 × 20 × 75 mm, inclinado hacia abajo para ver el piso adelante del eje. Se conecta por un hub USB-C con entrada de alimentación: con la Q alimentada por VIN, su USB-C no da 5 V al hub, así que el hub se alimenta por su puerto PD.
+- **Ajuste:** el panel web muestra la imagen a 160 × 120 (JPEG calidad 40) con el camino en rojo (blanco) o verde (negro). Un candado comparte la cámara entre el robot y el panel. Al arrancar la busca una vez; un hilo revisa cada 2 s si sigue conectada y la vuelve a buscar si se desconecta (OLED `SIN CAM`).
 
 # 6. Cómo se mueve
 
@@ -196,7 +196,7 @@ El resultado es "piso" si la menor distancia es mayor que 0.02 o si el brillo es
 **Reglas que la modifican**
 
 - **Tras un salto:** de las salidas que llevan a una celda que aún no está en el mapa, toma la de lectura más lejana.
-- **Isla:** si ya pasó 3 veces (`ISLA`) por esa celda, toma la salida que ha usado menos. Si hay empate, la cámara desempata hacia donde ve amarillo.
+- **Isla:** si ya pasó 3 veces (`ISLA`) por esa celda, toma la salida que ha usado menos. Si hay empate, sigue la prioridad normal.
 
 **Mapa por celdas.** Cada celda guarda 4 votos (N, E, S, O) en un diccionario de coordenadas.
 
@@ -264,9 +264,7 @@ Valores tal como están en `sketch.ino` y `main.py`.
 | `VOTO_MAX` | 5 | Tope de votos por pared |
 | `ISLA` | 3 visitas | Pasa a la salida menos usada |
 | `Y_COLOR` | 36 mm | Del eje al sensor de color |
-| `HUE_AMAR` | (20, 35) | Tono del amarillo en HSV de OpenCV |
-| `SAT_MIN`, `VAL_MIN`, `FRAC_COLOR` | 90, 70, 0.08 | Qué cuenta como píxel de color |
-| `BLANCO_LO` / `BLANCO_HI` | (0,0,170) / (180,60,255) | Rango HSV del blanco (pared) |
+| `BLANCO_MIN` | 170 | Gris (0-255) a partir del cual un píxel cuenta como blanco |
 | `ZONA_PASO` | (0.30, 0.55, 0.70, 1.00) | Piso por donde va a pasar, en fracción de la imagen |
 | `BLANCO_MAX` | 0.15 | Fracción de blanco que activa el avance lento |
 | Colores de referencia | de fábrica en `REFS` | Se miden en el panel web; se guardan en `/app/datos/colores.json` |
@@ -298,7 +296,7 @@ La bitácora completa de cambios, problemas y soluciones está en `historial_cam
 
 - **V1:** movimiento por tiempo, sin encoders, con *flood fill* sobre un mapa de 16 × 16 celdas y respaldo en UNO R3 (ATmega328P).
 - **Sensores:** 3 × VL53L0X reasignados de dirección I²C y sensor de color TCS34725 con calibración desde el panel web.
-- **Cámara:** primero detectaba paredes para anticipar caminos; ahora solo busca el amarillo y detecta blanco (pared) en el piso por donde va a pasar.
+- **Cámara:** primero detectaba paredes para anticipar caminos; después buscó también el amarillo; con la cámara monocromática OV9281 solo detecta blanco (pared) en el piso por donde va a pasar.
 - **Avance por distancia:** el frontal mide la celda, para a 130 mm y retrocede si queda muy cerca; sin pared va por tiempo.
 - **Cambios bruscos** de los ToF (`SALTO`): el robot se centra en la celda abierta y la escanea.
 - **Decisión:** pasó de *flood fill* con paredes de la cámara, y luego de reglas de pared, a una máquina de estados `SENSA → DECIDE → GIRA → AVANZA` con prioridad frente, izquierda, derecha.

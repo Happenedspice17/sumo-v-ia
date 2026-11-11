@@ -75,7 +75,7 @@ La primera corrida explora y mapea hasta encontrar el amarillo. Las siguientes v
 | Asistente de colores | Calibrar los 5 colores del piso (4.1) |
 | Ver sensores ToF → Calibrar distancia | Calibrar los 3 sensores de distancia con el vernier (4.2) |
 | Ver sensores ToF (dibujo) | Ver en vivo lo que mide cada sensor y qué haría el robot, sin moverlo |
-| Cámara | Ver si detecta amarillo y si el camino sale blanco (pared) o negro (sección 5) |
+| Cámara | Ver si el camino sale blanco (pared) o negro (sección 5) |
 | Dónde está | Fase, celda, celdas mapeadas, meta y último avance durante la corrida |
 
 ## 4.1 Colores (una vez por pista)
@@ -107,7 +107,6 @@ Si un punto salió mal, aprieta **Borrar** de ese sensor y repite sus puntos. De
 
 En la página se ve lo que ve la cámara, con estas marcas:
 
-- Recuadro **amarillo**: donde ve amarillo.
 - Camino **rojo**: ve blanco (pared) en el piso por donde va a pasar. El robot va lento.
 - Camino **verde**: ve negro (piso libre). El robot va normal.
 
@@ -159,7 +158,7 @@ Entre intentos del mismo laberinto **no borres**: así recuerda el camino. Borra
 | Gira al revés | Cambia OUT1-2 por OUT3-4 en el puente H |
 | Un motor va al revés | Voltea sus 2 cables en el puente H |
 | Siempre va lento | La cámara ve blanco en el camino. Revisa en la página si el camino sale rojo sobre piso negro; ajusta `ZONA_PASO` o `BLANCO_MAX` |
-| No ve el amarillo | Revisa el recuadro amarillo en la página. Si la luz cambió, recalibra (paso 4) |
+| No para en el amarillo | Lo detecta el sensor de color, no la cámara. Recalibra el amarillo en la página (paso 4) |
 | Un color sale mal | Repítelo en la página con **◀ Atrás** |
 | `PY` no sube | App Lab → **Run** |
 | `SIN VL53L0X` | Revisa los cables de los sensores de distancia |

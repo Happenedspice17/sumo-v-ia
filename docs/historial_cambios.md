@@ -583,6 +583,16 @@ Etapa menor de documentación. `docs/manual_uso.md` (uso y calibración: baterí
 
 **Commits:** 5906d64.
 
+### Etapa 34. Cámara monocromática OV9281: solo blanco y negro (11-nov)
+
+**Problema.** La cámara real del robot es una innomaker U20CAM-9281M: sensor OV9281 de 1 MP, **monocromático**, con obturador global y hasta 120 fps. Sin filtro de color, la búsqueda de amarillo por tono (HSV, `HUE_AMAR`) nunca podía activarse: la saturación de una imagen en gris es cero.
+
+**Razonamiento.** El amarillo por cámara solo desempataba islas; la meta siempre la confirmó el TCS34725, el componente más confiable según las pruebas en pista. Mantener código que nunca se activa confunde a quien lo lee. Lo que sí se usa, distinguir blanco (pared) de negro (piso), depende de la luminancia, y un sensor monocromático la mide mejor: cada píxel recibe toda la luz en lugar de un tercio, con menos ruido. El obturador global además evita que la imagen se deforme con el robot en movimiento.
+
+**Cambio.** Se quitan `hacia_objetivo`, `HUE_AMAR`, `SAT_MIN`, `VAL_MIN` y `FRAC_COLOR`, el desempate por cámara en islas y el recuadro amarillo de la web. El blanco pasa de un rango HSV a un umbral de gris (`BLANCO_MIN` = 170) que acepta la imagen en 1 o 3 canales. Se actualizan BOM, CAD (medida de la placa por confirmar) y manuales.
+
+**Pruebas.** Pruebas automáticas del Python (decisiones, votos, BFS, guardar/cargar) y de `frac_blanco` con imágenes sintéticas: piso negro da 0, una franja blanca en la zona de paso da 0.37. Falta probarlo con la cámara real.
+
 ## Pruebas realizadas
 
 La tabla distingue lo medido o probado de lo que solo se deduce de la secuencia de commits (marcado **deducido**). Cuando el repositorio guarda la sucesión de valores pero no el resultado de cada intento, se dice. Las pruebas en pista del equipo están en su propia subsección; la última versión (distancia, saltos, votos, máquina de estados, MPU) aún no se ha probado en pista.
@@ -766,7 +776,7 @@ El repositorio se analizó con graphify, que arma un grafo de conocimiento con e
 - Probar en pista la última versión: avance por distancia, cambios bruscos, mapa con votos, máquina de estados y MPU-6050.
 - Verificar que las paredes de madera estén pintadas de blanco, porque la detección de la cámara toma blanco como pared.
 - Calibrar un offset por sensor ToF midiendo a una distancia conocida.
-- Calibrar la exposición de la cámara para distinguir mejor blanco y negro.
+- Fijar la exposición y la ganancia de la cámara (OV9281) para distinguir mejor blanco y negro, y medir su placa para el CAD.
 - Pasar el código a mano derecha pura (hoy la prioridad es frente, izquierda, derecha).
 - Conseguir el MPU-6050 (GY-521) y calibrar `ADELANTO` (si se pasa, subirlo; si le falta, bajarlo) y `KG`.
 - Calibrar `ZONA_PASO` y `BLANCO_MAX` hasta que en un pasillo libre el recuadro de la vista de cámara salga verde.
