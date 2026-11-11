@@ -17,12 +17,13 @@ author:
 - [ ] Ningún cable suelto
 - [ ] Ruedas giran libres
 - [ ] Sensores limpios
+- [ ] MPU-6050 firme y plano (2 tornillos o cinta doble cara), cables amarrados
 - [ ] Cámara y hub USB conectados, con el cargador del hub
 - [ ] Robot en la esquina de inicio, mirando hacia adelante, y quieto
 - [ ] Laberinto nuevo: borra el mapa antes de empezar (paso 3)
 
 ::: {.nota}
-**¿Qué versión cargar?** Un sketch y un Python. Sketch: `sketch/` si tienes el MPU-6050 (también funciona sin él) o `sketch_sin_mpu/`. Python: `python/` (estable) o `python_experimental/` (la cámara además mide distancias y ve aberturas; para probar).
+**¿Qué versión cargar?** El sketch es siempre `sketch/` (con MPU-6050). Python: `python/` (estable) o `python_experimental/` (la cámara además mide distancias y ve aberturas; para probar). La versión vieja sin MPU está en el historial: ver "Control de versiones" al final.
 :::
 
 # 2. Prende
@@ -145,13 +146,18 @@ Para ver por qué gira o avanza, usa **Ver sensores ToF** en la página: dibuja 
 |---|---|---|
 | No llega a la siguiente celda (sin pared enfrente) | `MS_CELDA` | Súbelo 25 |
 | Se pasa de la celda (sin pared enfrente) | `MS_CELDA` | Bájalo 25 |
-| Gira poco (sin MPU-6050) | `MS_90` | Súbelo 10 |
-| Gira de más (sin MPU-6050) | `MS_90` | Bájalo 10 |
+| Se pasa del giro | `ADELANTO` | Súbelo 2 |
+| Le falta giro | `ADELANTO` | Bájalo 2 |
+| Zigzaguea en recta | `KG` | Bájalo a 1.5 |
+| Tarda en enderezarse en recta | `KG` | Súbelo a 3 |
+| Dice "choque" en el log sin haber chocado | `CHOQUE_G` | Súbelo 0.1 |
+| Choca y el log no dice "choque" | `CHOQUE_G` | Bájalo 0.1 (mira el "golpe" del log) |
+| Se detiene solo: "me levantaron" | `LEVANTA_G` | Bájalo a 0.7 |
 | Gira de más o de menos (con MPU-6050) | `ADELANTO` | Si se pasa del giro, súbelo; si le falta, bájalo |
 | Se queda antes del centro de la celda al abrirse un lado | `TRAS_SALTO` | Súbelo 5 |
 | Se pasa del centro de la celda al abrirse un lado | `TRAS_SALTO` | Bájalo 5 |
-| Se va a la derecha (sin MPU-6050) | `AJUSTE_DER` | Ponle 10 |
-| Se va a la izquierda (sin MPU-6050) | `AJUSTE_DER` | Ponle -10 |
+| Se va a la derecha | `AJUSTE_DER` | Súbelo 5 |
+| Se va a la izquierda | `AJUSTE_DER` | Bájalo 5 (hoy −10) |
 | Zigzaguea entre paredes | `KC` | Bájalo, por ejemplo a 0.5 |
 
 ::: {.nota}
@@ -175,7 +181,9 @@ Entre intentos del mismo laberinto **no borres**: así recuerda el camino. Borra
 |---|---|
 | No se mueve | ¿Le diste el toque corto a D2? La pantalla debe decir `LISTO` |
 | Se pasa de la meta | Revisa la calibración del amarillo (paso 4). Si va por tiempo, baja `MS_CELDA` |
-| Gira de más o de menos | Con MPU: `ADELANTO`. Sin MPU: `MS_90` (paso 6) |
+| Gira de más o de menos | `ADELANTO` (paso 6) |
+| No sale la `G` abajo en la pantalla | El MPU-6050 no responde: revisa VCC, GND, SDA, SCL y que AD0 vaya a GND. Sin él gira por tiempo y gira mal |
+| Se detiene a media corrida y el log dice "me levantaron" | Lo moviste o se inclinó. Si no, baja `LEVANTA_G` |
 | Gira al revés | Cambia OUT1-2 por OUT3-4 en el puente H |
 | Un motor va al revés | Voltea sus 2 cables en el puente H |
 | Siempre va lento | La cámara ve blanco en el camino. Revisa en la página si el camino sale rojo sobre piso negro; ajusta la exposición (4.3), `ZONA_PASO` o `BLANCO_MAX` |
@@ -190,3 +198,14 @@ Entre intentos del mismo laberinto **no borres**: así recuerda el camino. Borra
 | La página no abre | Mismo WiFi que la placa; usa la IP que muestra App Lab con `:7000` |
 | Se pierde o el mapa está mal | Mantén D2 por 2 s para borrar y empieza de nuevo |
 | Pantalla negra | Espera; si sigue, revisa la batería |
+
+# 9. Control de versiones
+
+| Revisión | Qué cambió para quien lo usa |
+|---|---|
+| B2 | Llegan 2 sketches: `sketch/` (con MPU-6050) y `sketch_sin_mpu/` |
+| B4 | La web inicia, detiene y borra el mapa; cronómetro y colores vistos |
+| B5 | El MPU se usa completo: se endereza antes de avanzar, verifica giros, se recupera de choques y se detiene si lo levantan |
+| **B6** | **Queda un solo sketch, `sketch/` (con MPU-6050). `sketch_sin_mpu/` se quitó del repositorio** |
+
+**Si algún día hace falta la versión sin MPU:** está en el commit `2e01996` del repositorio (carpeta `uno_q/sketch_sin_mpu/`). Detalle en el manual técnico, sección "Control de versiones".

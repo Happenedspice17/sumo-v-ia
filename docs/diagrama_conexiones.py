@@ -115,24 +115,30 @@ for n, r in [("5V / 3V3", "VCC"), ("GND", "GND"), ("SDA", "SDA"), ("SCL", "SCL")
 
 # ---------- Sensores ----------
 DX, DW = 125, 30
-SENS = [("VL53L0X izquierdo", 74, "A0"), ("VL53L0X frente", 57, "A1"), ("VL53L0X derecho", 40, "A2"),
-        ("TCS34725 (color)", 24, None), ("OLED SSD1306", 8, None)]
+SENS = [("VL53L0X izquierdo", 78, "A0"), ("VL53L0X frente", 64, "A1"), ("VL53L0X derecho", 50, "A2"),
+        ("TCS34725 (color)", 38.3, None), ("OLED SSD1306", 25.5, None), ("MPU-6050 (GY-521)", 10.5, None)]
 for i, (nom, y0, xs) in enumerate(SENS):
-    h = 15 if xs else 13
-    caja(DX, y0, DW, h, nom, "#eef3ff" if xs else "#f1ffe8")
-    pines = [("VIN" if "OLED" not in nom else "VCC", "VCC"), ("GND", "GND"), ("SDA", "SDA"), ("SCL", "SCL")]
+    h = 13 if xs or "MPU" in nom else 11
+    caja(DX, y0, DW, h, nom, "#eef3ff" if xs else "#fff3e0" if "MPU" in nom else "#f1ffe8")
+    pines = [("VIN" if "OLED" not in nom and "MPU" not in nom else "VCC", "VCC"), ("GND", "GND"), ("SDA", "SDA"),
+             ("SCL", "SCL")]
     for k, (pn, r) in enumerate(pines):
-        y = y0 + h - 6 - k * 1.9
+        y = y0 + h - 5 - k * 1.7
         pin(DX, y, pn, "izq")
         cable([(RIEL[r], y), (DX, y)], r, lw=1.4)
         nodo(RIEL[r], y, r)
+    y = y0 + h - 5 - 4 * 1.7
     if xs:
-        y = y0 + h - 6 - 4 * 1.9
         pin(DX, y, "XSHUT", "izq")
         xr = 96 + i * 1.6
         cable([(PX + PW, P_DER[xs]), (xr, P_DER[xs]), (xr, y), (DX, y)], "XSHUT", lw=1.4)
         ax.text(DX + DW - 1, y, "GPIO1 libre", ha="right", va="center", fontsize=6.5, color="#666")
-ax.text(DX + DW / 2, 2, "Direcciones I2C: los VL53L0X arrancan en 0x29 y el código los pasa a 0x30-0x32\nuno por uno con XSHUT; TCS34725 0x29; OLED 0x3C",
+    if "MPU" in nom:
+        pin(DX, y, "AD0", "izq")
+        cable([(RIEL["GND"], y), (DX, y)], "GND", lw=1.4)
+        nodo(RIEL["GND"], y, "GND")
+        ax.text(DX + DW - 1, y, "INT, XDA, XCL libres", ha="right", va="center", fontsize=6.5, color="#666")
+ax.text(DX + DW / 2, 2, "Direcciones I2C: los VL53L0X arrancan en 0x29 y el código los pasa a 0x30-0x32\nuno por uno con XSHUT; TCS34725 0x29; OLED 0x3C; MPU-6050 0x68 (AD0 a GND)",
         ha="center", va="bottom", fontsize=6.5, color="#444")
 
 # ---------- Solo Q ----------

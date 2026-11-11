@@ -682,6 +682,12 @@ Además, la cámara ya no se busca en `/dev/video0` y `video1` (son internos) y 
 
 **Pruebas.** Revisión de sintaxis de los 2 sketches con g++ y cabeceras de Arduino simuladas. Pruebas de Python: verificación de giro (desvío de 95°, 92° y 88° → acepta un cuarto de vuelta y mueve la referencia 2°), control web, decisiones y mapa. Los umbrales (0.6 g, 0.8 g, 400 ms) son de partida: hay que calibrarlos en pista con el golpe que muestra el log.
 
+### Etapa 42. Un solo sketch, con MPU-6050 (11-nov)
+
+**Decisión del equipo.** El robot ya lleva el MPU-6050 montado y funcionando (la OLED muestra `G`). Tener 2 sketches (`sketch/` y `sketch_sin_mpu/`) confundía: había que mantener los dos iguales y decir cuál cargar. Se retira `sketch_sin_mpu/` del repositorio; la última versión queda en el commit `2e01996` y se describe en la sección "Control de versiones" de los manuales. `sketch/` conserva el respaldo: si el MPU no responde al arrancar, gira y avanza por tiempo.
+
+**Documentación.** Manual técnico con la sección 6.1 sobre el MPU-6050 (configuración de registros, integración del rumbo, alineación, verificación de giros, choques, atorones, robot levantado, fusión con la cámara y calibración); manual de uso con la tabla de ajustes del MPU y fallas; diagrama de conexiones y BOM con el MPU-6050 (AD0 a GND); sección "Control de versiones" en los 2 manuales.
+
 ## Pruebas realizadas
 
 La tabla distingue lo medido o probado de lo que solo se deduce de la secuencia de commits (marcado **deducido**). Cuando el repositorio guarda la sucesión de valores pero no el resultado de cada intento, se dice. Las pruebas en pista del equipo están en su propia subsección; la última versión (distancia, saltos, votos, máquina de estados, MPU) aún no se ha probado en pista.

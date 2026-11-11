@@ -191,7 +191,7 @@ El chasis es **paramétrico en OpenSCAD**. Pasó por entre 20 y 50 iteraciones d
 
 | Carpeta | Contenido |
 |---|---|
-| [`uno_q/`](uno_q/) | **Versión actual.** `sketch/` (STM32 con MPU-6050), `sketch_sin_mpu/` (STM32 sin MPU), `python/` (máquina de estados, mapa, cámara 1 a 3, web), `python_experimental/` (igual + distancia y aberturas por cámara) y `assets/` (página web) |
+| [`uno_q/`](uno_q/) | **Versión actual.** `sketch/` (STM32 con MPU-6050), `python/` (máquina de estados, mapa, cámara 1 a 3, web), `python_experimental/` (igual + distancia y aberturas por cámara) y `assets/` (página web) |
 | [`atmega328p/`](atmega328p/) | Iteración A, respaldo: firmware *bare-metal* en C++ para UNO R3 / Nano con flood-fill y mapa en EEPROM |
 | [`chasis/`](chasis/) | Modelo OpenSCAD, STL para imprimir, renders y planos (`chasis.pdf`) |
 | [`docs/`](docs/) | Manuales, bitácora, BOM, diagramas y scripts que generan los PDF |
@@ -205,10 +205,8 @@ El chasis es **paramétrico en OpenSCAD**. Pasó por entre 20 y 50 iteraciones d
 
    | Versión | Sketch | Python |
    |---|---|---|
-   | Estable con MPU | `sketch/` | `python/` |
-   | Estable sin MPU | `sketch_sin_mpu/` | `python/` |
-   | Experimental con MPU | `sketch/` | `python_experimental/` |
-   | Experimental sin MPU | `sketch_sin_mpu/` | `python_experimental/` |
+   | Estable | `sketch/` | `python/` |
+   | Experimental | `sketch/` | `python_experimental/` |
 
    Los detalles están en [`uno_q/README.md`](uno_q/README.md).
 3. Abre `http://<IP-de-la-placa>:7000` y **calibra colores, sensores de distancia y cámara desde el celular**.

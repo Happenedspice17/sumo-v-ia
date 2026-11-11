@@ -18,7 +18,7 @@ El STM32 mueve los motores, lee los sensores y maneja la OLED (`sketch/`). Linux
 | VL53L0X ×3 (VCC), TCS34725 (VIN), OLED | VCC / GND | 3.3V / GND |
 | TCS34725 (morado) | LED / INT | sin conectar (LED siempre encendido) |
 | Botón de arranque | a GND | D2 |
-| MPU-6050 (GY-521), opcional | SDA / SCL, VCC 3.3V, GND (AD0 a GND o suelto: 0x68) | SDA / SCL |
+| MPU-6050 (GY-521) | SDA / SCL, VCC 3.3V, GND, AD0 a GND (0x68); INT, XDA, XCL sin conectar. Plano y atornillado al chasis | SDA / SCL |
 | Batería 2S 18650 (conector T) | + | interruptor → VIN |
 | Cámara USB | | hub USB‑C |
 
@@ -30,16 +30,14 @@ GND común entre todo. No alimentes el UNO Q con el regulador de 5 V del L298N. 
 
 1. Crea una app nueva llamada `Laberinto`.
 2. Copia `sketch/sketch.ino`, `python/main.py`, `python/requirements.txt` y `assets/index.html` (carpeta `assets/` en la raíz de la app).
-   Hay 4 versiones: se combina un sketch con un Python. Copia **un** sketch (con su `oled.h`) y **un** Python a `python/` de la app; la página web es la misma.
+   Hay 2 versiones del Python; el sketch es siempre `sketch/` (con MPU-6050, con su `oled.h`):
 
    | Versión | Sketch (STM32) | Python (Linux) | Cámara |
    |---|---|---|---|
-   | Estable con MPU | `sketch/` | `python/` | 1 a 3: exposición fija, umbral automático (Otsu), corrección de rumbo |
-   | Estable sin MPU | `sketch_sin_mpu/` | `python/` | 1 a 3 |
-   | Experimental con MPU | `sketch/` | `python_experimental/` | 1 a 5: además, distancia por cámara y aberturas adelante |
-   | Experimental sin MPU | `sketch_sin_mpu/` | `python_experimental/` | 1 a 5 |
+   | Estable | `sketch/` | `python/` | 1 a 3: exposición fija, umbral automático (Otsu), corrección de rumbo |
+   | Experimental | `sketch/` | `python_experimental/` | 1 a 5: además, distancia por cámara y aberturas adelante |
 
-   `sketch/` también funciona sin el MPU (si no lo encuentra al arrancar, va por tiempo). Los 2 Python difieren solo en `EXPERIMENTAL`: si cambias uno, cambia el otro igual.
+   Los 2 Python difieren solo en `EXPERIMENTAL`: si cambias uno, cambia el otro igual. La versión sin MPU (`sketch_sin_mpu/`) se quitó del repositorio; está en el commit `2e01996`.
 3. Agrega el brick **WebUI - HTML** (panel Bricks). Sin él no hay página web.
 4. En las librerías del sketch agrega `Adafruit SSD1306`, `Adafruit GFX Library`, `Adafruit TCS34725` y `VL53L0X` (de Pololu).
 5. Pulsa **Run**. App Lab carga el sketch al STM32 y arranca el Python.
@@ -67,7 +65,9 @@ Con el hub conectado al USB-C, App Lab se conecta por WiFi (el puerto no puede i
 - **Cambio brusco** (una lectura cambia `SALTO` = 120 mm o más y se repite en la siguiente): si se abre un lateral, para al centro de esa celda (`TRAS_SALTO` = 124 mm después) para escanearla; si salta el frontal, vuelve a medir lo que falta. Python lo lee con `odo(3)`.
 - Con `mover(mm, lento)` baja a `VEL_LENTO` (la pide Python cuando la cámara ve blanco).
 - En recta solo corrige el rumbo si un lateral lee menos de 90 mm (`D_LADO_MIN`).
-- **Giros:** con MPU-6050 gira hasta el ángulo; sin él, por tiempo (`MS_90`). El mismo sketch sirve para los dos: al arrancar busca el MPU en 0x68 (OLED `G` abajo si lo encontró). Enciende el robot quieto: mide el bias del giroscopio.
+- **Giros y MPU-6050:** gira hasta el ángulo. Al arrancar busca el MPU en 0x68 (OLED `G` abajo si lo encontró; si no, gira por tiempo con `MS_90` como respaldo). Enciende el robot quieto: mide el bias del giroscopio.
+  - Antes de avanzar se endereza si se desvió 3° a 45° (`alinear`). Después de cada giro Python verifica el ángulo y lo termina si quedó a más de 10°.
+  - Acelerómetro: un golpe de más de 0.6 g al avanzar es un choque (retrocede y vuelve a leer); girando, 400 ms sin moverse es un atorón (retrocede y sigue); vertical bajo 0.8 g por 150 ms es que lo levantaron (detiene la corrida). `odo` 12 a 15 lo reportan.
   - Con MPU el rumbo es absoluto: cada giro va al ángulo deseado acumulado, así que corrige lo que se pasó o le faltó el anterior. En recta sostiene ese rumbo (`KG`), además del centrado con paredes. El sentido del montaje lo aprende en el primer giro; antes de ese giro no sostiene rumbo.
   - Calibrar `ADELANTO`: si se pasa del giro, súbelo; si le falta, bájalo. `odo(8)` da el desvío en grados.
   - La OLED no se refresca en movimiento (tarda ~25 ms y estorba al control).
