@@ -10,14 +10,14 @@ subtitle: Robot de laberinto · Microcontroladores 2
 # 1. Qué hace el robot
 
 ::: {.simple}
-**En simple:** el robot entra a un laberinto que no conoce, busca el centro, regresa a la salida y cuenta los cuadros de colores del piso. Mientras avanza dibuja un mapa. En el siguiente intento usa ese mapa para ir directo y más rápido.
+**En simple:** el robot entra a un laberinto que no conoce y avanza celda por celda, mirando con tres sensores láser dónde hay pared. Busca el cuadro **amarillo** del piso, que es la meta, y se detiene al verlo. En el camino cuenta los cuadros de colores y dibuja un mapa. En el siguiente intento usa ese mapa para ir directo a la meta por el camino más corto que conoce.
 :::
 
-- **Laberinto:** 16 × 16 celdas de 180 mm; la meta son las 2 × 2 celdas centrales.
+- **Laberinto:** celdas de 180 mm. La meta es el cuadro amarillo; no se supone un tamaño de laberinto fijo.
 - **Robot:** diferencial con dos ruedas motrices y un patín, huella ≤ 120 mm.
 - **Estrategia en dos fases:**
-  1. **Exploración** con *flood fill*: origen → meta → origen.
-  2. **Corrida rápida** sobre el mapa guardado, solo por celdas ya visitadas.
+  1. **Exploración** guiada por los sensores: de frente si se puede, si no izquierda, si no derecha, si no media vuelta. El mapa se va llenando con votos.
+  2. **Ruta corta** en la siguiente corrida: si el mapa ya tiene la meta, va por el camino más corto conocido (BFS). Si algo no cuadra, sigue explorando desde donde quedó.
 
 # 2. Dos cerebros
 
@@ -25,57 +25,53 @@ subtitle: Robot de laberinto · Microcontroladores 2
 **En simple:** el Arduino UNO Q trae dos computadoras en una placa.
 
 - Una **pequeña y muy puntual**, que mueve los motores y lee los sensores cien veces por segundo.
-- Una **grande con Linux**, que piensa el camino, guarda el mapa y procesa la cámara.
+- Una **grande con Linux**, que decide el camino, guarda el mapa y mira con la cámara.
 
-Se pasan mensajes entre ellas. Si la grande tarda en contestar, la pequeña termina el movimiento y frena, así que el robot nunca queda fuera de control.
+Se pasan mensajes entre ellas. El STM32 ejecuta cada movimiento por su cuenta y frena solo (a 130 mm de una pared, o al ver amarillo), así que el robot nunca queda fuera de control si Linux tarda.
 :::
 
 | Dominio | Procesador | Sistema | Tareas |
 |---|---|---|---|
-| Tiempo real | STM32U585 (Cortex-M33) | Zephyr (sketch Arduino) | Control de motores, sensores, clasificación de color, pantalla y botón |
-| Planeación | Qualcomm QRB2210 (Cortex-A53) | Debian Linux | Mapa, *flood fill*, trayectoria, persistencia, visión (OpenCV) |
+| Tiempo real | STM32U585 (Cortex-M33) | Zephyr (sketch Arduino) | Motores, 3 ToF, clasificación de color, MPU-6050 opcional, pantalla y botón |
+| Decisión | Qualcomm QRB2210 (Cortex-A53) | Debian Linux | Máquina de estados, mapa, ruta corta, persistencia, cámara (OpenCV), página web |
 
-**Enlace:** RPC MessagePack sobre el enlace interno, enrutado por el servicio `arduino-router`. Linux invoca procedimientos que expone el MCU:
+**Enlace:** el **Bridge** (RPC MessagePack, enrutado por `arduino-router`). Linux invoca procedimientos que expone el STM32:
 
 | Procedimiento | Qué hace |
 |---|---|
-| `mover(n, rápido)` | Avanza *n* celdas. No bloquea; devuelve 0 si ya hay un movimiento en curso |
-| `girar(k)` | Gira en sitio *k* × 90°; el signo indica el sentido |
-| `ocupado()` | Devuelve 1 mientras hay un movimiento activo |
-| `paredes()` | Máscara de 3 bits: izquierda, frente, derecha |
-| `color()` | Último color visto, codificado como `c + 16·k` (clase *c*, a *k* celdas del inicio del movimiento) |
+| `mover(mm, lento)` | Avanza hasta *mm* (una celda = 180 mm). Si `lento` es 1 usa `VEL_LENTO`. No bloquea; devuelve 0 si ya hay un movimiento en curso |
+| `girar(k)` | Gira en sitio *k* × 90°; el signo indica el sentido (2 = media vuelta) |
+| `ocupado()` | 1 mientras hay un movimiento activo |
+| `odo(i)` | Lecturas: 0 = mm recorridos, 1 = mm que faltan, 2 = máscara de paredes y movimiento, 3 = saltos (1 izquierda, 2 frente, 4 derecha), 5 / 6 / 7 = distancia frente / izquierda / derecha (mm), 8 = desvío de rumbo en grados (con MPU) |
+| `color()` | Último color confirmado (3 lecturas seguidas), una sola vez |
+| `alto()` | Detiene el movimiento (Python lo pide al confirmar la meta) |
 | `arranque()` | Evento del botón: 1 = corto, 2 = largo |
-| `set_cuenta`, `set_estado` | Actualizan la pantalla |
+| `set_cuenta`, `set_estado`, `set_fase` | Actualizan la pantalla (conteo, estado, fase de la máquina) |
 | `raw(i)` | Lectura cruda del sensor de color (*i* = R, G, B, C) para el panel web |
 | `set_ref(i, r, g, b, c)` | Carga el color de referencia *i* (r, g, b en milésimas) |
 
 Separar los dominios aísla la latencia no determinista de Linux (planificador, E/S, visión) del lazo de control.
 
 ::: {.nota}
-**Respaldo:** si el UNO Q falla, el mismo chasis acepta un UNO R3 (ATmega328P) con firmware *bare-metal* que hace todo en un solo chip:
-
-- Sin Arduino core.
-- Driver de I²C (TWI) propio.
-- Base de tiempo con Timer1 en modo CTC.
-- PWM rápido de 8 bits por registros en Timer0.
-- El mismo *flood fill*.
+**Respaldo:** si el UNO Q falla, el mismo chasis acepta un UNO R3 (ATmega328P) con firmware *bare-metal* propio (carpeta `atmega328p/`) que hace todo en un solo chip, sin Arduino core. Este manual describe la versión del UNO Q.
 :::
 
 # 3. Sensores de distancia
 
 ::: {.simple}
-**En simple:** tres sensores láser (al frente y a los lados) miden en milímetros qué tan lejos está la pared, unas 50 veces por segundo. Si una pared está a menos de 12 cm, el robot la considera "pared".
+**En simple:** tres sensores láser (izquierda, frente y derecha) miden en milímetros qué tan lejos está la pared, unas 50 veces por segundo. Una lectura rara nunca decide sola: el robot toma varias y se queda con la menor.
 :::
 
 - **Sensores:** 3 × VL53L0X, tiempo de vuelo a 940 nm.
 - **Direcciones I²C:** los tres traen la misma (0x29), que además comparte el sensor de color. Al arrancar se mantienen apagados con XSHUT (A0–A2). Se encienden uno por uno y cada uno se reasigna a 0x30–0x32 antes de `init()`.
-- **Lectura:** modo continuo con *timing budget* de 20 ms (≈ 50 Hz por sensor). Es no bloqueante: solo se lee el sensor cuyo `RESULT_INTERRUPT_STATUS` indica dato nuevo.
-- **Filtros:** lecturas de 0 mm o de más de 2000 mm cuentan como fuera de rango. Hay pared si *d* < 120 mm.
+- **Lectura:** modo continuo con *timing budget* de 20 ms (≈ 50 Hz por sensor), no bloqueante.
+- **Umbrales:** lateral con menos de 120 mm (`PARED`) = pared. Frontal con menos de 130 mm (`PARED_F`) = pared.
+- **Lecturas mínimas:** Python toma 3 lecturas de cada ToF y usa la menor (5 tras un cambio brusco). Una lectura mala no deja pasar al robot.
 
 # 4. Sensor de color
 
 ::: {.simple}
-**En simple:** debajo del robot hay un sensor con su propia lucecita, tapado con una capucha para que no le afecte la luz del lugar. Mide cuánto rojo, verde y azul refleja el piso y lo compara con los colores que le enseñamos en la calibración. Para no contar dos veces el mismo cuadro, exige ver el mismo color tres veces seguidas y no vuelve a contar hasta regresar al piso normal.
+**En simple:** debajo del robot hay un sensor con su propia lucecita, tapado con una capucha para que no le afecte la luz del lugar. Mide cuánto rojo, verde y azul refleja el piso y lo compara con los colores que le enseñamos en la calibración. Para no contar dos veces el mismo cuadro, exige ver el mismo color tres veces seguidas y no vuelve a contar hasta regresar al piso normal. El amarillo es la meta: el robot se detiene en cuanto lo confirma.
 :::
 
 **Adquisición**
@@ -91,84 +87,110 @@ La distancia a cada color de referencia *i* suma un término logarítmico de bri
 
 > *dᵢ = (r̂ − rᵢ)² + (ĝ − gᵢ)² + (b̂ − bᵢ)² + 0.01 · ln²((C + 1) / (Cᵢ + 1))*
 
-Si la menor distancia es mayor que 0.02, el resultado es "piso".
+El resultado es "piso" si la menor distancia es mayor que 0.02 o si el brillo es menor que 1.3 veces el del piso negro (`BRILLO_MIN`, quita falsos positivos).
 
-**Calibración:** desde un panel web que sirve la propia placa (puerto 7000). Cada referencia es el promedio de 5 lecturas tomadas sobre la pista. Se guarda en `/app/datos/colores.json`; si no existe, se usan los valores de fábrica. Linux la carga al MCU con `set_ref` en cada arranque, sin recompilar el sketch.
+**Calibración:** desde un panel web que sirve la propia placa (puerto 7000). Cada referencia es el promedio de 5 lecturas tomadas sobre la pista. Se guarda en `/app/datos/colores.json`; si no existe, se usan los valores de fábrica. Linux la carga al STM32 con `set_ref` en cada arranque, sin recompilar el sketch.
 
 **Antirrebote:** se exigen 3 muestras iguales seguidas (3 × 30 ms). El evento solo se dispara en la transición piso → color.
 
-**¿En qué celda estaba?** Durante un avance de duración *T* por celda, la marca está en la celda *k = ⌊t/T + δ + 0.5⌋*. Aquí *δ* = 0.2 celdas es la distancia del eje de las ruedas al sensor. Python descarta las marcas repetidas por coordenada.
+**Meta:** al confirmar amarillo, el **STM32 detiene el movimiento por sí mismo**, sin esperar a Python. Python entonces guarda la celda como meta.
+
+**¿En qué celda estaba?** Python calcula *k = ⌊(mm + 36 + 90) / 180⌋*, con *mm* los milímetros recorridos en el avance y 36 mm la distancia del eje al sensor (`Y_COLOR`). Cada celda cuenta su color una sola vez.
 
 # 5. Cámara (opcional)
 
 ::: {.simple}
-**En simple:** la cámara va arriba de un poste y mira una celda adelante. Si cree ver una pared, el mapa la anota como "posible", nunca como segura. Solo cuentan como seguras las que confirman los sensores láser. Si la cámara se equivoca y el robot se queda sin salida, el robot la ignora. Sin cámara, el robot funciona igual.
+**En simple:** la cámara va arriba de un poste y mira el piso por donde va a pasar. Hace dos cosas: busca el **amarillo** (la meta) y detecta si el piso adelante es **blanco**, que es una pared (el piso es negro). Si ve blanco, el robot avanza más despacio, y el sensor láser frontal confirma si de verdad hay pared. La cámara nunca manda sobre los láser. Sin cámara, el robot funciona igual.
 :::
 
 - **Captura:** cámara UVC a 320 × 240, OpenCV con V4L2.
-- **Detección:** segmentación HSV del color de pared y fracción de píxeles en 3 regiones de interés de la celda siguiente (fondo, izquierda, derecha).
-- **Mapa tentativo:** lo detectado va a un mapa separado del confirmado. El *flood fill* lo usa para anticipar callejones sin salida. Si deja al robot sin camino, se recalcula sin él.
-- **Montaje:** módulo de 32 × 32 mm sobre un pedestal impreso de 20 × 20 × 75 mm. Lente a 162 mm del piso, inclinado 40° hacia abajo (ve el piso desde 7 cm adelante del eje). Se conecta por un hub USB-C con entrada de alimentación: con la Q alimentada por VIN, su USB-C no da 5 V al hub, así que el hub se alimenta por su puerto PD.
-- **Ajuste:** el panel web muestra la imagen a 160 × 120 (JPEG calidad 40, 2 cuadros por segundo) con las 3 regiones en rojo (pared) o verde (libre). Un candado comparte la cámara entre el robot y el panel. Un hilo revisa cada 2 s si sigue conectada y la vuelve a buscar si se desconecta.
+- **Blanco (pared):** fracción de píxeles blancos (HSV `BLANCO_LO`/`BLANCO_HI`) en `ZONA_PASO`, el piso por donde va a pasar. Si pasa de `BLANCO_MAX` (15 %), Python pide `mover(mm, 1)`: avance lento a `VEL_LENTO`. **Doble check:** Python también lee el frontal (`odo(5)`) y lo reporta; el sketch para a 130 mm si la pared es real. Si la cámara ve blanco y el frontal no ve nada, igual va lento.
+- **Amarillo:** el tono `HUE_AMAR` en la mitad de abajo de la imagen, partida en tercios. Solo se usa para desempatar salidas en una isla (sección 7); la meta la confirma el sensor de color.
+- **Montaje:** módulo de 32 × 32 mm sobre un pedestal impreso de 20 × 20 × 75 mm, inclinado hacia abajo para ver el piso adelante del eje. Se conecta por un hub USB-C con entrada de alimentación: con la Q alimentada por VIN, su USB-C no da 5 V al hub, así que el hub se alimenta por su puerto PD.
+- **Ajuste:** el panel web muestra la imagen a 160 × 120 (JPEG calidad 40) con un recuadro amarillo donde ve el amarillo y el camino en rojo (blanco) o verde (negro). Un candado comparte la cámara entre el robot y el panel. Al arrancar la busca una vez; un hilo revisa cada 2 s si sigue conectada y la vuelve a buscar si se desconecta (OLED `SIN CAM`).
 
 # 6. Cómo se mueve
 
 ::: {.simple}
-**En simple:** el robot no tiene sensores en las ruedas, así que mide las distancias por tiempo: "avanzar una celda" es avanzar unos 600 ms. Para no acumular error usa tres trucos:
-
-1. **Arranca y frena suave** para que las llantas no patinen.
-2. **Se mantiene centrado** midiendo las paredes de los lados.
-3. **Si hay pared enfrente, frena por distancia** y no por tiempo, así corrige lo que se haya desviado.
+**En simple:** el robot no tiene sensores en las ruedas, así que mide cuánto avanza con el láser de enfrente: anota a qué distancia está la pared al arrancar y para cuando esa distancia bajó 18 cm (una celda). Si no hay pared a la vista, avanza por tiempo. Para los giros usa un giroscopio si lo tiene, y si no, tiempo. Frena siempre a 13 cm de una pared.
 :::
 
 **Actuación**
 
 - Dos micromotorreductores DC (≈ 12 × 11 mm de sección), ruedas de 45 mm, puente H L298N.
-- PWM en ENA/ENB y sentido en IN1–IN4.
+- PWM en ENA/ENB y sentido en IN1–IN4. El sentido de cada motor se invierte por software (`INV_IZQ`, `INV_DER`).
 - Freno activo: ambas entradas en alto con EN = 255 durante 60 ms.
 
-**Lazo de control a 100 Hz** (*T* = 10 ms), en lazo abierto de posición:
+**Avance** (lazo a 100 Hz, *T* = 10 ms):
 
-1. **Perfil trapezoidal.** Rampa de +6 PWM por ciclo desde `VEL_MIN`, crucero y desaceleración lineal en el último cuarto de la duración nominal.
-2. **Centrado proporcional.** *u = K꜀ · e*, saturado en ±40 PWM y aplicado en diferencial: *PWM_izq = v − u*, *PWM_der = v + u*. El error *e* depende de las paredes:
-   - Dos paredes: *e = d_izq − d_der*.
-   - Una pared: error contra la distancia nominal `D_LADO`.
-   - Ninguna: compensación estática `AJUSTE_DER`.
-3. **Paro por referencia externa.** Con pared frontal, el avance termina cuando *d_frente* ≤ `D_FRENTE`, con una tolerancia de +*T*/3. Así el error longitudinal se reinicia en cada celda con pared al frente.
-4. **Giros en sitio** por tiempo (`MS_90`) a PWM constante.
+1. **Por distancia.** Al iniciar toma el frontal; si lee menos de 1 m (`RANGO`) avanza hasta que haya bajado 180 mm (`CELDA`). Si no ve nada a ese alcance avanza por tiempo (`MS_CELDA`) y, si a medio camino aparece una pared, sigue por distancia.
+2. **Alto y retroceso.** Se detiene al leer 130 mm al frente (`D_FRENTE`). Si queda por debajo de 120 mm (`D_FRENTE − D_CERCA`) se hace para atrás hasta 130 mm. Si hay pared y la distancia ya no baja en 300 ms, también para. Desde 230 mm frena de forma proporcional (`FRENA_K`).
+3. **Perfil de velocidad.** Rampa de +6 PWM por ciclo hasta `VEL_EXPLORA` (o `VEL_LENTO`), y desaceleración lineal en el último cuarto de celda, con piso en `VEL_MIN`.
+4. **Cambios bruscos.** Si una lectura de un ToF cambia `SALTO` = 120 mm o más y la siguiente lo confirma, se reconoce un cambio brusco (se abrió un lateral o saltó el frontal).
+   - Si se abre un lateral, el robot avanza `TRAS_SALTO` = 124 mm más y para en el centro de esa celda, para escanearla (fase `ESCANEA`).
+   - Si salta el frontal, recalcula lo que falta con la nueva lectura.
+   - Python lo lee con `odo(3)`.
+5. **Centrado solo bajo 90 mm.** Con un lateral a menos de `D_LADO_MIN` = 90 mm corrige: *u = K꜀·e + K_d·ė*, saturado en ±40 PWM y aplicado en diferencial (*PWM_izq = v − u*, *PWM_der = v + u*). Con dos paredes cercanas *e = d_izq − d_der*; con una, contra los 90 mm. Con ambos lados lejos va derecho.
+
+**Giros**
+
+- **Con MPU-6050:** el sketch lo busca en la dirección 0x68 al arrancar (OLED muestra `G` si lo encontró) y mide el sesgo del giroscopio con el robot quieto, por lo que se enciende sin moverlo.
+  - **Rumbo absoluto:** cada giro va al ángulo deseado acumulado, así corrige lo que se pasó o faltó en el giro anterior. Se corta `ADELANTO` = 6° antes por la inercia.
+  - **Aprende el signo:** el sentido de montaje del sensor se determina en el primer giro. Antes de ese giro no sostiene rumbo.
+  - **Rumbo en recta:** durante el avance sostiene el rumbo con ganancia `KG`, además del centrado con paredes.
+- **Sin MPU-6050:** gira por tiempo (`MS_90`) a PWM constante `VEL_GIRO`. El mismo sketch sirve para los dos casos.
 
 ::: {.aviso}
-**Limitación reconocida:** sin encoders ni IMU, los avances sin pared al frente y los giros dependen del voltaje de la batería y de la fricción.
+**Limitación reconocida:** sin encoders, la distancia depende del frontal. En tramos largos sin pared a la vista, y en giros sin MPU-6050, el resultado depende del voltaje de la batería y de la fricción.
 
-- **Cómo lo mitigamos:** recalibración en sitio (`MS_CELDA`, `MS_90`), paro por pared y centrado continuo.
-- **Mejora natural:** encoders en cuadratura y un giroscopio para cerrar el lazo en posición y rumbo.
+- **Cómo lo mitigamos:** el frontal mide el avance por distancia, el MPU-6050 corrige el rumbo, y las ruedas patinan poco por la rampa de arranque.
+- **Mejora natural:** encoders en cuadratura para medir también los tramos sin pared.
 :::
 
-# 7. Cómo encuentra el camino
+# 7. Cómo decide y qué mapa guarda
 
 ::: {.simple}
-**En simple:** imagina que derramas agua en la meta. El agua avanza celda por celda y no cruza paredes. Cada celda guarda cuántos pasos tardó en llegarle el agua. El robot siempre se mueve a la celda vecina con el número más bajo, hasta llegar a la meta. Cada vez que descubre una pared nueva, vuelve a "derramar el agua".
+**En simple:** el robot decide siempre quieto, en cuatro pasos que se repiten: **mira** (con los láser), **decide** (a dónde ir), **gira** y **avanza** una celda. Prefiere seguir de frente; si no puede, gira a la izquierda; si no, a la derecha; y si está encerrado, da media vuelta. Si pasa tres veces por el mismo lugar (da vueltas a una isla), prueba la salida que menos ha usado.
 :::
 
-**Mapa**
+**Máquina de estados** (Python; la fase se ve en la OLED y en la web):
 
-- 16 × 16 celdas con 4 bits por celda (N, E, S, O).
-- Cada pared se escribe también en la celda vecina.
-- El perímetro empieza cerrado y una matriz aparte marca las celdas visitadas.
+`SENSA` → `DECIDE` → `GIRA` → `AVANZA` → `SENSA`. Tras un cambio brusco, `ESCANEA` sustituye a `SENSA`.
 
-***Flood fill*.** BFS desde el conjunto objetivo, O(*N*²) = 256 celdas, recalculado tras cada celda.
+| Fase | Qué hace |
+|---|---|
+| `SENSA` | Toma 3 lecturas de cada ToF (la menor) y vota las paredes de la celda |
+| `ESCANEA` | Igual, con 5 lecturas, tras un salto |
+| `DECIDE` | Elige la salida (ver abajo) |
+| `GIRA` | Pide `girar(k)` y espera |
+| `AVANZA` | Pide `mover(180, lento)` y espera; lee mm recorridos y saltos |
 
-**Exploración** (supuesto optimista: lo desconocido es libre)
+**Prioridad de salidas** (todas con lecturas de ToF):
 
-- Ante empate, prefiere seguir de frente, luego derecha, izquierda y media vuelta. Así minimiza giros, que son la mayor fuente de error.
-- Recorre origen → meta → origen. El regreso explora otras rutas y aumenta la probabilidad de que el camino óptimo quede en celdas visitadas.
+1. **Frente** si el frontal lee ≥ 220 mm (`FRENTE_LIBRE`): está a la mitad entre pared en su celda (~130) y en la siguiente (~310).
+2. **Izquierda** si el lateral lee ≥ 120 mm.
+3. **Derecha**, con el mismo criterio.
+4. **Media vuelta** si no hay ninguna.
 
-**Corrida rápida** (supuesto pesimista)
+**Reglas que la modifican**
 
-- Solo cruza aristas entre dos celdas visitadas.
-- Junta los tramos rectos en un solo `mover(n)`, así no frena en cada celda.
+- **Tras un salto:** de las salidas que llevan a una celda que aún no está en el mapa, toma la de lectura más lejana.
+- **Isla:** si ya pasó 3 veces (`ISLA`) por esa celda, toma la salida que ha usado menos. Si hay empate, la cámara desempata hacia donde ve amarillo.
 
-**Persistencia:** el mapa y las marcas se guardan en JSON en la placa y sobreviven al apagado. Un toque largo del botón los borra.
+**Mapa por celdas.** Cada celda guarda 4 votos (N, E, S, O) en un diccionario de coordenadas.
+
+- Cada lectura vota pared (+1) o libre (−1), con tope ±5 (`VOTO_MAX`). Así una lectura mala no borra lo que vieron las demás.
+- Por donde el robot pasó queda libre con certeza.
+- La celda actual sale de los mm que de verdad avanzó (no de lo que pidió).
+- Cada color leído se anota en su celda; el amarillo marca la meta.
+
+**Persistencia.** Al terminar la corrida se guarda `/app/datos/mapa.json` (paredes, colores y meta), con escritura atómica. Al leerlo tolera un archivo roto o vacío. Un toque largo del botón (más de 2 s) borra mapa y conteo.
+
+**Ruta corta.** Con la meta en el mapa, la siguiente corrida calcula por BFS el camino más corto sobre pasos conocidos como libres (OLED `RAPIDO`). Si al avanzar no queda en la celda esperada, abandona la ruta y sigue explorando desde ahí.
+
+**Corrida.** El botón corto inicia una corrida nueva (el robot debe estar en el inicio, siempre en la misma celda y mirando al mismo lado); otro toque la detiene.
+
+**Página web.** Puerto 7000 por WiFi. Durante una corrida **no llama al Bridge**: muestra la última lectura que tomó el robot y su última foto, para no quitarle tiempo ni la cámara. Fuera de corrida lee directamente los sensores. Incluye el panel de calibración de colores, la vista de la cámara y un dibujo en vivo de los ToF con lo que haría el robot.
 
 # 8. Hardware
 
@@ -180,7 +202,7 @@ Si la menor distancia es mayor que 0.02, el resultado es "piso".
 |---|---|
 | Alimentación | Batería 2S (6.0–8.4 V) → interruptor → L298N (V_S) y VIN del UNO Q (7–24 V, reguladores conmutados) |
 | Lógica de potencia | Regulador 78M05 del L298N (necesita ≳ 7 V). Entradas compatibles con 3.3 V (V_IH ≥ 2.3 V) |
-| Bus I²C | 400 kHz, alimentado a 3.3 V para no exponer los pines del Q a *pull-ups* de 5 V. Lleva 3 × VL53L0X, TCS34725 y una OLED SSD1306 |
+| Bus I²C | 400 kHz, alimentado a 3.3 V para no exponer los pines del Q a *pull-ups* de 5 V. Lleva 3 × VL53L0X, TCS34725, una OLED SSD1306 y, opcional, un MPU-6050 (0x68) |
 | Pantalla | OLED 128 × 64 con driver propio. Muestra estado, conteos y un contador de *heartbeat* de la comunicación entre los procesadores |
 | Chasis | OpenSCAD paramétrico de dos pisos, FDM (Bambu X2D), insertos de latón M3 y pedestal impreso con inserto M4. Interferencias verificadas por intersección CSG |
 | Cambio de placa | Mismo mapa de pines en Q y R3 vía Proto Shield; solo cambia el puente de VCC (3V3 ↔ 5V) |
@@ -189,17 +211,44 @@ Si la menor distancia es mayor que 0.02, el resultado es "piso".
 
 # 9. Parámetros calibrables
 
-| Parámetro | Base | Qué controla |
+Valores tal como están en `sketch.ino` y `main.py`.
+
+**Sketch (STM32)**
+
+| Parámetro | Valor | Qué controla |
 |---|---|---|
-| `MS_CELDA` / `MS_RAPIDA` | 600 / 400 ms | Tiempo por celda (explorar / rápido) |
-| `MS_90` | 250 ms | Tiempo de giro de 90° |
-| `VEL_EXPLORA` / `VEL_RAPIDA` / `VEL_GIRO` / `VEL_MIN` | 140 / 220 / 130 / 80 | PWM de 0 a 255 |
-| `KC` | 0.8 PWM/mm | Fuerza del centrado |
-| `PARED` | 120 mm | Distancia para considerar pared |
-| `D_FRENTE` / `D_LADO` | 55 / 50 mm | Distancias de paro y de centrado |
+| `CELDA` | 180 mm | Avance de una celda |
+| `RANGO` | 1000 mm | Con el frontal por debajo avanza por distancia; más lejos, por tiempo |
+| `MS_CELDA` | 600 ms | Tiempo por celda cuando no hay pared a la vista |
+| `MS_90` | 250 ms | Giro de 90° por tiempo (solo sin MPU-6050) |
+| `VEL_EXPLORA` / `VEL_LENTO` / `VEL_GIRO` / `VEL_MIN` | 140 / 100 / 130 / 80 | PWM de 0 a 255 |
+| `PARED` / `PARED_F` | 120 / 130 mm | Pared lateral / pared al frente |
+| `D_FRENTE` / `D_CERCA` | 130 / 10 mm | Alto al frente / retrocede si baja de 120 mm |
+| `FRENA_K` | 2 PWM/mm | Frenado proporcional al acercarse |
+| `SALTO` / `TRAS_SALTO` | 120 / 124 mm | Cambio brusco / avance posterior para centrarse en la celda abierta |
+| `D_LADO_MIN` | 90 mm | Solo corrige el centrado si un lateral lee menos |
+| `D_LADO` | 50 mm | Distancia lateral con el robot centrado |
+| `KC` / `KD` | 0.8 / 0.3 | Centrado (posición / velocidad de acercamiento) |
+| `KG` | 2.0 PWM/° | Sostener rumbo en recta (con MPU-6050) |
+| `ADELANTO` | 6° | Corta el giro antes por la inercia (si se pasa, subir) |
 | `AJUSTE_DER` | 0 | Corrige si un motor es más fuerte |
-| Colores de referencia | se mide | Desde el panel web; se guardan en `/app/colores.json` |
-| `ROI`, `PARED_LO/HI`, `UMBRAL` | ver `main.py` | Regiones y color de pared de la cámara |
+| `INV_IZQ` / `INV_DER` | true / true | Invierte el sentido del motor por software |
+| `BRILLO_MIN`, `DIST_MAX` | 1.3 / 0.02 | Filtros del sensor de color |
+
+**Python (Linux)**
+
+| Parámetro | Valor | Qué controla |
+|---|---|---|
+| `FRENTE_LIBRE` | 220 mm | El frente cuenta como salida |
+| `VOTO_MAX` | 5 | Tope de votos por pared |
+| `ISLA` | 3 visitas | Pasa a la salida menos usada |
+| `Y_COLOR` | 36 mm | Del eje al sensor de color |
+| `HUE_AMAR` | (20, 35) | Tono del amarillo en HSV de OpenCV |
+| `SAT_MIN`, `VAL_MIN`, `FRAC_COLOR` | 90, 70, 0.08 | Qué cuenta como píxel de color |
+| `BLANCO_LO` / `BLANCO_HI` | (0,0,170) / (180,60,255) | Rango HSV del blanco (pared) |
+| `ZONA_PASO` | (0.30, 0.55, 0.70, 1.00) | Piso por donde va a pasar, en fracción de la imagen |
+| `BLANCO_MAX` | 0.15 | Fracción de blanco que activa el avance lento |
+| Colores de referencia | de fábrica en `REFS` | Se miden en el panel web; se guardan en `/app/datos/colores.json` |
 
 # 10. Glosario
 
@@ -214,8 +263,25 @@ Si la menor distancia es mayor que 0.02, el resultado es "piso".
 | **Puente H** | Circuito que deja girar un motor en ambos sentidos |
 | **Lazo abierto / cerrado** | Sin / con medición del resultado para corregir |
 | **Control P** | Corrige en proporción al error |
-| ***Flood fill* (BFS)** | Búsqueda en anchura: calcula la distancia de cada celda a la meta |
 | **Encoder** | Sensor que cuenta las vueltas de la rueda |
-| **IMU** | Sensor de giro y aceleración |
+| **IMU / MPU-6050** | Sensor de giro y aceleración; aquí se usa su giroscopio para medir el ángulo de los giros |
+| **BFS** | Búsqueda en anchura: encuentra el camino más corto entre dos celdas |
+| **Rumbo** | Hacia dónde apunta el robot, en grados |
 | **HSV** | Forma de describir un color por tono, saturación y brillo |
+| **Bridge** | Servicio que pasa las llamadas (RPC) entre Linux y el STM32 |
 | **CSG** | Operaciones booleanas entre sólidos 3D (unión, resta, intersección) |
+
+# 11. Evolución del diseño
+
+La bitácora completa de cambios, problemas y soluciones está en `historial_cambios.md`. Los cambios más importantes desde la V1:
+
+- **V1:** movimiento por tiempo, sin encoders, con *flood fill* sobre un mapa de 16 × 16 celdas y respaldo en UNO R3 (ATmega328P).
+- **Sensores:** 3 × VL53L0X reasignados de dirección I²C y sensor de color TCS34725 con calibración desde el panel web.
+- **Cámara:** primero detectaba paredes para anticipar caminos; ahora solo busca el amarillo y detecta blanco (pared) en el piso por donde va a pasar.
+- **Avance por distancia:** el frontal mide la celda, para a 130 mm y retrocede si queda muy cerca; sin pared va por tiempo.
+- **Cambios bruscos** de los ToF (`SALTO`): el robot se centra en la celda abierta y la escanea.
+- **Decisión:** pasó de *flood fill* con paredes de la cámara, y luego de reglas de pared, a una máquina de estados `SENSA → DECIDE → GIRA → AVANZA` con prioridad frente, izquierda, derecha.
+- **Mapa:** votos ±5 por pared y colores por celda; ruta corta por BFS en la siguiente corrida.
+- **Meta:** el STM32 para solo al confirmar el amarillo, sin esperar a Python.
+- **Giros con MPU-6050** opcional: rumbo absoluto y rumbo sostenido en recta; sin él, por tiempo.
+- **Web:** durante la corrida no usa el Bridge para no quitarle tiempo al robot.
