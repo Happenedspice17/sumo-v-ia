@@ -25,8 +25,8 @@ ARCH_COL = DATOS + "/colores.json"
 ARCH_MODO = DATOS + "/modo.json"
 modo = "tonto"                           # solo se usa el modo tonto: sigue la pared con los ToF, sin mapa
 # r, g, b normalizados y brillo c; los mismos de refs[] del sketch
-REFS = [[0.33, 0.33, 0.33, 900], [0.58, 0.22, 0.20, 400], [0.26, 0.46, 0.28, 350],
-        [0.20, 0.32, 0.48, 300], [0.42, 0.40, 0.18, 700]]
+REFS = [[0.282, 0.379, 0.333, 153], [0.602, 0.208, 0.188, 581], [0.155, 0.535, 0.309, 636],
+        [0.16, 0.329, 0.508, 354], [0.409, 0.449, 0.142, 1836]]
 
 DX = [0, 1, 0, -1]
 DY = [1, 0, -1, 0]
@@ -323,6 +323,8 @@ def abrir_camara():
 
 def foto():
     with cam_lock:                       # la usan el robot y la pagina web
+        if cam is None:
+            return None
         for _ in range(3):
             cam.grab()
         ok, img = cam.read()
@@ -556,9 +558,21 @@ def api_guardar(i: int):
     return api_lectura()
 
 
+reintento = 0
+
+
 def api_foto():
+    global cam, reintento
+    if cam is None and USAR_CAM and time.time() > reintento:   # la camara pudo conectarse despues de arrancar
+        reintento = time.time() + 5
+        with cam_lock:
+            abrir_camara()
     img = foto() if cam is not None else None
     if img is None:
+        if cam is not None:              # se desconecto: la vuelve a buscar
+            with cam_lock:
+                cam.release()
+                cam = None
         return {"img": None}
     c = color_piso(img)
     cg = ciegos(img)                     # antes de dibujar encima

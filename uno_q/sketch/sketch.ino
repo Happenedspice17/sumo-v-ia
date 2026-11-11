@@ -48,11 +48,11 @@ const uint32_t T_COLOR = 30;
 // r, g, b normalizados (r/(r+g+b)) y brillo c. Llenar con el modo calibracion.
 struct Ref { const char* nom; float r, g, b, c; };
 Ref refs[] = {
-  {"PISO",  0.33, 0.33, 0.33, 900},
-  {"ROJO",  0.58, 0.22, 0.20, 400},
-  {"VERDE", 0.26, 0.46, 0.28, 350},
-  {"AZUL",  0.20, 0.32, 0.48, 300},
-  {"AMAR",  0.42, 0.40, 0.18, 700},
+  {"PISO",  0.282, 0.379, 0.333, 153},
+  {"ROJO",  0.602, 0.208, 0.188, 581},
+  {"VERDE", 0.155, 0.535, 0.309, 636},
+  {"AZUL",  0.16, 0.329, 0.508, 354},
+  {"AMAR",  0.409, 0.449, 0.142, 1836},
 };
 const int NCOL = sizeof(refs) / sizeof(refs[0]);
 const float DIST_MAX = 0.02;
