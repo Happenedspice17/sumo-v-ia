@@ -42,28 +42,25 @@ Con el hub conectado al USB-C, App Lab se conecta por WiFi (el puerto no puede i
 
 1. **Colores**: con la app corriendo abre `http://<ip de la Q>:7000` (App Lab muestra el link). El asistente pide los 5 colores uno por uno; cada botón promedia 5 lecturas. Se guarda en `/app/datos/colores.json` y se carga al MCU en cada arranque (`set_ref`). Los guardados tienen prioridad. Sin archivo guardado se usan los valores de fábrica (`REFS` en `main.py`, igual a `refs[]` del sketch): PISO 0.282,0.379,0.333,153; ROJO 0.602,0.208,0.188,581; VERDE 0.155,0.535,0.309,636; AZUL 0.16,0.329,0.508,354; AMAR 0.409,0.449,0.142,1836.
    **Sensores**: enciende con el botón presionado. La OLED muestra `r g b c`, el color detectado y las 3 distancias. Centra el robot en una celda y anota `D_LADO` y `D_FRENTE`.
-2. **Avance**: ajusta `MS_CELDA` hasta que avance 18 cm en un pasillo sin pared enfrente, y `MS_90` para giros de 90°. `MS_RAPIDA` se ajusta igual, en rectas de varias celdas. Calibra con la batería cargada. Si se desvía, ajusta `AJUSTE_DER`.
-3. **Cámara**: la página web muestra la imagen (160 × 120) con las 3 regiones: rojo = pared, verde = libre. No se guardan imágenes en `/app`: con ellas App Lab marca "failed to start". Ajusta `ROI`, `PARED_LO/HI` y `UMBRAL` en `main.py` hasta que los rectángulos salgan rojos donde hay pared en la celda siguiente.
-4. **Laberinto**: ajusta `N`, `INICIO`, `RUMBO_INI` y `META` según las reglas del día.
+2. **Avance**: con pared enfrente a menos de 1 m (`RANGO`) avanza por distancia y no hay que calibrar. Sin pared a la vista avanza por tiempo: ajusta `MS_CELDA` hasta que avance 18 cm, y `MS_90` para giros de 90°. Calibra con la batería cargada. Si se desvía, ajusta `AJUSTE_DER`.
+3. **Cámara**: solo busca el amarillo (`HUE_AMAR` en `main.py`). La página web muestra la imagen (160 × 120) con un recuadro donde lo ve. No se guardan imágenes en `/app`: con ellas App Lab marca "failed to start".
 
 ## Funcionamiento
 
-- Los VL53L0X leen las paredes de la celda actual, mantienen el robot centrado y lo detienen a `D_FRENTE` cuando hay pared enfrente.
-- **Odometría ligera** (medidas del CAD: VL53L0X laterales 40 mm y frontal 54 mm adelante del eje; lente a 162 mm, 32 mm adelante, 25° abajo):
-  - Sketch, en tiempo real: cuando un sensor lateral pasa el borde de una pared (poste entre celdas) corrige la posición y aprende la velocidad real (`escala`); con pared al frente a menos de 400 mm corrige lo que falta. Ajuste: `BORDE_AJ`, `MAX_CORR`.
-  - Python, antes de cada avance: la cámara mide la distancia a la base de la pared de enfrente y le suma o resta hasta 60 mm al avance para quedar centrado. Ajuste: `CAM_INCL`, `CAM_H`, `CAM_FOV_V` (el panel dibuja la línea amarilla y los mm).
-  - El panel web muestra cuánto le falta, qué paredes ve cada sensor y lo que mide la cámara. RPC `odo(i)`.
-- **Antes de cada recta** se lee el frontal 3 veces (la menor): nunca avanza más celdas de las que ve libres, aunque el mapa o la cámara digan otra cosa. La cámara solo corrige distancia si el frontal no ve nada a menos de 1 m (la cámara ve las paredes de 3/4 para arriba).
-- **Panel web → Ver sensores ToF:** dibujo en vivo de lo que mide cada VL53L0X y cuántas celdas libres hay al frente.
-- **Los VL53L0X mandan.** Se leen en cada celda (aunque ya se conozca) y antes de cada avance: si ven pared enfrente no se avanza, y corrigen paredes del mapa en los dos sentidos. Lo que ve solo la cámara no bloquea: hace el camino `PESO_CAM` celdas más caro.
-- La cámara ve por encima de las paredes: cada región de `ROI` (`"adelante,lado,pared"`) marca una pared de una celda hasta 2 adelante, aunque haya pared enfrente. Esas paredes van al mapa como tentativas, para que el flood‑fill descarte callejones antes de entrar. Si la cámara se equivoca y bloquea todo, el robot ignora esas paredes tentativas. Sin cámara, funciona solo con los VL53L0X (OLED: `SIN CAM`).
-- **Cámara en los puntos ciegos de los ToF** (posiciones del CAD): antes de cada avance revisa el piso de las diagonales de enfrente (`CIEGOS`, x ±25–60 mm, y 120–220 mm); si ve algo blanco ahí no avanza por esa salida. Si el frontal pierde la lectura y la cámara ve pared a menos de `CAM_CERCA` (230 mm), cuenta como pared.
-- **Busca el amarillo:** explora sin fin hasta que el TCS34725 ve AMAR (`OBJETIVO`) y la cámara también lo vio en esa celda (sin cámara basta el sensor); entonces para con el RPC `alto`. En cada celda los ToF dicen qué salidas están libres y va a la menos visitada (empate: pared derecha); no guarda paredes. Un toque a D2 lo detiene.
-- Sin ruta conocida, explora hasta la meta y regresa solo al inicio. No lo recojas hasta que la OLED diga `LISTO`.
-- Con ruta conocida, va directo a la meta con rectas largas a velocidad alta.
-- Botón corto: siguiente corrida (pon el robot en el inicio, viendo hacia `RUMBO_INI`).
-- Botón sostenido más de 2 s: borra mapa y conteo (laberinto nuevo).
-- Una marca se cuenta solo si el color se sostiene 3 lecturas y antes se vio piso. Además se guarda la celda y no se vuelve a contar.
-- **Centrado en recta:** solo corrige si un lateral lee menos de 90 mm (`D_LADO_MIN`): se aleja de esa pared, con la posición (`KC`) y qué tan rápido se acerca (`KD`). Más lejos de las 2 paredes va derecho.
-- **Regla de la mano derecha:** derecha, frente, izquierda, media vuelta. En una celda ya visitada 3 veces (isla) va a la salida menos visitada. El frente cuenta libre si el frontal lee 150 mm o más (`FRENTE_LIBRE`).
-- **Cámara al arrancar:** la busca una vez (OLED `LISTO` si la encuentra, `SIN CAM` si no). Un hilo en segundo plano revisa cada 2 s: si no hay cámara la busca, y si la hay revisa que siga conectada (si se desconecta pone `SIN CAM` y la vuelve a buscar; al encontrarla pone `LISTO`).
+**Sketch (STM32)**, solo mueve el robot:
+
+- Avanza por distancia: al arrancar toma la lectura del frontal y para cuando bajó 180 mm (`CELDA`). Si el frontal no ve nada a menos de 1 m va por tiempo (`MS_CELDA`), y si a medio avance aparece una pared sigue por distancia. Siempre para a 130 mm de la pared de enfrente (`D_FRENTE`) y se hace para atrás si queda más cerca.
+- En recta solo corrige el rumbo si un lateral lee menos de 90 mm (`D_LADO_MIN`).
+- Gira 90° por tiempo (`MS_90`).
+- Lee los ToF y el sensor de color y se los da al Python. RPC `odo(i)`: 0 mm recorridos, 1 mm que faltan, 5/6/7 frente/izq/der.
+
+**Python**, decide en cada paso:
+
+1. Lee los 3 ToF, la menor de 3 lecturas de cada uno.
+2. Mano derecha: derecha libre (lateral ≥ 120 mm) → gira a la derecha y avanza; si no, frente ≥ 150 mm → avanza; si no, izquierda; si no, media vuelta.
+3. Si ya pasó 3 veces por esa celda (rodea una isla) toma la salida que ha usado menos; la cámara desempata hacia el amarillo. La celda sale de los mm que de verdad avanzó.
+4. Si el sensor de color lee amarillo 3 veces seguidas se detiene: llegó a la meta (OLED `META`).
+
+- Botón corto: corrida nueva (pon el robot en el inicio). Otro toque la detiene. Sostenido más de 2 s: borra el conteo de colores.
+- **Panel web → Ver sensores ToF:** dibujo en vivo de lo que mide cada VL53L0X y qué haría el robot.
+- **Cámara al arrancar:** la busca una vez (OLED `LISTO` si la encuentra, `SIN CAM` si no). Un hilo revisa cada 2 s: si no hay cámara la busca y si se desconecta pone `SIN CAM`.

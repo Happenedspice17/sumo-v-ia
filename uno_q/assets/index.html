@@ -46,7 +46,7 @@
       <text id="tI" x="-195" y="-50" font-size="20" fill="#fff"></text>
       <text id="tD" x="195" y="-50" font-size="20" fill="#fff" text-anchor="end"></text>
     </svg>
-    <div style="margin-top:10px;font-size:20px">Qué haría (<span id="tofModo"></span>): <b id="accion">...</b></div>
+    <div style="margin-top:10px;font-size:20px">Qué haría: <b id="accion">...</b></div>
     <div style="font-size:14px;color:#666">Simulación: tapa o acerca un sensor con la mano y mira qué decide. No mueve el robot.</div>
     <div id="tofTxt" style="font-family:monospace;font-size:15px;margin-top:8px;white-space:pre-line"></div>
   </div>
@@ -56,10 +56,10 @@
   <div id="odo" style="font-family:monospace;font-size:15px;margin-top:6px;white-space:pre-line">...</div>
 </div>
 <div class="paso">
-  <div>Modo: <b>tonto</b> (sigue la pared derecha con los sensores, sin mapa; si rodea una isla prueba con la izquierda)</div>
+  <div>Mano derecha con los 3 ToF (la menor de 3 lecturas); si pasa 3 veces por una celda toma la salida menos usada. Para al leer amarillo.</div>
 </div>
 <div class="paso">
-  <div>Cámara (rojo = ve pared, verde = libre):</div>
+  <div>Cámara (recuadro amarillo = donde ve el amarillo):</div>
   <img id="cam" alt="sin cámara" style="width:100%;max-width:320px;image-rendering:pixelated;background:#000;border-radius:8px;margin-top:8px">
 </div>
 <div class="paso">
@@ -104,8 +104,7 @@ function pinta(d) {
     document.getElementById("odo").textContent =
       (p & 8 ? "Avanzando, faltan " + mm(o.falta) : "Quieto") + "\n" +
       "Sensores: izq " + si(1) + " · frente " + si(2) + " (" + mm(o.frente > 2000 ? null : o.frente) + ") · der " + si(4) + "\n" +
-      "Cámara: pared a " + mm(o.cam_mm) + (o.cam_err === null || o.cam_err === undefined ? "" : ", le faltan " + mm(o.cam_err)) + "\n" +
-      "Último avance: " + (o.corr || 0) + " correcciones, última " + mm(o.ult) + ", cámara " + mm(o.extra);
+      "Último avance: " + mm(o.mm);
   }
   document.getElementById("nums").textContent = `r ${r.toFixed(2)}  g ${g.toFixed(2)}  b ${b.toFixed(2)}  c ${c}`;
   const cont = document.getElementById("botones");
@@ -159,7 +158,6 @@ async function tof() {
     rayo("lD", 43, -40, 1, 0, d.der, d.pared);
     document.getElementById("tF").textContent = t(d.frente);
     document.getElementById("accion").textContent = d.accion;
-    document.getElementById("tofModo").textContent = d.modo;
     const fl = document.getElementById("flecha");
     fl.setAttribute("transform", "rotate(" + d.rel * 90 + ")");
     fl.querySelector("path").setAttribute("fill", d.accion.startsWith("Retrocede") || d.accion.startsWith("Frena") ? "#e53935" : "#1e88e5");
@@ -167,11 +165,6 @@ async function tof() {
     document.getElementById("tD").textContent = t(d.der);
     document.getElementById("tofTxt").textContent =
       "Rojo = pared (lados < " + d.pared + " mm, frente < " + (d.pared_f || d.pared) + " mm), verde = libre, gris = no ve nada\n" +
-      "Celdas libres al frente: " + (d.libres >= 99 ? "muchas" : d.libres) + "\n" +
-      "Cámara en puntos ciegos (diagonales): " + (d.ciego && d.ciego.izq !== null
-        ? "izq " + (d.ciego.izq ? "ALGO" : "libre") + " · der " + (d.ciego.der ? "ALGO" : "libre") +
-          (d.cam_mm ? " · pared al frente a " + Math.round(d.cam_mm) + " mm" : "")
-        : "sin dato (se revisa antes de cada avance)") +
       (d.mueve ? "\nAvanzando, faltan " + d.falta + " mm" : "");
   } catch (e) {}
   setTimeout(tof, 150);
