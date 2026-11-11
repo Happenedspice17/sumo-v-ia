@@ -187,9 +187,33 @@ def girar(rel):
     if rel:
         rpc("girar", rel)
         esperar()
+        rel += verifica_giro()
         time.sleep(0.1)                  # ToF frescos: con la lectura de antes del giro el sketch cree que tiene
                                          # la pared enfrente y avanza 0 mm (paso en pista)
     rumbo = (rumbo + rel) % 4
+
+
+def verifica_giro():
+    """Con MPU: si el giro quedo lejos del rumbo deseado (se atoro o choco), lo termina girando en su lugar.
+    Si aun asi queda a 45 grados o mas, acepta el rumbo real: devuelve los cuartos de vuelta de diferencia
+    y mueve la referencia del sketch, para que el mapa no se tuerza. Sin MPU el desvio vale 0."""
+    atoron = rpc("odo", 13)
+    if atoron:
+        print(f"MPU: el giro se atoro {atoron} vez/veces (retrocedio y siguio)")
+    dev = rpc("odo", 8)
+    for _ in range(2):
+        if abs(dev) <= 10:
+            return 0
+        print(f"MPU: el giro quedo a {dev:+d} grados, lo termino")
+        if rpc("alinear", 180) == 2:
+            esperar()
+        dev = rpc("odo", 8)
+    k = round(dev / 90)
+    if k:
+        print(f"MPU: quedo {k:+d} cuartos de vuelta distinto de lo pedido; el mapa toma el rumbo real")
+        if 90 * k - dev:
+            rpc("ajustar", 90 * k - dev)
+    return k
 
 
 def tof3(n=3):
@@ -216,7 +240,7 @@ def avanzar():
         print(f"Camara: rumbo chueco, corrijo {v['ang']:+.0f} grados")
         if rpc("ajustar", round(v["ang"])) == 2:
             esperar()
-    if rpc("alinear") == 2:              # con MPU: endereza al rumbo deseado antes de avanzar (hasta 45 grados)
+    if rpc("alinear", 45) == 2:          # con MPU: endereza al rumbo deseado antes de avanzar (hasta 45 grados)
         esperar()
         time.sleep(0.1)                  # ToF frescos
     if EXPERIMENTAL and v and v["abre"]:  # abertura en la celda siguiente: lento y voto debil de libre
@@ -229,6 +253,8 @@ def avanzar():
     rpc("mover", CELDA, int(lento))
     esperar(True)
     mm, saltos = rpc("odo", 0), rpc("odo", 3)
+    if rpc("odo", 12):                   # el acelerometro sintio un choque: el sketch ya retrocedio
+        print(f"MPU: choque a los {mm} mm (golpe {rpc('odo', 15) / 1000:.2f} g); retrocedi y vuelvo a leer")
     vivo["mm"], vivo["saltos"] = mm, saltos
     n = round(mm / CELDA)
     for _ in range(n):                   # por donde paso no hay pared, seguro
@@ -856,6 +882,9 @@ def detener():
     if rpc("arranque") or pedido == "alto":
         pedido = None
         print("Detenido con el boton o la web")
+        return True
+    if rpc("odo", 14):                   # el MPU vio que lo levantaron: la posicion ya no vale
+        print("MPU: me levantaron, detengo la corrida")
         return True
     return False
 

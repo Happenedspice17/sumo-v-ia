@@ -108,6 +108,15 @@ int signo = 0;                // +1/-1 segun como quedo montado; lo aprende en e
 float ref = 0;                // rumbo deseado (derecha +), valido con signo conocido
 float yaw0;                   // yaw al iniciar el giro
 uint32_t tGyro;
+// Acelerometro: choques, robot levantado. Giroscopio: giro atorado
+const float CHOQUE_G = 0.6;   // g: golpe horizontal sobre el promedio que cuenta como choque (calibrar con el pico del log)
+const float LEVANTA_G = 0.8;  // g: si la vertical baja de esto 150 ms seguidos, lo levantaron o se volteo
+const int RETRO_MS = 250;     // ms para atras despues de un choque
+const int ATORADO_MS = 400;   // ms girando sin que el giroscopio vea 2 grados: atorado contra la pared
+float axF = 0, ayF = 0, pico = 0;
+int choque = 0, levantado = 0, atorones = 0;
+uint32_t tRetro = 0, tLev = 0, tGiroMov = 0, tDes = 0;
+float yawMov = 0;
 
 // ---------- RPC desde Python ----------
 int rpcMover(int mm, int lento) {
@@ -136,14 +145,14 @@ int rpcGirar(int cuartos) {
 // Corrige el rumbo g grados (derecha +) con lo que ve la camara antes de avanzar.
 // Con MPU y signo conocido no gira: mueve el rumbo deseado y la recta lo sostiene (el giroscopio derivo).
 // Si no, gira en su lugar; devuelve 2 si hay que esperar el giro, 1 si no.
-// Con MPU: antes de avanzar gira en su lugar hasta el rumbo deseado si se desvio ALIN_MIN grados o mas
-// (hasta 45; mas es una lectura mala). Devuelve 2 si hay que esperar el giro, 0 si no hizo falta.
+// Con MPU: gira en su lugar hasta el rumbo deseado si se desvio ALIN_MIN grados o mas y no mas de lim
+// (antes de avanzar lim = 45: mas es una lectura mala; tras un giro fallido lim = 180). 2 = hay que esperar.
 const float ALIN_MIN = 3;
-int rpcAlinear() {
+int rpcAlinear(int lim) {
   ult = 'A';
   if (ocupado || !(mpuOk && signo)) return 0;
   float e = ref - signo * yaw;
-  if (fabs(e) < ALIN_MIN || fabs(e) > 45) return 0;
+  if (fabs(e) < ALIN_MIN || fabs(e) > lim) return 0;
   arg = (int)roundf(e);
   if (arg == 0) return 0;
   alin = true;
@@ -185,6 +194,10 @@ int rpcOdo(int i) {
     case 2: return (dist[0] < PARED) | (dist[1] < PARED_F) << 1 | (dist[2] < PARED) << 2 | (tipo != NADA) << 3;
     case 3: return saltos;
     case 8: return signo ? (int)(signo * yaw - ref) : 0;   // desvio del rumbo deseado (grados)
+    case 12: return choque;                                  // el ultimo avance choco
+    case 13: return atorones;                                // veces que el ultimo giro se atoro
+    case 14: { int l = levantado; levantado = 0; return l; } // lo levantaron (se borra al leerlo)
+    case 15: return (int)(pico * 1000);                      // golpe maximo del ultimo avance (mg)
     case 9: case 10: case 11: return crudo[i - 9];           // izq, frente, der sin calibrar
     case 6: return dist[0];
     case 7: return dist[2];
@@ -272,6 +285,9 @@ void iniciaMov() {
     dur = max(total * MS_CELDA / CELDA, 50L);
     objetivo = dist[1] < RANGO ? max(dist[1] - (int)total, D_FRENTE) : -1;
     saltos = 0;
+    choque = 0;
+    pico = 0;
+    tRetro = 0;
     dMin = 9999;
     tBaja = millis();
     tCen = 0;
@@ -280,6 +296,10 @@ void iniciaMov() {
     dirR = -dirL;
     dur = max(abs(arg) * MS_90 / 90, 30L);
     yaw0 = yaw;
+    yawMov = yaw;
+    tGiroMov = millis();
+    tDes = 0;
+    atorones = 0;
     if (signo && !alin) ref += arg;
     alin = false;
   }
@@ -343,11 +363,31 @@ void control() {
       else motores(dirL * VEL_GIRO, dirR * VEL_GIRO);
       return;
     }
+    // atorado: las ruedas empujan y el giroscopio no ve giro (una esquina contra la pared): atras 200 ms y sigue
+    if (tDes) {
+      if (millis() < tDes) { motores(-VEL_MIN, -VEL_MIN); return; }
+      tDes = 0;
+      yawMov = yaw;
+      tGiroMov = millis();
+    }
+    if (fabs(yaw - yawMov) > 2) { yawMov = yaw; tGiroMov = millis(); }
+    else if (millis() - tGiroMov > ATORADO_MS) {
+      if (++atorones > 2) { termina(); return; }
+      tDes = millis() + 200;
+      return;
+    }
     // con MPU: hasta el rumbo deseado (absoluto: corrige lo que se paso o le falto en giros anteriores)
     float f = signo ? (ref - signo * yaw) * dirL : abs(arg) - fabs(yaw - yaw0);
-    if (f <= min(ADELANTO, abs(arg) / 3.0f) || t >= max(3 * dur, 400L)) { termina(); return; }
+    if (f <= min(ADELANTO, abs(arg) / 3.0f) || t >= max(3 * dur, 1500L)) { termina(); return; }
     int v = f < 25 ? (VEL_GIRO + VEL_MIN) / 2 : VEL_GIRO;
     motores(dirL * v, dirR * v);
+    return;
+  }
+  // Choque (acelerometro): atras RETRO_MS y termina; Python vuelve a leer y se endereza antes de avanzar
+  if (tRetro) {
+    if (millis() < tRetro) { motores(-VEL_MIN, -VEL_MIN); return; }
+    tRetro = 0;
+    termina();
     return;
   }
   // Avanza por distancia con el frontal; sin pared a la vista, por tiempo
@@ -397,12 +437,47 @@ bool mpuInit() {
   mpuEscribe(0x6B, 0);            // despierta
   mpuEscribe(0x1A, 3);            // filtro ~44 Hz
   mpuEscribe(0x1B, 0x08);         // +-500 grados/s
+  mpuEscribe(0x1C, 0x00);         // acelerometro +-2 g (16384 LSB/g)
   delay(100);
   long s = 0;
   for (int i = 0; i < 200; i++) { s += gz(); delay(3); }
   bias = s / 200.0f;
   tGyro = micros();
   return true;
+}
+
+// Cada 10 ms: golpe horizontal (sobre el promedio lento: quita la inclinacion del montaje) y vertical
+void leeAccel() {
+  Wire.beginTransmission(MPU_ADDR);
+  Wire.write(0x3B);               // ACCEL_XOUT_H
+  Wire.endTransmission(false);
+  Wire.requestFrom(MPU_ADDR, 6);
+  float a[3];
+  for (int i = 0; i < 3; i++) {
+    uint8_t hi = Wire.read();
+    uint8_t lo = Wire.read();
+    a[i] = (int16_t)(hi << 8 | lo) / 16384.0f;
+  }
+  float g = hypotf(a[0] - axF, a[1] - ayF);
+  axF += 0.05f * (a[0] - axF);
+  ayF += 0.05f * (a[1] - ayF);
+  if (tipo == AVANZA) {
+    pico = max(pico, g);
+    if (!tRetro && millis() - tIni > 150 && g > CHOQUE_G) {   // los primeros 150 ms son el arranque
+      choque = 1;
+      tRetro = millis() + RETRO_MS;
+    }
+  }
+  if (fabs(a[2]) < LEVANTA_G) {     // inclinado o en el aire
+    if (!tLev) tLev = millis();
+    else if (millis() - tLev > 150 && !levantado) {
+      levantado = 1;
+      cmd = NADA;
+      if (tipo != NADA) termina();
+    }
+  } else {
+    tLev = 0;
+  }
 }
 
 void leeGyro() {
@@ -619,6 +694,7 @@ void loop() {
 
   if (t - tCtrl >= T_CTRL) {
     tCtrl = t;
+    if (mpuOk) leeAccel();
     if (tipo != NADA) control();
   }
 

@@ -46,9 +46,9 @@ Se pasan mensajes entre ellas. El STM32 ejecuta cada movimiento por su cuenta y 
 | `mover(mm, lento)` | Avanza hasta *mm* (una celda = 180 mm). Si `lento` es 1 usa `VEL_LENTO`. No bloquea; devuelve 0 si ya hay un movimiento en curso |
 | `girar(k)` | Gira en sitio *k* × 90°; el signo indica el sentido (2 = media vuelta) |
 | `ajustar(g)` | Corrige el rumbo *g* grados (derecha +) con lo que mide la cámara. Con MPU y sentido conocido no gira: mueve el rumbo deseado y la recta lo sostiene (devuelve 1). Si no, gira en su lugar (devuelve 2: hay que esperar) |
-| `alinear()` | Con MPU: antes de avanzar gira en su lugar hasta el rumbo deseado si se desvió 3° o más (`ALIN_MIN`, hasta 45°). Devuelve 2 si hay que esperar. Sin MPU devuelve 0 |
+| `alinear(lim)` | Con MPU: gira en su lugar hasta el rumbo deseado si se desvió 3° o más (`ALIN_MIN`) y no más de *lim* (45 antes de avanzar; 180 para terminar un giro fallido). Devuelve 2 si hay que esperar. Sin MPU devuelve 0 |
 | `ocupado()` | 1 mientras hay un movimiento activo |
-| `odo(i)` | Lecturas: 0 = mm recorridos, 1 = mm que faltan, 2 = máscara de paredes y movimiento, 3 = saltos (1 izquierda, 2 frente, 4 derecha), 5 / 6 / 7 = distancia frente / izquierda / derecha (mm), 8 = desvío de rumbo en grados (con MPU) |
+| `odo(i)` | Lecturas: 0 = mm recorridos, 1 = mm que faltan, 2 = máscara de paredes y movimiento, 3 = saltos (1 izquierda, 2 frente, 4 derecha), 5 / 6 / 7 = distancia frente / izquierda / derecha (mm), 8 = desvío de rumbo en grados, 12 = el último avance chocó, 13 = veces que el último giro se atoró, 14 = lo levantaron (se borra al leerlo), 15 = golpe máximo del último avance en mg (12 a 15 solo con MPU) |
 | `color()` | Último color confirmado (3 lecturas seguidas), una sola vez |
 | `alto()` | Detiene el movimiento (Python lo pide al confirmar la meta) |
 | `arranque()` | Evento del botón: 1 = corto, 2 = largo |
@@ -287,6 +287,8 @@ Valores tal como están en `sketch.ino` y `main.py`.
 | `D_LADO` | 50 mm | Distancia lateral con el robot centrado |
 | `KC` / `KD` | 0.8 / 0.3 | Centrado (posición / velocidad de acercamiento) |
 | `KG` | 2.0 PWM/° | Sostener rumbo en recta (con MPU-6050) |
+| `CHOQUE_G` / `LEVANTA_G` | 0.6 g / 0.8 g | Golpe horizontal que cuenta como choque / vertical debajo de la cual está levantado (150 ms) |
+| `RETRO_MS` / `ATORADO_MS` | 250 / 400 ms | Retroceso tras un choque / giro sin moverse 2° que cuenta como atorado |
 | `ALIN_MIN` | 3° | Con MPU, desvío desde el que endereza en su lugar antes de avanzar |
 | `ADELANTO` | 6° | Corta el giro antes por la inercia (si se pasa, subir) |
 | `AJUSTE_DER` | −10 | Diferencia de PWM en recta; negativo = más fuerza al motor izquierdo (en pista se iba a la izquierda) |
