@@ -64,7 +64,6 @@ Con el hub conectado al USB-C, App Lab se conecta por WiFi (el puerto no puede i
 - Botón corto: siguiente corrida (pon el robot en el inicio, viendo hacia `RUMBO_INI`).
 - Botón sostenido más de 2 s: borra mapa y conteo (laberinto nuevo).
 - Una marca se cuenta solo si el color se sostiene 3 lecturas y antes se vio piso. Además se guarda la celda y no se vuelve a contar.
-- **Alinear:** parado en cada celda (y después de cada giro) barre de -10° a +10° en pasos de ~5° (`ajustar` del sketch, `MS_5`) y se queda donde la pared de enfrente se ve más cerca (perpendicular); sin pared enfrente, donde las 2 laterales suman menos. Si `MS_5` no alcanza a mover el robot, súbelo.
-- **Centrado en recta:** además de la posición entre paredes (`KC`), el sketch corrige el rumbo según qué tan rápido se acerca a una pared lateral (`KD`).
-- **Regla de la mano derecha:** derecha, frente, izquierda, media vuelta. En una celda ya visitada 3 veces (isla) va a la salida menos visitada. El frente cuenta libre solo si el frontal lee al menos 220 mm (130 mm = pared en esta celda).
+- **Centrado en recta:** solo corrige si un lateral lee menos de 90 mm (`D_LADO_MIN`): se aleja de esa pared, con la posición (`KC`) y qué tan rápido se acerca (`KD`). Más lejos de las 2 paredes va derecho.
+- **Regla de la mano derecha:** derecha, frente, izquierda, media vuelta. En una celda ya visitada 3 veces (isla) va a la salida menos visitada. El frente cuenta libre si el frontal lee 150 mm o más (`FRENTE_LIBRE`).
 - **Cámara al arrancar:** la busca una vez (OLED `LISTO` si la encuentra, `SIN CAM` si no). Un hilo en segundo plano revisa cada 2 s: si no hay cámara la busca, y si la hay revisa que siga conectada (si se desconecta pone `SIN CAM` y la vuelve a buscar; al encontrarla pone `LISTO`).
