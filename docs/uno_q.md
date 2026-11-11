@@ -81,7 +81,7 @@ Geometría actual:
 | Parámetro | Valor |
 |---|---|
 | Altura del lente | 162 mm (placa 12 mm arriba de la manga para dejar libre la parte de atrás) |
-| Inclinación | 25° hacia abajo |
+| Inclinación | 40° hacia abajo |
 | Campo de visión | ~100° × 75° |
 | Ve el piso desde | ~3 cm adelante |
 
