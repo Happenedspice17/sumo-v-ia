@@ -58,6 +58,7 @@ FRENTE_LIBRE = 120                       # mm reales: a la mitad entre pared en 
 D_FRENTE_TOF = 30                        # mm reales donde se detiene el sketch con pared enfrente (= D_FRENTE)
 FUERA = 2000                             # mm: los 2 laterales sin nada a esta distancia = salio del laberinto
 RECORRIDO = -3                           # voto de un paso por donde ya paso (-5) con hasta 2 lecturas en contra
+PASILLO = 3                              # celdas maximas de un tiron con pared a ambos lados (1 = parar en cada celda)
 VOTO_MAX = 5                             # cada lectura vota pared (+1) o libre (-1); tope para que el mapa se corrija
 Y_COLOR = 34                             # mm del eje al sensor de color (adelante; CAD: COLOR_Y)
 
@@ -227,7 +228,7 @@ def tof3(n=3):
     return d
 
 
-def avanzar():
+def avanzar(celdas=1):
     """Una celda por distancia (el sketch para con el frontal); la posicion sale de los mm recorridos.
     Antes, la camara: blanco en el camino -> lento; rumbo chueco -> lo corrige. Devuelve los ToF que saltaron (0 = ninguno)."""
     global pos
@@ -251,7 +252,7 @@ def avanzar():
             h = (rumbo + rel) % 4
             sig[h] = max(-VOTO_MAX, sig[h] - 1)
         print("Camara: abertura adelante", ["izq" if r < 0 else "der" for r in v["abre"]])
-    rpc("mover", CELDA, int(lento))
+    rpc("mover", CELDA * celdas, int(lento))
     esperar(True)
     mm, saltos = rpc("odo", 0), rpc("odo", 3)
     if rpc("odo", 12):                   # el acelerometro sintio un choque: el sketch ya retrocedio
@@ -259,7 +260,10 @@ def avanzar():
         vuelve_al_carril()
     vivo["mm"], vivo["saltos"] = mm, saltos
     n = round(mm / CELDA)
-    for _ in range(n):                   # por donde paso no hay pared, seguro
+    for i in range(n):                   # por donde paso no hay pared, seguro
+        if i:                            # pasillo: la celda intermedia tenia paredes (abrirse una lo habria parado)
+            celda(pos)[(rumbo - 1) % 4] = celda(pos)[(rumbo + 1) % 4] = VOTO_MAX
+            vistas.add(pos)
         sig = vecino(pos, rumbo)
         celda(pos)[rumbo] = celda(sig)[(rumbo + 2) % 4] = -VOTO_MAX
         pos = sig
@@ -812,7 +816,9 @@ def buscar_color():
             girar(rel)
             f = "AVANZA"
         else:
-            saltos = avanzar()
+            # pasillo (pared a ambos lados y sin girar): varias celdas de un tiron; para si se abre un lateral
+            n = PASILLO if rel == 0 and lect[0] < PARED and lect[2] < PARED else 1
+            saltos = avanzar(n)
             f = "ESCANEA" if saltos else "SENSA"
     return True
 

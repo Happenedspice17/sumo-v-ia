@@ -89,6 +89,7 @@ int tipo = NADA;
 int dirL, dirR;
 long dur;
 long total;                   // mm del avance en curso
+long pedido;                  // mm que pidio Python (tope de saltos)
 int objetivo = -1;            // lectura del frontal donde parar; -1 = no ve pared, va por tiempo
 long hecho = 0;               // mm que recorrio el ultimo avance
 int vmax = VEL_EXPLORA;
@@ -112,7 +113,7 @@ float ref = 0;                // rumbo deseado (derecha +), valido con signo con
 float yaw0;                   // yaw al iniciar el giro
 uint32_t tGyro;
 // Acelerometro: choques, robot levantado. Giroscopio: giro atorado
-const float CHOQUE_G = 0.8;   // g: golpe horizontal sobre el promedio que hace sospechar un choque (calibrar con el log)
+const float CHOQUE_G = 1.5;   // g: golpe horizontal sobre el promedio que hace sospechar un choque (calibrar con el log)
 const float CHOQUE_FUERTE = 2.5;  // g: sin pared enfrente para confirmarlo, solo un golpe asi cuenta como choque
 const int CONFIRMA_MS = 250;  // ms despues del golpe: si el frontal no bajo 10 mm, el robot esta trabado = choque
 const float LEVANTA_G = 0.8;  // g: si la vertical baja de esto 150 ms seguidos, lo levantaron o se volteo
@@ -291,7 +292,7 @@ void iniciaMov() {
   tipo = cmd;
   if (cmd == AVANZA) {
     dirL = dirR = 1;
-    total = max((long)arg, 1L);
+    total = pedido = max((long)arg, 1L);
     dur = max(total * MS_CELDA / CELDA, 50L);
     objetivo = dist[1] < RANGO ? max(dist[1] - (int)total, D_FRENTE) : -1;
     saltos = 0;
@@ -428,7 +429,7 @@ void control() {
   if (objetivo < 0 && dist[1] < RANGO) objetivo = max(dist[1] - (int)falta(), D_FRENTE);   // aparece pared: sigue por distancia
   long f = falta();
   if (f <= 0 || t > 3 * dur) { termina(); return; }   // 3 * dur: seguro si el frontal deja de bajar
-  if (total - f > CELDA + TRAS_SALTO) { termina(); return; }   // varios saltos seguidos no lo alargan sin fin
+  if (total - f > pedido + TRAS_SALTO) { termina(); return; }   // varios saltos seguidos no lo alargan sin fin
   const float zona = CELDA / 4.0f;
   float tope = f < zona ? VEL_MIN + (vmax - VEL_MIN) * f / zona : vmax;
   if (dist[1] < D_FRENTE + 100) tope = min(tope, (float)VEL_MIN + FRENA_K * (dist[1] - D_FRENTE));   // frena al acercarse
