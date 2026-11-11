@@ -19,7 +19,6 @@ const uint8_t XSHUT[3] = {A0, A1, A2};   // izq, frente, der
 const long MS_CELDA = 600;    // ms por celda de 18 cm
 const long MS_RAPIDA = 400;   // ms por celda en corridas rapidas
 const long MS_90 = 250;       // ms por giro de 90 grados
-const long MS_5 = 25;         // ms por giro de ~5 grados (alinear); subelo si no alcanza a moverse
 const int VEL_EXPLORA = 140;
 const int VEL_RAPIDA = 220;
 const int VEL_GIRO = 130;
@@ -35,6 +34,7 @@ const int FRENA_K = 2;        // PWM por mm: con pared al frente baja la velocid
 const int D_LADO = 50;        // mm a una pared lateral con el robot centrado
 const float KC = 0.8;         // ganancia de centrado
 const float KD = 0.3;         // ganancia de rumbo: corrige segun que tan rapido se acerca a una pared lateral
+const int D_LADO_MIN = 90;    // mm: solo corrige si un lateral lee menos de esto (se aleja de esa pared)
 const float OFF_COLOR = 0.2;  // distancia eje->sensor de color, en celdas
 // Odometria ligera (medidas del CAD, chasis/chasis.scad; el eje de las ruedas es el centro del robot)
 const int CELDA = 180;        // mm de centro a centro de celda
@@ -109,7 +109,6 @@ int rpcMover(int celdas, int r, int extra) {
   return 1;
 }
 
-long msGiro;
 int eCen;                     // centrado: error anterior, su cambio en mm/s y cuando se midio
 float deCen;
 unsigned long tCen;
@@ -118,18 +117,6 @@ int rpcGirar(int cuartos) {
   ult = 'G';
   if (ocupado) return 0;
   arg = cuartos;
-  msGiro = abs(cuartos) * MS_90;
-  cmd = GIRA;
-  ocupado = 1;
-  return 1;
-}
-
-// Giro chico para alinear: pasos de ~5 grados (+ derecha, - izquierda)
-int rpcAjustar(int pasos) {
-  ult = 'J';
-  if (ocupado) return 0;
-  arg = pasos;
-  msGiro = abs(pasos) * MS_5;
   cmd = GIRA;
   ocupado = 1;
   return 1;
@@ -241,7 +228,7 @@ void iniciaMov() {
     dirL = arg > 0 ? 1 : -1;
     dirR = -dirL;
     unidad = MS_CELDA;
-    dur = msGiro;
+    dur = abs(arg) * MS_90;
   }
   cmd = NADA;
 }
@@ -291,11 +278,11 @@ void odometria() {
 
 // Centrado con los 2 laterales: e = posicion entre paredes; de = que tan rapido cambia (rumbo torcido)
 float centrado() {
-  bool L = dist[0] < PARED, R = dist[2] < PARED;
+  bool L = dist[0] < D_LADO_MIN, R = dist[2] < D_LADO_MIN;   // lejos de las 2 paredes: va derecho
   int e = 0;
   if (L && R) e = dist[0] - dist[2];
-  else if (L) e = dist[0] - D_LADO;
-  else if (R) e = D_LADO - dist[2];
+  else if (L) e = dist[0] - D_LADO_MIN;
+  else if (R) e = D_LADO_MIN - dist[2];
   unsigned long now = millis();
   if (!(L || R)) { tCen = 0; deCen = 0; }
   else if (!tCen) { tCen = now; eCen = e; deCen = 0; }
@@ -496,7 +483,6 @@ void setup() {
   Monitor.begin();
   Bridge.provide("mover", rpcMover);
   Bridge.provide("girar", rpcGirar);
-  Bridge.provide("ajustar", rpcAjustar);
   Bridge.provide("ocupado", rpcOcupado);
   Bridge.provide("color", rpcColor);
   Bridge.provide("arranque", rpcArranque);

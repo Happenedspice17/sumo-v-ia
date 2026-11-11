@@ -63,6 +63,7 @@ CELDA, PARED_CARA = 180, 84              # mm entre centros; cara de la pared de
 ODO_MAX = 30                             # mm: correcciones de la camara mas grandes se ignoran
 TOF_RANGO = 1000                         # mm: si el frontal ve algo mas cerca, manda el frontal y no la camara
 PARED_F = 130                            # mm: al frente, menos de esto = pared (= PARED_F del sketch)
+FRENTE_LIBRE = 150                       # mm: con el frontal leyendo esto o mas, avanza derecho
 D_FRENTE_TOF = 130                       # mm que lee el frontal con el robot centrado y pared en su celda (= D_FRENTE del sketch)
 odo = {"falta": 0, "corr": 0, "ult": 0, "cam_mm": None, "cam_err": None, "extra": 0, "frente": None,
        "ciego": {"izq": None, "der": None}}
@@ -241,50 +242,6 @@ def esperar(origen, h):
     revisar_color(origen, h)
 
 
-PARED_L = 120                            # mm: lateral con pared (= PARED del sketch)
-FRENTE_ALINEA = 400                      # mm: con la pared de enfrente mas cerca que esto, alinea con ella
-
-
-def alinear():
-    """Giros de ~5 grados a cada lado para quedar derecho: busca donde la pared de enfrente se ve mas
-    cerca (perpendicular) o, sin ella, donde las 2 laterales suman menos (paralelo al pasillo)."""
-    def mide():
-        time.sleep(0.1)
-        f = tof_frente()
-        if f < FRENTE_ALINEA:
-            return f
-        i, d = rpc("odo", 6), rpc("odo", 7)
-        return i + d if i < PARED_L and d < PARED_L else None
-
-    def paso(k):
-        rpc("ajustar", k)
-        while rpc("ocupado"):
-            time.sleep(0.02)
-
-    en = 0                               # donde esta, en pasos de 5 grados
-
-    def ve(k):
-        nonlocal en
-        paso(k - en)
-        en = k
-        return mide()
-
-    val = {0: mide()}
-    if val[0] is None:
-        return
-    for k in (1, 2, -1, -2):             # barre de -10 a +10 grados
-        val[k] = ve(k)
-    val = {k: v for k, v in val.items() if v is not None}
-    mejor = min(val, key=lambda k: (val[k] - (1 if k == 0 else 0), abs(k)))   # quieto si no mejora
-    while abs(mejor) in (2, 3):          # el minimo quedo en la orilla: sigue para ese lado (hasta 20 grados)
-        k = mejor + (1 if mejor > 0 else -1)
-        v = ve(k)
-        if v is None or v >= val[mejor]:
-            break
-        val[k], mejor = v, k
-    paso(mejor - en)
-
-
 def girar_a(h):
     global rumbo
     dif = (h - rumbo) % 4
@@ -312,7 +269,9 @@ def celdas_libres():
             print(f"Frontal sin lectura; la camara ve pared a {odo['cam_mm']:.0f} mm")
             return 0
         return 99
-    return max(0, int((d - D_FRENTE_TOF + CELDA / 2) // CELDA))   # 137 mm = pared en esta celda: 0, no 1
+    if d < FRENTE_LIBRE:
+        return 0
+    return max(1, int((d - D_FRENTE_TOF + CELDA / 2) // CELDA))
 
 
 def avanzar(n, rapido=False):
@@ -558,7 +517,8 @@ def que_haria(izq, frente, der, mueve):
         return "Retrocede: muy pegado a la pared de enfrente", 2, 0
     if mueve and frente < PARED_F:
         return f"Frena: pared a {frente} mm, se detiene a {D_FRENTE_TOF} mm", 0, 0
-    libres = 99 if frente >= TOF_RANGO else max(0, int((frente - D_FRENTE_TOF + CELDA / 2) // CELDA))
+    libres = 0 if frente < FRENTE_LIBRE else (99 if frente >= TOF_RANGO else
+                                              max(1, int((frente - D_FRENTE_TOF + CELDA / 2) // CELDA)))
     libre = {0: libres > 0, -1: izq >= 120, 1: der >= 120, 2: True}
     rel = next(r for r in (1, 0, -1, 2) if libre[r])   # modo tonto: pared derecha
     n = (libres if libres < 99 else "varias") if rel == 0 else 1
@@ -684,9 +644,8 @@ def seguir_pared(objetivos, mano=1):
 
 
 def buscar_color():
-    """Explora sin fin hasta encontrar el color OBJETIVO: se alinea con giros de 5 grados, los ToF dicen
-    que salidas estan libres y sigue la mano derecha; en una celda ya vista 3 veces va a la menos
-    visitada. Un toque a D2 lo detiene."""
+    """Explora sin fin hasta encontrar el color OBJETIVO: los ToF dicen que salidas estan libres y
+    sigue la mano derecha; en una celda ya vista 3 veces va a la menos visitada. Un toque a D2 lo detiene."""
     global encontrado
     encontrado = False
     estado(1)
@@ -696,10 +655,9 @@ def buscar_color():
             print("Detenido con el boton")
             return False
         visitas[pos] = visitas.get(pos, 0) + 1
-        alinear()
+        time.sleep(0.06)
         p = rpc("paredes")
-        # frente libre solo si cabe media celda antes de D_FRENTE (137 mm es pared en esta celda)
-        libre = {-1: not p & 1, 0: tof_frente() >= D_FRENTE_TOF + CELDA / 2, 1: not p & 4, 2: True}
+        libre = {-1: not p & 1, 0: tof_frente() >= FRENTE_LIBRE, 1: not p & 4, 2: True}
         # regla de la mano derecha; si ya paso 3 veces por aqui (isla), la salida menos visitada
         opciones = [r for r in (mano, 0, -mano) if libre[r] and (pos, (rumbo + r) % 4) not in bloq] or [2]
         def veces(r):
@@ -715,8 +673,6 @@ def buscar_color():
         if ve is not None and rel == ve:
             print(f"Camara: {COLORES[OBJETIVO]} hacia", {-1: "la izquierda", 0: "el frente", 1: "la derecha"}[ve])
         girar_a((rumbo + rel) % 4)
-        if rel:
-            alinear()                    # el giro por tiempo deja el rumbo chueco
         if not encontrado and not avanzar(1):
             bloq.add((pos, rumbo))       # no la vuelve a intentar desde esta celda
     return True
