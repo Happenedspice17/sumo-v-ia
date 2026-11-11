@@ -688,6 +688,10 @@ Además, la cámara ya no se busca en `/dev/video0` y `video1` (son internos) y 
 
 **Documentación.** Manual técnico con la sección 6.1 sobre el MPU-6050 (configuración de registros, integración del rumbo, alineación, verificación de giros, choques, atorones, robot levantado, fusión con la cámara y calibración); manual de uso con la tabla de ajustes del MPU y fallas; diagrama de conexiones y BOM con el MPU-6050 (AD0 a GND); sección "Control de versiones" en los 2 manuales.
 
+### Etapa 43. Un solo Python (11-nov)
+
+`python_experimental/main.py` era el mismo archivo que `python/main.py` con `EXPERIMENTAL = True`. Tener 2 copias obligaba a mantenerlas iguales y confundía al ver el repositorio. Se retira la carpeta (queda en el commit `2e01996`); la versión experimental se activa cambiando esa línea.
+
 ## Pruebas realizadas
 
 La tabla distingue lo medido o probado de lo que solo se deduce de la secuencia de commits (marcado **deducido**). Cuando el repositorio guarda la sucesión de valores pero no el resultado de cada intento, se dice. Las pruebas en pista del equipo están en su propia subsección; la última versión (distancia, saltos, votos, máquina de estados, MPU) aún no se ha probado en pista.

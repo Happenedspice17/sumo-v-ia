@@ -128,12 +128,12 @@ El resultado es "piso" si la menor distancia es mayor que 0.02 o si el brillo es
 
 **Sensor.** innomaker U20CAM-9281M: OV9281 de 1 MP **monocromático** con **obturador global** (todos los píxeles se exponen al mismo tiempo), hasta 720p a 120 fps, lente M12 gran angular, UVC (Linux la ve sin driver). Se captura a 320 × 240 con OpenCV y V4L2. El obturador global evita la deformación por movimiento (*rolling shutter*) de las cámaras comunes, que tuerce las líneas rectas cuando el robot gira. Al no tener filtro de color (matriz de Bayer), cada píxel recibe toda la luz: más sensibilidad y menos ruido en la luminancia, que es lo único que se usa. Por la misma razón **no puede ver el amarillo**; la meta la confirma el TCS34725.
 
-**Versiones.** El Python tiene dos versiones con el mismo código y una sola bandera, `EXPERIMENTAL`. La estable (`python/`) usa las técnicas 1 a 3; la experimental (`python_experimental/`) agrega la 4 y la 5. Las dos usan el mismo sketch:
+**Versiones.** Un solo Python (`python/main.py`) con una bandera, `EXPERIMENTAL`. En `False` (como está en git) usa las técnicas 1 a 3; en `True` agrega la 4 y la 5:
 
-| Versión | Sketch (STM32) | Python (Linux) | Cámara |
-|---|---|---|---|
-| Estable | `sketch/` | `python/` | 1 a 3: exposición fija, umbral automático (Otsu), corrección de rumbo |
-| Experimental | `sketch/` | `python_experimental/` | 1 a 5: además, distancia por cámara y aberturas adelante |
+| `EXPERIMENTAL` en `python/main.py` | Cámara |
+|---|---|
+| `False` (estable, como está en git) | 1 a 3: exposición fija, umbral automático (Otsu), corrección de rumbo |
+| `True` (experimental) | 1 a 5: además, distancia por cámara y aberturas adelante |
 
 ## 5.1 Técnicas 1 a 3 (versión estable)
 
@@ -331,7 +331,7 @@ Valores tal como están en `sketch.ino` y `main.py`.
 | `ZONA_BORDES` | (0.45, 0.95) | Filas donde busca las bases de las paredes |
 | `ANG_MIN` / `ANG_MAX` | 4° / 20° | Corrige el rumbo desde / descarta arriba de |
 | `camcal` (web) | expo 0, x₀ 160, k 0.008 | Exposición, columna "derecho", radianes por píxel; experimental: fila → mm. En `/app/datos/camara.json` |
-| `EXPERIMENTAL` | False / True | `python/` / `python_experimental/` |
+| `EXPERIMENTAL` | False | `True` activa la distancia y las aberturas por cámara (técnicas 4 y 5) |
 | `COLS` / `SIG` | 5 columnas / 60-240 mm | Experimental: columnas de distancia / tramo de la celda siguiente |
 | `ZONA_PASO` | (0.30, 0.55, 0.70, 1.00) | Piso por donde va a pasar, en fracción de la imagen |
 | `BLANCO_MAX` | 0.15 | Fracción de blanco que activa el avance lento |
@@ -386,7 +386,8 @@ La bitácora completa de cambios, problemas y soluciones está en `historial_cam
 | B3 | 11-nov | Cámara OV9281 monocromática: Otsu, rumbo por punto de fuga; `python_experimental/` |
 | B4 | 11-nov | Exploración completa (meta al centro), calibración de ToF a 100 mm, control desde la web, cronómetro |
 | B5 | 11-nov | MPU completo: alinear, giros verificados, choques, giro atorado, robot levantado |
-| **B6** | **11-nov** | **Se retira `sketch_sin_mpu/` del repositorio: el robot lleva MPU-6050. Queda un solo sketch, `sketch/`** |
+| B6 | 11-nov | Se retira `sketch_sin_mpu/` del repositorio: el robot lleva MPU-6050. Queda un solo sketch, `sketch/` |
+| **B7** | **11-nov** | **Se retira `python_experimental/` (era el mismo `main.py` con `EXPERIMENTAL = True`). Queda un solo Python** |
 
 **Recuperar la versión sin MPU.** La última versión de `uno_q/sketch_sin_mpu/` está en el commit `2e01996` del repositorio. Se recupera con:
 
@@ -394,4 +395,4 @@ La bitácora completa de cambios, problemas y soluciones está en `historial_cam
 git show 2e01996:uno_q/sketch_sin_mpu/sketch.ino > sketch_sin_mpu.ino
 ```
 
-(o en GitHub, abriendo el commit `2e01996` y la carpeta `uno_q/sketch_sin_mpu/`). Funciona con el mismo Python y la misma página web; gira y avanza por tiempo (`MS_90`, `MS_CELDA`). Además, `uno_q/sketch/` sigue funcionando sin MPU si no lo detecta al arrancar.
+(o en GitHub, abriendo el commit `2e01996` y la carpeta `uno_q/sketch_sin_mpu/`; ahí también está `uno_q/python_experimental/`). Funciona con el mismo Python y la misma página web; gira y avanza por tiempo (`MS_90`, `MS_CELDA`). Además, `uno_q/sketch/` sigue funcionando sin MPU si no lo detecta al arrancar.

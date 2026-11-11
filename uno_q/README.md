@@ -30,14 +30,14 @@ GND común entre todo. No alimentes el UNO Q con el regulador de 5 V del L298N. 
 
 1. Crea una app nueva llamada `Laberinto`.
 2. Copia `sketch/sketch.ino`, `python/main.py`, `python/requirements.txt` y `assets/index.html` (carpeta `assets/` en la raíz de la app).
-   Hay 2 versiones del Python; el sketch es siempre `sketch/` (con MPU-6050, con su `oled.h`):
+   Un solo sketch (`sketch/`, con MPU-6050 y su `oled.h`) y un solo Python. La versión experimental de la cámara es una línea:
 
-   | Versión | Sketch (STM32) | Python (Linux) | Cámara |
-   |---|---|---|---|
-   | Estable | `sketch/` | `python/` | 1 a 3: exposición fija, umbral automático (Otsu), corrección de rumbo |
-   | Experimental | `sketch/` | `python_experimental/` | 1 a 5: además, distancia por cámara y aberturas adelante |
+   | `EXPERIMENTAL` en `python/main.py` | Cámara |
+   |---|---|
+   | `False` (estable, como está en git) | 1 a 3: exposición fija, umbral automático (Otsu), corrección de rumbo |
+   | `True` (experimental) | 1 a 5: además, distancia por cámara y aberturas adelante |
 
-   Los 2 Python difieren solo en `EXPERIMENTAL`: si cambias uno, cambia el otro igual. La versión sin MPU (`sketch_sin_mpu/`) se quitó del repositorio; está en el commit `2e01996`.
+   La versión sin MPU (`sketch_sin_mpu/`) y la carpeta `python_experimental/` se quitaron del repositorio; están en el commit `2e01996`.
 3. Agrega el brick **WebUI - HTML** (panel Bricks). Sin él no hay página web.
 4. En las librerías del sketch agrega `Adafruit SSD1306`, `Adafruit GFX Library`, `Adafruit TCS34725` y `VL53L0X` (de Pololu).
 5. Pulsa **Run**. App Lab carga el sketch al STM32 y arranca el Python.

@@ -191,7 +191,7 @@ El chasis es **paramétrico en OpenSCAD**. Pasó por entre 20 y 50 iteraciones d
 
 | Carpeta | Contenido |
 |---|---|
-| [`uno_q/`](uno_q/) | **Versión actual.** `sketch/` (STM32 con MPU-6050), `python/` (máquina de estados, mapa, cámara 1 a 3, web), `python_experimental/` (igual + distancia y aberturas por cámara) y `assets/` (página web) |
+| [`uno_q/`](uno_q/) | **Versión actual.** `sketch/` (STM32 con MPU-6050), `python/` (máquina de estados, mapa, cámara, web; `EXPERIMENTAL = True` activa la distancia y las aberturas por cámara) y `assets/` (página web) |
 | [`atmega328p/`](atmega328p/) | Iteración A, respaldo: firmware *bare-metal* en C++ para UNO R3 / Nano con flood-fill y mapa en EEPROM |
 | [`chasis/`](chasis/) | Modelo OpenSCAD, STL para imprimir, renders y planos (`chasis.pdf`) |
 | [`docs/`](docs/) | Manuales, bitácora, BOM, diagramas y scripts que generan los PDF |
@@ -201,12 +201,9 @@ El chasis es **paramétrico en OpenSCAD**. Pasó por entre 20 y 50 iteraciones d
 ## 🚀 Inicio rápido
 
 1. Arma el robot con el [manual de armado](docs/manual_ensamble.pdf) y el [diagrama de conexiones](docs/diagrama_conexiones.pdf).
-2. En **Arduino App Lab** crea una app y copia un sketch y un Python, más `uno_q/assets/`:
+2. En **Arduino App Lab** crea una app:
 
-   | Versión | Sketch | Python |
-   |---|---|---|
-   | Estable | `sketch/` | `python/` |
-   | Experimental | `sketch/` | `python_experimental/` |
+   Copia `sketch/`, `python/` y `assets/`. Para la versión experimental de la cámara cambia `EXPERIMENTAL = False` a `True` en `python/main.py`.
 
    Los detalles están en [`uno_q/README.md`](uno_q/README.md).
 3. Abre `http://<IP-de-la-placa>:7000` y **calibra colores, sensores de distancia y cámara desde el celular**.

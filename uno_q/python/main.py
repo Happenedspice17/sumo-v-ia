@@ -63,7 +63,7 @@ Y_COLOR = 36                             # mm del eje al sensor de color (adelan
 # ---------- Camara (OV9281 monocromatica, obturador global): asistencia, nunca decide sola ----------
 CAM_ID = 2                               # /dev/video0 y video1 son internos de la placa: nunca son la camara
 USAR_CAM = True
-EXPERIMENTAL = False                     # True en python_experimental/: distancias y aberturas por camara
+EXPERIMENTAL = False                     # True: version experimental, ademas distancias y aberturas por camara
 ANCHO, ALTO = 320, 240
 ARCH_CAM = DATOS + "/camara.json"
 # Calibracion de la camara (se ajusta en la web y se guarda): exposicion (0 = automatica; unidades UVC de 100 us),
