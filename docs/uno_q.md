@@ -74,7 +74,8 @@ Funciona sin cámara: el R3 puede hacerlo solo. Un mapa de 16×16 ocupa ~512 byt
 Qué hace hoy (no calcula paredes por cámara):
 
 - Es monocromática: no busca el amarillo (lo detecta el TCS34725). Solo mide cuánto blanco (pared) hay en el piso por donde va a pasar.
-- Revisa el piso del camino (`ZONA_PASO`): blanco (gris ≥ `BLANCO_MIN`) = pared, negro = libre. Con blanco el robot va lento y el frontal hace el doble check.
+- Revisa el piso del camino (`ZONA_PASO`) con umbral automático de Otsu: blanco = pared, negro = libre. Con blanco el robot va lento y el frontal hace el doble check.
+- Mide el rumbo con el punto de fuga de las bases de las paredes y lo corrige con `ajustar` (con MPU sin girar). La versión `python_experimental/` además mide distancias y aberturas por cámara.
 - No ve el laberinto completo de antemano: las paredes bloquean la vista.
 - Geometría actual:
 
@@ -87,7 +88,7 @@ Qué hace hoy (no calcula paredes por cámara):
 
 Montaje: marco de 33 × 33 mm, 4 M2 a 28 mm con ±1 mm de juego y tuerca atrás, hueco para el conector USB arriba a la izquierda (visto por atrás) y paso de cables de alimentación abajo al centro.
 
-La Q busca la cámara de `/dev/video0` a `video11`; `video0` y `video1` son internos de la placa. `ZONA_PASO`, `BLANCO_MIN` y `BLANCO_MAX` se ajustan viendo la imagen en el panel web.
+La Q busca la cámara de `/dev/video0` a `video11`; `video0` y `video1` son internos de la placa. Exposición, "derecho" y escala se calibran en el panel web ("Calibrar cámara"); `ZONA_PASO` y `BLANCO_MAX` se ajustan viendo la imagen en el panel web.
 
 ## 6. Sensor de color (TCS34725)
 

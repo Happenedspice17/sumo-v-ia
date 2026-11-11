@@ -37,7 +37,7 @@ Los tres documentos finales están en [`docs/pdf/`](docs/pdf/). Se generan desde
 |---|---|---|
 | 📘 [**Manual técnico**](docs/pdf/manual_tecnico.pdf) ([fuente](docs/manual_tecnico.md)) | Evaluación técnica | Arquitectura de dos procesadores, sensado, control, máquina de estados, mapa, parámetros y glosario |
 | 📗 [**Manual de uso**](docs/pdf/manual_uso.pdf) ([fuente](docs/manual_uso.md)) | Operación en pista | Encendido, botón, calibración desde la web, ajuste del movimiento y solución de fallas |
-| 📙 [**Bitácora de diseño**](docs/pdf/historial_cambios.pdf) ([fuente](docs/historial_cambios.md)) | Proceso de ingeniería | 33 etapas desde la V1: problema, hipótesis, cambio, pruebas, decisiones y lecciones |
+| 📙 [**Bitácora de diseño**](docs/pdf/historial_cambios.pdf) ([fuente](docs/historial_cambios.md)) | Proceso de ingeniería | 35 etapas desde la V1: problema, hipótesis, cambio, pruebas, decisiones y lecciones |
 | 🛠️ [Manual de armado](docs/manual_ensamble.pdf) · [BOM](docs/bom.csv) · [cables](docs/cables.csv) | Construcción | Ensamble paso a paso, lista de materiales y arnés |
 | 🔌 [Diagrama de conexiones](docs/diagrama_conexiones.pdf) | Construcción | Alimentación, puente H, bus I²C y líneas XSHUT |
 | 🧭 [Documento técnico de la UNO Q](docs/uno_q.md) · [Guía de programación](docs/GUIA_PROGRAMACION.md) | Referencia | Justificación de la placa y cómo programar ambas iteraciones |
@@ -73,10 +73,10 @@ flowchart LR
         direction TB
         FSM["Máquina de estados<br/>SENSA → DECIDE → GIRA → AVANZA"] --> MAPA["Mapa por votos<br/>paredes · colores · meta"]
         MAPA --> BFS["Ruta más corta (BFS)"]
-        CAM["Cámara OV9281 mono · OpenCV<br/>blanco/negro en el camino"] --> FSM
+        CAM["Cámara OV9281 mono · OpenCV<br/>blanco/negro (Otsu) · rumbo por punto de fuga"] --> FSM
         WEB["Página web :7000<br/>calibración y diagnóstico"]
     end
-    CTRL <== "Bridge RPC (MessagePack)<br/>mover · girar · odo · set_ref · set_tof" ==> FSM
+    CTRL <== "Bridge RPC (MessagePack)<br/>mover · girar · ajustar · odo · set_ref · set_tof" ==> FSM
 ```
 
 | Dominio | Qué corre ahí | Por qué ahí |
@@ -134,7 +134,13 @@ Cada sensor se ajusta con **mínimos cuadrados**, `real = a·crudo + b`, a parti
 Por tiempo, los giros de "90°" medían **~70°** en pista. Con el **MPU-6050** (opcional, se detecta solo) el giro se cierra por ángulo integrado, con bias medido al encender (200 muestras), rumbo absoluto acumulado (cada giro corrige el error del anterior) y compensación de inercia (`ADELANTO`). En recta sostiene el rumbo con un control proporcional.
 
 ### 7. La cámara como sensor auxiliar, no primario
-La primera versión usaba la cámara para ver paredes y el robot **chocaba constantemente**. Desde arriba veía demasiadas paredes, zapatos y reflejos, y no había forma robusta de priorizar. Ahora la cámara solo clasifica el piso inmediato como blanco (pared) o negro. Además, al ser monocromática (OV9281, obturador global), no puede ver el amarillo, así que la meta queda solo en el sensor de color, que fue el componente más confiable. Si ve blanco, el robot **baja la velocidad** y el ToF frontal confirma. La cámara **nunca bloquea un camino**: un falso positivo cuesta tiempo, no la corrida.
+La primera versión usaba la cámara para ver paredes y el robot **chocaba constantemente**. Desde arriba veía demasiadas paredes, zapatos y reflejos, y no había forma robusta de priorizar. Hoy la cámara **asiste y nunca decide sola**. Es una OV9281 **monocromática con obturador global**: no ve el amarillo (la meta queda en el sensor de color), pero separa muy bien el piso negro de la pared blanca y no deforma la imagen en movimiento. Antes de cada avance toma una foto y:
+
+- **Fija la exposición** (desde la web) para que el gris del piso no cambie con la luz del lugar.
+- **Umbral de Otsu:** el histograma piso/pared es bimodal, y Otsu encuentra el corte en cada foto. Si hay blanco en el camino, el robot va lento y el ToF frontal confirma.
+- **Rumbo por punto de fuga:** ajusta una recta a la base de cada pared (mínimos cuadrados con rechazo de atípicos). Las dos rectas se cortan en el punto de fuga, cuya columna depende **solo del ángulo** del robot respecto al pasillo, no de su posición lateral ni de la inclinación de la cámara. Con MPU, eso corrige la **deriva del giroscopio** sin girar (fusión tipo filtro complementario). Sin MPU, endereza al robot con un giro corto. En imágenes sintéticas el error fue de ±0.1° entre −12° y 12°.
+
+La versión **experimental** agrega distancia a la pared en 5 columnas, calibrada con el ToF frontal como regla, que funcionan como "ToF virtuales" en diagonal. También detecta aberturas laterales una celda antes de llegar.
 
 ### 8. Página web sin interferir con la corrida
 Cada consulta web eran 5 a 9 llamadas RPC que competían con el robot por el Bridge y por la cámara. Durante una corrida la página **solo muestra datos en caché** (última lectura y última foto), y la OLED no se refresca en movimiento porque un refresco I²C bloquea ~25 ms.
@@ -185,7 +191,7 @@ El chasis es **paramétrico en OpenSCAD**. Pasó por entre 20 y 50 iteraciones d
 
 | Carpeta | Contenido |
 |---|---|
-| [`uno_q/`](uno_q/) | **Versión actual.** `sketch/` (STM32 con MPU-6050), `sketch_sin_mpu/` (STM32 sin MPU), `python/` (máquina de estados, mapa, cámara, web) y `assets/` (página web) |
+| [`uno_q/`](uno_q/) | **Versión actual.** `sketch/` (STM32 con MPU-6050), `sketch_sin_mpu/` (STM32 sin MPU), `python/` (máquina de estados, mapa, cámara 1 a 3, web), `python_experimental/` (igual + distancia y aberturas por cámara) y `assets/` (página web) |
 | [`atmega328p/`](atmega328p/) | Iteración A, respaldo: firmware *bare-metal* en C++ para UNO R3 / Nano con flood-fill y mapa en EEPROM |
 | [`chasis/`](chasis/) | Modelo OpenSCAD, STL para imprimir, renders y planos (`chasis.pdf`) |
 | [`docs/`](docs/) | Manuales, bitácora, BOM, diagramas y scripts que generan los PDF |
@@ -195,8 +201,17 @@ El chasis es **paramétrico en OpenSCAD**. Pasó por entre 20 y 50 iteraciones d
 ## 🚀 Inicio rápido
 
 1. Arma el robot con el [manual de armado](docs/manual_ensamble.pdf) y el [diagrama de conexiones](docs/diagrama_conexiones.pdf).
-2. En **Arduino App Lab** crea una app y copia `uno_q/sketch/` (o `sketch_sin_mpu/`), `uno_q/python/` y `uno_q/assets/`. Los detalles están en [`uno_q/README.md`](uno_q/README.md).
-3. Abre `http://<IP-de-la-placa>:7000` y **calibra colores y sensores de distancia desde el celular**.
+2. En **Arduino App Lab** crea una app y copia un sketch y un Python, más `uno_q/assets/`:
+
+   | Versión | Sketch | Python |
+   |---|---|---|
+   | Estable con MPU | `sketch/` | `python/` |
+   | Estable sin MPU | `sketch_sin_mpu/` | `python/` |
+   | Experimental con MPU | `sketch/` | `python_experimental/` |
+   | Experimental sin MPU | `sketch_sin_mpu/` | `python_experimental/` |
+
+   Los detalles están en [`uno_q/README.md`](uno_q/README.md).
+3. Abre `http://<IP-de-la-placa>:7000` y **calibra colores, sensores de distancia y cámara desde el celular**.
 4. Pon el robot en la celda de inicio y da un toque corto al botón D2.
 
 Para regenerar los documentos:

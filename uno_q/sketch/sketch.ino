@@ -126,10 +126,23 @@ unsigned long tCen;
 int rpcGirar(int cuartos) {
   ult = 'G';
   if (ocupado) return 0;
-  arg = cuartos;
+  arg = cuartos * 90;           // GIRA va en grados
   cmd = GIRA;
   ocupado = 1;
   return 1;
+}
+
+// Corrige el rumbo g grados (derecha +) con lo que ve la camara antes de avanzar.
+// Con MPU y signo conocido no gira: mueve el rumbo deseado y la recta lo sostiene (el giroscopio derivo).
+// Si no, gira en su lugar; devuelve 2 si hay que esperar el giro, 1 si no.
+int rpcAjustar(int g) {
+  ult = 'J';
+  if (ocupado || g == 0) return 0;
+  if (mpuOk && signo) { ref = signo * yaw + g; return 1; }
+  arg = g;
+  cmd = GIRA;
+  ocupado = 1;
+  return 2;
 }
 
 int rpcOcupado() { return ocupado; }
@@ -248,9 +261,9 @@ void iniciaMov() {
   } else {
     dirL = arg > 0 ? 1 : -1;
     dirR = -dirL;
-    dur = abs(arg) * MS_90;
+    dur = max(abs(arg) * MS_90 / 90, 30L);
     yaw0 = yaw;
-    if (signo) ref += arg * 90;
+    if (signo) ref += arg;
   }
   cmd = NADA;
 }
@@ -279,7 +292,7 @@ void termina() {
   if (tipo == AVANZA) hecho = total - falta();
   if (tipo == GIRA && mpuOk && !signo && fabs(yaw - yaw0) > 30) {
     signo = (yaw - yaw0) * dirL > 0 ? 1 : -1;   // primer giro: aprende hacia donde crece el yaw
-    ref = signo * yaw0 + arg * 90;
+    ref = signo * yaw0 + arg;
   }
   frena();
   tipo = NADA;
@@ -313,8 +326,8 @@ void control() {
       return;
     }
     // con MPU: hasta el rumbo deseado (absoluto: corrige lo que se paso o le falto en giros anteriores)
-    float f = signo ? (ref - signo * yaw) * dirL : abs(arg) * 90 - fabs(yaw - yaw0);
-    if (f <= ADELANTO || t >= 3 * dur) { termina(); return; }
+    float f = signo ? (ref - signo * yaw) * dirL : abs(arg) - fabs(yaw - yaw0);
+    if (f <= min(ADELANTO, abs(arg) / 3.0f) || t >= max(3 * dur, 400L)) { termina(); return; }
     int v = f < 25 ? (VEL_GIRO + VEL_MIN) / 2 : VEL_GIRO;
     motores(dirL * v, dirR * v);
     return;
@@ -551,6 +564,7 @@ void setup() {
   Monitor.begin();
   Bridge.provide("mover", rpcMover);
   Bridge.provide("girar", rpcGirar);
+  Bridge.provide("ajustar", rpcAjustar);
   Bridge.provide("ocupado", rpcOcupado);
   Bridge.provide("color", rpcColor);
   Bridge.provide("arranque", rpcArranque);

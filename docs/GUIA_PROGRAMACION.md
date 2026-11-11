@@ -683,7 +683,7 @@ En el R3 están en `atmega328p/laberinto/config.h`. En el Q están al inicio de 
 
 Ejemplo: `T_CELDA = 60` significa 60 ticks de 10 ms, es decir 600 ms por celda.
 
-En el UNO Q, además, la cámara tiene su propia calibración en `main.py` (`ZONA_PASO`, `BLANCO_MIN`, `BLANCO_MAX`): ver `uno_q/README.md`, sección Calibración.
+En el UNO Q, además, la cámara tiene su propia calibración en `main.py` (exposición, "derecho" y escala desde la web; `ZONA_PASO` y `BLANCO_MAX` en el código): ver `uno_q/README.md`, sección Calibración.
 
 ### 5.4 Panel web de calibración (solo UNO Q)
 
