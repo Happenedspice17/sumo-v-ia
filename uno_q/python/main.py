@@ -337,7 +337,7 @@ def analiza(img, dibuja=False):
     res = {}
     for k, (x0, y0, x1, y1) in ROI.items():
         a, b = (int(x0 * w), int(y0 * h)), (int(x1 * w), int(y1 * h))
-        res[k] = mask[a[1]:b[1], a[0]:b[0]].mean() / 255 > UMBRAL
+        res[k] = bool(mask[a[1]:b[1], a[0]:b[0]].mean() / 255 > UMBRAL)
         if dibuja:
             cv2.rectangle(img, a, b, (0, 0, 255) if res[k] else (0, 255, 0), 2)
             cv2.putText(img, k, (a[0] + 2, b[1] - 3), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255, 255, 0), 1)
