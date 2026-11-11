@@ -713,6 +713,14 @@ Además, la cámara ya no se busca en `/dev/video0` y `video1` (son internos) y 
 
 **Pruebas.** Sintaxis del sketch con g++ y cabeceras simuladas; pruebas de Python (maniobra de carril, decisiones, mapa, control web) y simulación de la meta al centro (30/30). Falta probar en pista.
 
+### Etapa 45. Choques confirmados (11-nov)
+
+**Del log de pista.** Con el umbral de 0.6 g el robot "chocaba" sin chocar: golpes de 0.75 a 1.5 g en avances normales (vibración de los motores y del arranque), y cada falso choque lo hacía retroceder y hacer la maniobra de carril aunque estuviera a 60-87 mm de la pared.
+
+**Razonamiento.** Un golpe por sí solo no distingue un choque de una vibración. Lo que sí lo distingue es la consecuencia: si chocó, deja de avanzar.
+
+**Cambio.** El golpe (> 0.8 g) solo abre una ventana de 250 ms; es choque si en ella el frontal no bajó 10 mm. Sin pared enfrente para medirlo, solo cuenta un golpe de más de 2.5 g. La maniobra de carril solo se hace si un lateral quedó a menos de 35 mm (centrado lee ~41).
+
 ## Pruebas realizadas
 
 La tabla distingue lo medido o probado de lo que solo se deduce de la secuencia de commits (marcado **deducido**). Cuando el repositorio guarda la sucesión de valores pero no el resultado de cada intento, se dice. Las pruebas en pista del equipo están en su propia subsección; la última versión (distancia, saltos, votos, máquina de estados, MPU) aún no se ha probado en pista.
