@@ -746,8 +746,20 @@ def iniciar():
         leer_camara(debug=True)
         estado(0)
     else:
-        print("Sin camara: solo VL53L0X")
+        print("Sin camara: la sigo buscando")
         estado(6)
+        threading.Thread(target=buscar_cam, daemon=True).start()
+
+
+def buscar_cam():
+    """Sigue buscando la camara cada 3 s hasta encontrarla."""
+    while cam is None:
+        time.sleep(3)
+        with cam_lock:
+            if cam is None:
+                abrir_camara()
+    print("Camara encontrada")
+    estado(0)
 
 
 def loop():
