@@ -41,6 +41,7 @@ Regla sencilla:
 | Botón de arranque (a GND) | D2 |
 | XSHUT sensores VL53L0X izq / frente / der | A0 / A1 / A2 |
 | I2C (OLED, VL53L0X, TCS34725) | SDA / SCL (pines de la cabecera junto a AREF) |
+| MPU-6050 (opcional, solo UNO Q) | Mismo bus I2C, dirección 0x68 |
 | Alimentación del robot | batería 2S, interruptor, VIN y GND |
 
 ### Voltaje del bus I2C (importante)
@@ -682,14 +683,14 @@ En el R3 están en `atmega328p/laberinto/config.h`. En el Q están al inicio de 
 
 Ejemplo: `T_CELDA = 60` significa 60 ticks de 10 ms, es decir 600 ms por celda.
 
-En el UNO Q, además, la cámara tiene su propia calibración en `main.py` (`ROI`, `PARED_LO/HI`, `UMBRAL`): ver `uno_q/README.md`, sección Calibración.
+En el UNO Q, además, la cámara tiene su propia calibración en `main.py` (`ZONA_PASO`, `HUE_AMAR`, `BLANCO_LO/HI`, `BLANCO_MAX`): ver `uno_q/README.md`, sección Calibración.
 
 ### 5.4 Panel web de calibración (solo UNO Q)
 
 1. Con la app corriendo, abre en la laptop o el celular (mismo WiFi) la dirección que muestra App Lab, con `:7000` al final (por ejemplo `http://192.168.3.66:7000`).
 2. Sigue el asistente: pide piso, rojo, verde, azul y amarillo. Pon el sensor encima de cada uno, en la pista real, y aprieta **Guardar**.
 3. Se guarda en `/app/datos/colores.json` y se carga solo en cada arranque (los guardados tienen prioridad). Sin archivo guardado usa los valores de fábrica de `REFS` en `main.py`; no hay que tocar `refs[]`.
-4. Abajo sale la imagen de la cámara con 3 cuadros: rojo = ve pared, verde = libre. Úsala para ajustar `ROI` en `main.py`.
+4. Abajo sale la imagen de la cámara (160 × 120): recuadro amarillo donde ve la meta, y el camino en rojo si ve blanco (pared) o en verde si ve negro (libre). Úsala para ajustar `ZONA_PASO` en `main.py`.
 
 Requisito: el brick **WebUI - HTML** agregado a la app y la carpeta `assets/` con `index.html`.
 
