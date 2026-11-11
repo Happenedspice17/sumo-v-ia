@@ -1,13 +1,13 @@
 # Bitácora de diseño: cambios, problemas y soluciones
 
-Este documento cuenta cómo se construyó el robot de laberinto de Microcontroladores 2, del 19 de octubre al 11 de noviembre de 2026, a partir del historial de commits del repositorio y de los análisis de la última sesión de trabajo (11-nov), que no quedaron en commits. El robot recorre un laberinto de celdas de 18 cm, encuentra una marca amarilla (la meta), cuenta marcas de color en el piso y en una segunda corrida debe ir por el camino más corto que conoce.
+Este documento cuenta cómo se construyó el robot de laberinto de Microcontroladores 2, del 19 de octubre al 11 de noviembre de 2026, a partir del historial de commits del repositorio , de los análisis de la última sesión de trabajo (11-nov), que no quedaron en commits, y de las respuestas del equipo sobre sus pruebas en pista. El robot recorre un laberinto de celdas de 18 cm, encuentra una marca amarilla (la meta), cuenta marcas de color en el piso y en una segunda corrida debe ir por el camino más corto que conoce.
 
 Hubo dos iteraciones sobre un mismo chasis impreso en 3D, de modo que el chasis acepta ambas placas:
 
 - **Iteración A: ATmega328p (Arduino Nano / UNO R3).** Todo el control corre en el microcontrolador, programado en C++ sin librerías de Arduino, con tres sensores de distancia VL53L0X (ToF) y un sensor de color TCS34725. No tiene cámara. Es el respaldo.
 - **Iteración B: Arduino UNO Q (versión actual).** Un STM32 con control de tiempo real y un Linux con Python y una cámara USB. Es la versión con la que se sigue trabajando.
 
-Cómo leer la bitácora. La sección "Línea de tiempo" resume todo en una tabla. "Etapas" detalla cada etapa con el mismo formato: qué cambió, el problema, la solución, las pruebas o evidencia, el razonamiento, el resultado y los commits. Una regla de honestidad atraviesa todo el documento: cuando un motivo o una prueba no está escrito en el commit, el diff o el código, se marca **(deducido)**. Los valores de calibración que aparecen en las primeras etapas son valores iniciales de partida, no resultados medidos, salvo donde se dice lo contrario. Las pruebas en pista de la versión actual todavía no se han hecho; esto se repite en las secciones de pruebas y pendientes.
+Cómo leer la bitácora. La sección "Línea de tiempo" resume todo en una tabla. "Etapas" detalla cada etapa con el mismo formato: qué cambió, el problema, la solución, las pruebas o evidencia, el razonamiento, el resultado y los commits. Una regla de honestidad atraviesa todo el documento: cuando un motivo o una prueba no está escrito en el commit, el diff, el código ni en las respuestas del equipo, se marca **(deducido)**. Los valores de calibración que aparecen en las primeras etapas son valores iniciales de partida, no resultados medidos, salvo donde se dice lo contrario. El equipo probó el robot en pista durante todo el desarrollo (laberinto de 2 m x 2 m con paredes de madera); sus respuestas del 11-nov están en "Pruebas en pista". Lo que falta es probar en pista la última versión (distancia, saltos, votos, máquina de estados, MPU) y se repite en pendientes.
 
 ## Línea de tiempo
 
@@ -204,11 +204,11 @@ Etapa menor. Se instalan graphify (grafo del código con hooks) y los skills de 
 
 **Qué cambió.** Se mide el motor: 12 x 11 mm (`MOT_A = 12`, `MOT_H = 11`; antes 11.94 x 11.94). Se regeneran cuna, patín y capucha. Después el hueco se afina por pruebas de impresión: 11.94 + 0.1 por lado (12.04), 12.00, 12.05, 11.85 y 11.90 mm. Valor final: **11.9 mm** de ancho, 18 mm de largo y `MOT_H + 1` de alto.
 
-**Problema.** Ajuste de tolerancia; el motor no entraba o quedaba flojo según la impresión. La secuencia lo sugiere; el mensaje no lo dice (deducido).
+**Problema.** Ajuste de tolerancia; el motor no entraba o quedaba flojo según la impresión. Es parte de las 20 a 50 iteraciones de chasis y piezas que el equipo dice haber hecho para verificar geometrías y tolerancias.
 
 **Solución.** Pasar de una holgura calculada (`HOLGURA` global) a un valor fijo medido, porque la tolerancia de la impresora decide el ajuste.
 
-**Pruebas / evidencia.** Medición del motor y cinco commits seguidos que solo cambian el hueco, cada uno con su STL regenerado. Lo razonable es que fueron impresiones de prueba sucesivas, pero el repositorio no registra el resultado de cada una (deducido).
+**Pruebas / evidencia.** Medición del motor y cinco commits seguidos que solo cambian el hueco, cada uno con su STL regenerado. Según el equipo fueron impresiones de prueba sucesivas, pero el repositorio no registra el resultado de cada una.
 
 **Razonamiento.** El rango probado (11.85 a 12.05) muestra la búsqueda del punto entre motor flojo y motor que no entra. Se quedó en 11.9, ligeramente menor que el motor (12), por lo que el ajuste es a presión.
 
@@ -296,7 +296,7 @@ Etapa menor de documentación. `docs/manual_uso.md` (uso y calibración: baterí
 
 **Solución.** Un pedestal impreso evita depender del perfil de aluminio. Se prefirió el inserto de calor al roscado directo en plástico. Los agujeros M2 se alargaron (hull de cilindros) para absorber el error de impresión; la ventana de 22 mm deja salir el conector USB y su cable.
 
-**Pruebas / evidencia.** Los cambios sucesivos de M5 (4.2 mm) a M4 con inserto (5.6 x 8 mm, con la nota "medir el suyo") y de agujeros M2 exactos a 1 mm de juego sugieren pruebas de montaje con las piezas reales (deducido); no se guardan resultados.
+**Pruebas / evidencia.** Los cambios sucesivos de M5 (4.2 mm) a M4 con inserto (5.6 x 8 mm, con la nota "medir el suyo") y de agujeros M2 exactos a 1 mm de juego son pruebas de montaje con las piezas reales. Según el equipo, el chasis y sus piezas pasaron por entre 20 y 50 iteraciones para verificar geometrías y tolerancias; no se guardan resultados de cada una.
 
 **Resultado.** Pedestal y cabeza imprimibles con tolerancias de montaje.
 
@@ -364,7 +364,7 @@ Etapa menor de documentación. `docs/manual_uso.md` (uso y calibración: baterí
 - 76030d2: se deja de guardar `cal.jpg` y `mask.jpg` en `/app`.
 - cc80dd9: se crea `PARED_F = 130` mm para el frontal: "de 140 para arriba no hay" pared.
 
-**Problema.** La posición se llevaba solo por tiempo, y el tiempo deriva con la batería y el suelo. La cámara usada para corregir distancia resultaba menos fiable que el ToF (deducido: el commit 70b44fa le quita el mando, baja `ODO_MAX` a la mitad y baja `PESO_CAM`). Guardar imágenes en `/app` hacía que App Lab fallara al arrancar (mensaje de 76030d2). El umbral lateral (120) no servía igual para el frontal: lecturas de 140 o más ya no eran pared.
+**Problema.** La posición se llevaba solo por tiempo, y el tiempo deriva con la batería y el suelo. La cámara usada para corregir distancia resultaba menos fiable que el ToF (el commit 70b44fa le quita el mando, baja `ODO_MAX` a la mitad y baja `PESO_CAM`; el equipo confirma que la cámara metía mucho ruido). Guardar imágenes en `/app` hacía que App Lab fallara al arrancar (mensaje de 76030d2). El umbral lateral (120) no servía igual para el frontal: lecturas de 140 o más ya no eran pared.
 
 **Solución.** Referencias físicas reales (bordes de pared y distancia frontal) para recorrer el reloj del avance, y el ToF frontal limita cuántas celdas se avanza.
 
@@ -400,7 +400,7 @@ Etapa menor de documentación. `docs/manual_uso.md` (uso y calibración: baterí
 
 **Qué cambió.** 285261b: se elimina el modo mapa de la estrategia. Queda solo el modo "tonto" con `seguir_pared(objetivos, mano)`: pared derecha y, si rodea una isla, prueba con la izquierda. Ya no guarda ni usa el mapa; sigue la pared con lo que leen los ToF en cada celda. 8833c86: `USAR_CAM = False` para una prueba sin cámara (solo ToF y sensor de color). c95da2f: los datos pasan a `/app/datos`; la escritura es atómica (archivo `.tmp` y `os.replace`) y la lectura es tolerante (`lee()` devuelve `None` si el JSON está roto).
 
-**Problema.** El mapa con flood-fill dependía de paredes que la cámara y los sensores veían mal. El mensaje dice "Solo modo tonto": se reduce el alcance; el motivo exacto no está escrito (deducido de las etapas 21 a 23, donde se descartó el mapa en favor de los ToF). Un JSON vacío tumbaba la app, y App Lab se confundía con archivos en la raíz de `/app`.
+**Problema.** El mapa con flood-fill dependía de paredes que la cámara y los sensores veían mal. El mensaje dice "Solo modo tonto": se reduce el alcance; el motivo exacto no está escrito en el commit; coincide con las etapas 21 a 23, donde se descartó el mapa en favor de los ToF. Un JSON vacío tumbaba la app, y App Lab se confundía con archivos en la raíz de `/app`.
 
 **Solución.** Simplificar: seguir pared con ToF, aislar la cámara para probar y proteger los archivos de datos.
 
@@ -424,7 +424,7 @@ Etapa menor de documentación. `docs/manual_uso.md` (uso y calibración: baterí
 
 **Solución.** Búsqueda abierta con la combinación sensor de color y cámara como doble confirmación. La cámara queda como referencia.
 
-**Pruebas / evidencia.** Los puntos ciegos se calculan por geometría del CAD (posiciones y cono de 25 grados), no por mediciones. Que en 7c1b4be la cámara pasara a mandar y en 8c37fe8 se revirtiera muestra que se probó y no funcionó bien (deducido).
+**Pruebas / evidencia.** Los puntos ciegos se calculan por geometría del CAD (posiciones y cono de 25 grados), no por mediciones. Que en 7c1b4be la cámara pasara a mandar y en 8c37fe8 se revirtiera muestra que se probó y no funcionó bien; el equipo confirma que con mucho peso a la cámara chocaba todo el tiempo.
 
 **Razonamiento.** Doble confirmación del amarillo: evita parar por un falso positivo de un solo sensor. La jerarquía se decidió en dos pasos: primero la cámara manda, luego "los ToF y las visitas mandan"; se elige que la cámara solo desempate. Contar visitas en lugar de guardar paredes evita ciclos de islas sin depender de un mapa que pueda estar mal.
 
@@ -441,7 +441,7 @@ Etapa menor de documentación. `docs/manual_uso.md` (uso y calibración: baterí
 - b5af071: busca la cámara hasta 30 s al arrancar. b881968: si no hay, sigue en segundo plano. bb1d40a: la búsqueda no bloquea el arranque de la app. 157c8d0: hilo `vigilar_cam` que revisa cada 2 s y reconecta la cámara si se desconecta; se quita el reintento de la página.
 - 4ae53a0: manuales con búsqueda de cámara, alimentación del hub, colores de fábrica, web por WiFi y contraseña olvidada.
 
-**Problema.** Al arrancar, a veces la cámara aún no estaba lista (el hub tarda). La lectura de colores con valores provisionales no servía. La API fallaba al serializar tipos numpy. La cámara fallaba por alimentación: el manual aclara que con la Q alimentada por VIN su USB-C no da 5 V al hub, así que el hub debe recibir energía por su puerto PD; alimentar solo la cámara con 5 V externos no basta.
+**Problema.** Al arrancar, a veces la cámara aún no estaba lista (el hub tarda). La lectura de colores con valores provisionales no servía. La API fallaba al serializar tipos numpy. La cámara fallaba por alimentación: el manual aclara que con la Q alimentada por VIN su USB-C no da 5 V al hub, así que el hub debe recibir energía por su puerto PD; alimentar solo la cámara con 5 V externos no basta. Según las pruebas del equipo, el UNO Q no siempre reconocía la cámara aunque tuviera 5 V y estuviera conectada; en la práctica se resolvió con un adaptador OTG "tonto" de USB-C a USB-A.
 
 **Solución.** Un único hilo vigilante que busca y reconecta, en vez de reintentos repartidos en el arranque y en la página.
 
@@ -459,11 +459,11 @@ Etapa menor de documentación. `docs/manual_uso.md` (uso y calibración: baterí
 - 8b497c4: `alinear()` barre de -10 a +10 grados en pasos de unos 5 (`MS_5 = 25` ms, RPC `ajustar`) y se queda donde la pared de enfrente se ve más cerca (perpendicular) o, sin ella, donde las dos laterales suman menos (paralelo al pasillo). Centrado con rumbo: `KD = 0.3` corrige según qué tan rápido cambia el error lateral (cada 100 ms). Mano derecha. El frente cuenta libre desde 220 mm (137 mm es pared en la celda propia: 0 celdas, no 1). La cámara se inclina de 25 a 40 grados y ve el piso desde unos 7 cm adelante del eje.
 - 0c72165: se quita todo `alinear()` y `ajustar`. Se avanza derecho con `FRENTE_LIBRE = 150` mm. El centrado solo corrige si un lateral lee menos de `D_LADO_MIN = 90` mm; lejos de las dos paredes va derecho.
 
-**Problema.** Los giros de 90 grados por tiempo (`MS_90 = 250`) dejan el rumbo chueco; el comentario lo dice: "el giro por tiempo deja el rumbo chueco". Alinear se descarta 15 minutos después y el motivo no está escrito (deducido): el barrido son hasta 5 giros a ciegas por celda, con un giro de 25 ms que podría no mover el robot (el README decía "si `MS_5` no alcanza a mover el robot, súbelo"), lo que costaba tiempo en cada celda.
+**Problema.** Los giros de 90 grados por tiempo (`MS_90 = 250`) dejan el rumbo chueco; el comentario lo dice: "el giro por tiempo deja el rumbo chueco". Alinear se descarta 15 minutos después. Según las pruebas del equipo, el robot intentaba alinearse tomando muestras y girando poco (giros de 5 grados) y se volvió súper lento; por eso se quitó. Además el robot sí se desviaba en las rectas. El barrido son hasta 5 giros por celda, con un giro de 25 ms que podría no mover el robot (el README decía "si `MS_5` no alcanza a mover el robot, súbelo").
 
 **Solución.** Primero alinear explícitamente; después, corregir solo cuando hay una pared cerca y dejar de corregir el rumbo a ciegas.
 
-**Pruebas / evidencia.** El commit 0c72165 es una prueba negativa: lo que se probó en 8b497c4 no se mantuvo. No hay lecturas registradas. La inclinación de 40 grados cambió una cifra del CAD (la cámara ve el piso desde 7 cm adelante del eje; `CIEGOS` pasó de "desde y = 116" a "desde y = 68").
+**Pruebas / evidencia.** El commit 0c72165 es una prueba negativa: lo que se probó en 8b497c4 no se mantuvo, porque dejaba al robot súper lento (pruebas del equipo). No hay lecturas registradas. La inclinación de 40 grados cambió una cifra del CAD (la cámara ve el piso desde 7 cm adelante del eje; `CIEGOS` pasó de "desde y = 116" a "desde y = 68").
 
 **Razonamiento.** Alternativas: corregir el rumbo con barridos de ToF (descartado: lento y a lazo abierto) o no corregir salvo que haya riesgo de choque. Se elige la segunda por simplicidad. La banda muerta evita que el robot zigzaguee en un pasillo ancho. El problema de fondo, el rumbo, queda sin resolver hasta el MPU-6050 (etapa 31).
 
@@ -475,13 +475,13 @@ Etapa menor de documentación. `docs/manual_uso.md` (uso y calibración: baterí
 
 **Qué cambió.**
 - 9467a00: reescritura grande (146 líneas agregadas y 651 quitadas; `main.py` baja de unas 800 líneas). En el sketch, `mover(mm)` avanza por distancia con el frontal: al arrancar toma la lectura del frontal (`objetivo = dist[1] - total`, mínimo `D_FRENTE`) y para cuando bajó 180 mm (`CELDA`). Si el frontal no ve nada a menos de `RANGO = 1000` mm, avanza por tiempo (`MS_CELDA = 600`), y si aparece una pared a medio avance sigue por distancia. Se vuelve a parar a 130 mm y retrocede si queda más cerca. Se eliminan la odometría de bordes, `MS_RAPIDA`, `VEL_RAPIDA`, `escala` y `OFF_COLOR`. En Python se eliminan el mapa 11x11, el flood-fill, `ROI`, los puntos ciegos, la corrección de distancia con cámara, el pre-chequeo de piso y el modo "tonto". Python decide con 3 muestras de cada ToF; con 3 visitas a una celda (`ISLA`) toma la salida menos usada y la cámara desempata. La posición sale de los mm recorridos. La cámara solo busca amarillo (`HUE_AMAR = (20, 35)`) y el panel dibuja un recuadro donde lo ve.
-- a6db9a1: regla de la mano izquierda (en `salidas()` el orden pasa de derecha, frente, izquierda a izquierda, frente, derecha). Según los análisis de la sesión, se probó mano derecha y luego izquierda, y el equipo pidió priorizar ir de frente y después la mano izquierda.
+- a6db9a1: regla de la mano izquierda (en `salidas()` el orden pasa de derecha, frente, izquierda a izquierda, frente, derecha). Se probó mano derecha y luego izquierda, y se priorizó ir de frente y después la mano izquierda. Según las pruebas en pista, esa regla resultó peor: ver "Decisiones de ingeniería" (mano derecha pura).
 
-**Problema.** Observado el 11-nov: avanzando "1 celda por tiempo" el robot a veces se pasaba de la celda o llegaba y no encontraba nada, porque la duración depende de batería, piso y carga. Los intentos de corregirlo (odometría de bordes con `escala`, corrección con cámara) añadían mucho código. Para quitarle las paredes a la cámara no hay una razón escrita en el commit, pero la historia la deja ver (deducido): cada commit desde la etapa 21 le quitó autoridad (bloqueaba, luego encarecía con `PESO_CAM` 3 y 1, luego desempataba, ahora solo busca amarillo); sus regiones `ROI` se ajustaban a mano en fracciones de la imagen y dependían de una inclinación que además cambió de 25 a 40 grados; y los ToF ya decidían todo. Las notas de la sesión lo confirman en lo esencial: "los ToF son más confiables para paredes".
+**Problema.** Observado en pista: avanzando "1 celda por tiempo" (`MS_CELDA`) casi nunca llegaba a la posición de la celda, y el resultado cambiaba con el desgaste de la batería; los giros de 90 por tiempo (`MS_90`) casi siempre se quedaban cortos (el equipo estima que giraba unos 70 grados). Un `MS_90` proporcional sería de unos 320 ms (250 x 90/70), pero seguiría dependiendo de la batería, lo que justifica el MPU-6050. Los intentos de corregirlo (odometría de bordes con `escala`, corrección con cámara) añadían mucho código. Para quitarle las paredes a la cámara, según las pruebas del equipo: veía demasiadas paredes y el robot no sabía a cuál darle prioridad, a veces no avanzaba nada; como ve muy por arriba, veía más paredes de las relevantes, zapatos de la gente, etc., mucho ruido. Y cuando le dieron mucho peso a la cámara, chocaba todo el tiempo. La historia concuerda: cada commit desde la etapa 21 le quitó autoridad (bloqueaba, luego encarecía con `PESO_CAM` 3 y 1, luego desempataba, ahora solo busca amarillo), sus regiones `ROI` se ajustaban a mano y dependían de una inclinación que cambió de 25 a 40 grados, y los ToF ya decidían todo.
 
 **Solución.** El sketch queda como ejecutor simple (mide, avanza, para) y Python como decisor de un paso a la vez. Con una pared al frente, el ToF mide la distancia real: bajar 180 mm es una celda. La posición en el mapa se calcula con los mm realmente recorridos (redondeo a celdas de 180 mm): un error menor de 90 mm no cambia de celda.
 
-**Pruebas / evidencia.** El commit no cita mediciones. Los valores `FRENTE_LIBRE = 150` y `D_FRENTE = 130` vienen de lecturas anteriores (etapas 22 y 23). El problema de "se pasaba de la celda" es una observación del equipo, sin datos numéricos.
+**Pruebas / evidencia.** El commit no cita mediciones. Los valores `FRENTE_LIBRE = 150` y `D_FRENTE = 130` vienen de lecturas anteriores (etapas 22 y 23). El problema de las celdas y los giros cortos es una observación del equipo en pista, sin mediciones por ciclo.
 
 **Razonamiento.** Por distancia y no por tiempo, porque el tiempo depende de la batería y la fricción y el ToF frontal mide directamente lo que falta. El tiempo queda solo como plan B y como tope (`t > 3 * dur`). Se desecha la odometría de bordes porque la distancia al frente ya da la referencia. Compromiso: más simple y más robusto, a costa de renunciar a la anticipación por cámara; el mapa y la ruta rápida se pierden aquí y se recuperan, de forma más simple, en la etapa 29.
 
@@ -526,7 +526,7 @@ Etapa menor de documentación. `docs/manual_uso.md` (uso y calibración: baterí
 
 **Solución.** Estados explícitos, votos acotados, umbral al punto medio (220 mm), parada en el microcontrolador y una web que no compite con el robot.
 
-**Pruebas / evidencia.** Las cifras de 130 y 310 mm son lecturas del frontal observadas antes (130 viene de la etapa 23; 310 y los laterales de las notas de la sesión). Pruebas automáticas en Python con datos simulados, sin robot: orden de salidas (frente, izquierda, derecha, media vuelta), umbral de 220 mm, ruta más corta BFS en un mapa de prueba, que una lectura mala no borre una pared vista 3 veces (votos), decisión tras un salto (salida nueva más lejana) y guardar/cargar el mapa. Todas pasaron. Se compiló el Python con `py_compile` en cada cambio. No se ha compilado el sketch en App Lab ni probado en la pista en esta etapa.
+**Pruebas / evidencia.** Las cifras de 130 y 310 mm son lecturas del frontal observadas antes (130 viene de la etapa 23; 310 y los laterales de las notas de la sesión). Pruebas automáticas en Python con datos simulados, sin robot: orden de salidas (frente, izquierda, derecha, media vuelta), umbral de 220 mm, ruta más corta BFS en un mapa de prueba, que una lectura mala no borre una pared vista 3 veces (votos), decisión tras un salto (salida nueva más lejana) y guardar/cargar el mapa. Todas pasaron. Se compiló el Python con `py_compile` en cada cambio. Esta versión todavía no se ha probado en la pista.
 
 **Razonamiento.** Votos con tope: se prefiere acumular evidencia a tomar la última lectura, y el tope evita que un mapa muy "seguro" no se pueda corregir. Parar en el STM32 elimina la latencia de Bridge y Python. Decidir quieto evita decidir con lecturas tomadas en movimiento. Umbral a mitad de camino: margen simétrico frente a lecturas bajas y altas. Orden de fuentes de error que se analizó en la sesión, de mayor a menor: 1) giros por tiempo (`MS_90`), que dependen de batería y piso (un giro de 80 grados tuerce todo lo que sigue), a resolver con el MPU-6050; 2) umbral de frente con poco margen, resuelto con 220 mm; 3) mapa que se sobrescribía, resuelto con votos; 4) odometría, porque la celda de 180 mm tolera hasta 90 mm de error y se re-ancla con la pared de enfrente y los saltos laterales.
 
@@ -552,7 +552,28 @@ Etapa menor de documentación. `docs/manual_uso.md` (uso y calibración: baterí
 
 ## Pruebas realizadas
 
-La tabla distingue lo medido o probado de lo que solo se deduce de la secuencia de commits (marcado **deducido**). Cuando el repositorio guarda la sucesión de valores pero no el resultado de cada intento, se dice. Ninguna prueba de esta tabla se hizo con la versión actual (UNO Q con avance por distancia) corriendo en la pista.
+La tabla distingue lo medido o probado de lo que solo se deduce de la secuencia de commits (marcado **deducido**). Cuando el repositorio guarda la sucesión de valores pero no el resultado de cada intento, se dice. Las pruebas en pista del equipo están en su propia subsección; la última versión (distancia, saltos, votos, máquina de estados, MPU) aún no se ha probado en pista.
+
+### Pruebas en pista
+
+Datos de la pista: laberinto de prueba de 2 m x 2 m en total, con paredes de madera. La batería dura unas 3 horas con carga al 100 % haciendo pruebas constantes. Ninguna pieza se rompió. Fuente: respuestas del equipo del 11-nov.
+
+| Prueba | Qué observamos | Qué cambiamos por ello |
+|---|---|---|
+| 1. Avance por tiempo (`MS_CELDA`) | Casi nunca llegaba a la posición de la celda; cambiaba con el desgaste de la batería | Avance por distancia con el ToF frontal; el tiempo queda de plan B |
+| 2. Giros de 90 por tiempo (`MS_90`) | Casi siempre faltaba: el equipo estima que giraba unos 70 grados | Giros por ángulo con el MPU-6050 (un `MS_90` proporcional sería de unos 320 ms, pero seguiría dependiendo de la batería) |
+| 3. Rectas | Sí se desviaba. Intentaron alinear con muestras y giros de 5 grados, pero el robot se volvió súper lento | Se quitó `alinear()`; centrado solo con laterales y rumbo sostenido con el MPU |
+| 4. Choques | Cuando se dio mucho peso a la cámara, chocaba todo el tiempo | Los ToF mandan; la cámara no bloquea ni decide paredes |
+| 5. ToF | Los 3 varían poco, unos 15 mm de ruido a cada lado; nunca leyeron 0 ni lecturas raras | Umbrales con margen (frontal 220 mm, lateral 120 mm); posible offset por sensor |
+| 6. Sensor de color TCS34725 | Es el mejor componente: ya calibrado es muy bueno | Se confía en él para amarillo y marcas; el STM32 para al confirmar amarillo |
+| 7. Cámara para paredes | Veía demasiadas paredes y no sabía a cuál darle prioridad, a veces no avanzaba; ve muy por arriba y captaba paredes lejanas, zapatos de la gente y mucho ruido. También costó configurarla para verla en la página web | Se quitó para paredes; queda para amarillo y blanco/negro. Idea futura: calibrar exposición y parámetros |
+| 8. Alimentación de la cámara | El UNO Q no siempre reconocía la cámara aunque tuviera 5 V y estuviera conectada | Adaptador OTG "tonto" de USB-C a USB-A |
+| 9. Laberinto de prueba | 2 m x 2 m en total, paredes de madera | Se prueba en esa pista; verificar que las paredes sean blancas para la cámara |
+| 10. Meta amarilla | La encontraba y se estacionaba bien; entre más grande la zona de color, mejor, porque el sensor RGB podía pasar por un lado y saltarse una línea amarilla delgada | Zonas de color más grandes |
+| 11. Mano derecha vs izquierda | Con la mano derecha llegó más lejos y se movía más; con la izquierda se quedaba atorado en la misma zona | Volver a la mano derecha pura (pendiente en el código) |
+| 12. Batería | Unas 3 horas con carga al 100 % en pruebas constantes | Ninguno; autonomía suficiente |
+| 13. Piezas | Ninguna se rompió | Arduino vertical con cinchos para conservar los 12 cm y que el OTG no salga del contorno |
+| 14. Chasis | Entre 20 y 50 iteraciones del chasis y sus piezas para verificar geometrías y tolerancias | Geometrías y tolerancias finales (hueco del motor 11.9 mm, soporte ToF, etc.) |
 
 ### Mediciones e iteraciones físicas
 
@@ -565,7 +586,7 @@ La tabla distingue lo medido o probado de lo que solo se deduce de la secuencia 
 | Medidas de rueda, motor y pila | Medición física | Rueda D 45 x 17, motor 26.11 x 11.94 x 11.94, pila 70 mm | Pozo de rueda, postes delanteros a (±34, 55), `TOF_LADO` [43, 40] |
 | Piso 2 ya impreso | Comparar el modelo con la pieza impresa | Ranuras en Y = 34.5 y postes de 19 mm | Se adaptó el modelo a la pieza; solo cambian 2 agujeros delanteros |
 | Pieza de prueba de tolerancias | `PIEZA="prueba"`: holgura 0.2 mm por lado, M3 pasante 3.4, M3 a rosca 2.8, M2 a rosca 1.8 | No hay evidencia de que se imprimiera en esa etapa | Valores de partida de la tolerancia FDM |
-| Montaje del pedestal y la cabeza de cámara | Cambios sucesivos de M5 (4.2 mm) a M4 con inserto 5.6 x 8 mm, y de agujeros M2 exactos a ovalados con 1 mm de juego (deducido: pruebas de montaje, sin resultados guardados) | No se guardan resultados | Pedestal impreso con inserto M4; marco que centra el PCB con 0.5 mm por lado |
+| Montaje del pedestal y la cabeza de cámara | Cambios sucesivos de M5 (4.2 mm) a M4 con inserto 5.6 x 8 mm, y de agujeros M2 exactos a ovalados con 1 mm de juego; según el equipo, entre 20 y 50 iteraciones del chasis y sus piezas | No se guardan resultados de cada una | Pedestal impreso con inserto M4; marco que centra el PCB con 0.5 mm por lado |
 | Rutas de cables y choques de conectores | Verificación geométrica por intersección en OpenSCAD (37 cables) | Sin choques tras los ajustes | Batería sobre el eje, pasillos de 27 mm, topes de batería fuera de los pasillos |
 | Memoria del ATmega | Compilación y reporte de uso | Arduino: 18.9 KB flash (58%) y 1.47 KB RAM (72%); bare-metal: 13.8 KB (42%) y 1.0 KB (50%) | Se reemplazó el sketch por C++ bare-metal |
 
@@ -590,8 +611,8 @@ La tabla distingue lo medido o probado de lo que solo se deduce de la secuencia 
 | Lecturas por posición de pared | Lecturas observadas del frontal y de los laterales (notas de la sesión) | Frontal: pared en su celda unos 130 mm, una celda más allá unos 310 mm. Laterales: pared unos 50 mm, libre más de 200 mm | Umbral de frente libre a la mitad, 220 mm; umbral lateral de 120 mm |
 | Colores de fábrica del TCS34725 | Lecturas reales del sensor; el panel promedia 5 lecturas con 50 ms entre una y otra | PISO 0.282, 0.379, 0.333 con brillo 153; AMAR 0.409, 0.449, 0.142 con brillo 1836; ROJO, VERDE y AZUL en los commits | `REFS` y `refs[]` pasan de valores provisionales a valores de fábrica |
 | Falsos positivos sobre el piso negro | Observados con el sensor de color (el comentario habla de quitar falsos positivos) | Lecturas de color falsas sobre piso negro | `BRILLO_MIN = 1.3` en Python y sketch; rechazo si la cámara vio piso limpio (luego la cámara se simplificó) |
-| Cámara para paredes (etapas 20 a 25) | Se usó como sensor de paredes, luego como guía (7c1b4be) y se revirtió (8c37fe8) (deducido de la secuencia de commits) | Menos fiable que los ToF; sus regiones dependían de la inclinación, que cambió de 25 a 40 grados | Se quitó de la estrategia; queda solo para amarillo y blanco/negro |
-| Alinear con giros de 5 grados | Se implementó (8b497c4) y se quitó 15 minutos después (0c72165) | Prueba negativa; sin lecturas guardadas | Avance derecho con centrado solo si un lateral lee menos de 90 mm |
+| Cámara para paredes (etapas 20 a 25) | Se usó como sensor de paredes, luego como guía (7c1b4be) y se revirtió (8c37fe8); pruebas en pista del equipo | Veía demasiadas paredes y zapatos (ve muy por arriba); con mucho peso chocaba todo el tiempo; sus regiones dependían de la inclinación, que cambió de 25 a 40 grados | Se quitó de la estrategia; queda solo para amarillo y blanco/negro |
+| Alinear con giros de 5 grados | Se implementó (8b497c4) y se quitó 15 minutos después (0c72165) | Prueba negativa: el robot se volvió súper lento (pruebas del equipo) | Avance derecho con centrado solo si un lateral lee menos de 90 mm |
 
 ### Software
 
@@ -621,7 +642,7 @@ La tabla distingue lo medido o probado de lo que solo se deduce de la secuencia 
 
 | Prueba | Cómo | Resultado | Qué se cambió por ella |
 |---|---|---|---|
-| Pendiente: pruebas en pista de la versión actual | Compilar el sketch en App Lab y correr la pista con avance por distancia, mapa, cambios bruscos y el alto en amarillo | No se ha hecho; las pruebas automáticas fueron solo con datos simulados | Por definir con los datos de la pista |
+| Pendiente: probar en pista la última versión | Correr la pista con distancia, saltos, votos, máquina de estados y MPU | Aún no; hasta ahora solo hay pruebas automáticas con datos simulados | Por definir con los datos de la pista |
 
 ## Decisiones de ingeniería
 
@@ -629,11 +650,11 @@ Para cada decisión se indican las alternativas que aparecen en el historial, el
 
 **1. Movimiento por tiempo, luego por distancia.** Alternativas: encoders (primera versión, `TICKS_CELDA` 360), tiempo (`MS_CELDA` 600) y distancia con el ToF frontal. Criterio: los N20 no tienen encoder; el tiempo depende de batería, piso y carga, y el robot a veces se pasaba de la celda o no encontraba nada; el ToF mide directamente lo que falta. Decisión: por distancia (parar cuando la lectura baja 180 mm), con tiempo solo como plan B cuando el frontal no ve pared a menos de 1 m y como tope (`t > 3 * dur`). Python vuelve a leer los 3 ToF (mínimo de 3 lecturas) antes de decidir.
 
-**2. Cámara para paredes o ToF.** Alternativas: cámara con regiones (hasta 2 celdas adelante), cámara que encarece, ToF solamente. Criterio: la cámara ve por encima de las paredes, pero sus regiones se ajustaban a mano y dependían de la inclinación, que cambió de 25 a 40 grados; si se equivoca, un reflejo o mala luz podría encerrar al robot. Decisión: los ToF mandan para paredes; la cámara se queda en amarillo y en distinguir blanco (pared) de negro (piso), y nunca bloquea un camino. El frontal hace el doble check y el sketch para a 130 mm. Se acepta perder la anticipación a cambio de simplicidad y robustez.
+**2. Cámara para paredes o ToF.** Alternativas: cámara con regiones (hasta 2 celdas adelante), cámara que encarece, ToF solamente. Criterio: en pista la cámara veía demasiadas paredes (ve muy por arriba: paredes lejanas, zapatos) y el robot no sabía a cuál darle prioridad; sus regiones se ajustaban a mano y dependían de la inclinación, que cambió de 25 a 40 grados; si se equivoca, un reflejo o mala luz podría encerrar al robot. Mejora futura: calibrar la exposición y los parámetros de la cámara para distinguir mejor blanco y negro. Decisión: los ToF mandan para paredes; la cámara se queda en amarillo y en distinguir blanco (pared) de negro (piso), y nunca bloquea un camino. El frontal hace el doble check y el sketch para a 130 mm. Se acepta perder la anticipación a cambio de simplicidad y robustez.
 
 **3. Ultrasónicos a 45 grados o VL53L0X a 45 grados para las esquinas ciegas.** Alternativas: HC-SR04 a 45 grados o 2 VL53L0X más a 45 grados. Criterio: a 45 grados el sonido rebota de lado en una pared lisa (reflexión especular) y casi no regresa eco; el cono de unos 30 grados del HC-SR04 a 150 mm ilumina una mancha de unos 80 mm (lecturas ambiguas); el ECHO a 5 V requiere divisor para el STM32 de 3.3 V; las versiones I2C de 5 V subirían SDA/SCL a 5 V en un bus de 3.3 V; medir con `pulseIn` bloquea el control de 10 ms y hay que disparar alternado por crosstalk. Decisión: ultrasónicos descartados por ahora. Si hace falta, 2 VL53L0X más a 45 grados (mismo bus I2C, 2 pines XSHUT, cono de unos 25 grados, mismo soporte impreso). No se implementó.
 
-**4. Umbral de frente libre a la mitad (220 mm).** Alternativas: 150 mm (se había usado) o 220 mm. Criterio: pared en la celda propia da unos 130 mm y una celda más allá unos 310 mm; con 150 mm quedaban solo 20 mm de margen frente al ruido. Decisión: 220 mm, a mitad de camino entre ambas lecturas. El mismo criterio dio el umbral lateral de 120 mm (pared unos 50 mm, libre más de 200 mm).
+**4. Umbral de frente libre a la mitad (220 mm).** Alternativas: 150 mm (se había usado) o 220 mm. Criterio: pared en la celda propia da unos 130 mm y una celda más allá unos 310 mm; con 150 mm quedaban solo 20 mm de margen frente al ruido de los ToF (unos ±15 mm medidos en pista). Con 220 mm el margen es de unos 90 mm (frontal: 130 contra 310) y en el lateral de unos 70 mm (120 contra 50 y más de 200), muy por encima de ±15 mm. Decisión: 220 mm, a mitad de camino entre ambas lecturas. Además, cada ToF se puede calibrar con un offset midiendo a una distancia conocida. El mismo criterio dio el umbral lateral de 120 mm (pared unos 50 mm, libre más de 200 mm).
 
 **5. Votos en el mapa.** Alternativas: tomar la última lectura o acumular evidencia. Criterio: una sola lectura mala sobrescribía una pared bien vista. Decisión: cada lectura suma +1 (pared) o -1 (libre), con tope ±5 (`VOTO_MAX`) para que el mapa se pueda corregir; por donde pasó el robot queda libre seguro.
 
@@ -641,7 +662,7 @@ Para cada decisión se indican las alternativas que aparecen en el historial, el
 
 **7. Carga de la página web.** Alternativas: que la web consulte al Bridge siempre o que lea valores guardados durante la corrida. Criterio: los motores no se afectan, pero cada consulta eran 5 a 9 llamadas al Bridge cada 150 a 300 ms que compiten con el robot, y la foto bloqueaba la cámara unos 130 ms; el riesgo era un "alto" tardío en el amarillo. Decisión: durante la corrida la web lee los últimos valores y la última foto, sin Bridge; el STM32 para solo al confirmar amarillo; la OLED no se refresca en movimiento (unos 25 ms bloqueantes).
 
-**8. Reglas de decisión.** Alternativas: mano derecha, mano izquierda, mapa con flood-fill (BFS, luego Dijkstra), contar visitas. Criterio: se probó mano derecha y luego izquierda, y el equipo pidió priorizar ir de frente y después la mano izquierda; las islas se rompen con 3 visitas (`ISLA`) tomando la salida menos usada. Tras un cambio brusco se va a la salida nueva, no mapeada, de lectura más lejana. Decisión: frente, luego izquierda, luego derecha, luego media vuelta, con BFS sobre el mapa solo para la ruta corta de la segunda corrida.
+**8. Reglas de decisión.** Alternativas: mano derecha, mano izquierda, mapa con flood-fill (BFS, luego Dijkstra), contar visitas. Criterio: se probó mano derecha y luego izquierda. Según las pruebas en pista, la mano derecha llegó más lejos y se movía más, y con la mano izquierda se quedaba atorado en una misma zona. La regla "frente primero, luego izquierda" ya no es un seguidor de pared puro: un seguidor de pared solo garantiza recorrer todo el muro si siempre prefiere el lado de su mano; ir de frente primero puede dejarlo dando vueltas en una zona, lo que coincide con lo observado. Las islas se rompen con 3 visitas (`ISLA`) tomando la salida menos usada. Tras un cambio brusco se va a la salida nueva, no mapeada, de lectura más lejana. Decisión: volver a la mano derecha pura (derecha, frente, izquierda, media vuelta); el código actual aún tiene frente, izquierda, derecha y está pendiente de cambiar. BFS sobre el mapa solo para la ruta corta de la segunda corrida.
 
 **9. Cambios bruscos de ToF.** Alternativa: avanzar la celda completa y leer al inicio. Criterio: se pasaban por alto aberturas laterales a medio avance; la lectura que salta de 50 a 200-300 mm (o de 100 a 300) indica que algo se abrió, pero una sola lectura mala no debe disparar nada. Decisión: el salto cuenta si se repite en 2 lecturas (`SALTO = 120` mm); si se abre un lateral, el robot avanza `TRAS_SALTO = 124` mm (90 + 40 - 6, del CAD) hasta el centro de la celda nueva y escanea. Eso además re-ancla la odometría.
 
@@ -655,11 +676,11 @@ Para cada decisión se indican las alternativas que aparecen en el historial, el
 
 **14. Driver OLED propio por Zephyr.** Alternativa: Adafruit_SSD1306. Criterio: no compila en el core Zephyr del UNO Q. Decisión: `oled.h` propio, sin librerías.
 
-**15. Cámara USB UVC en lugar de MIPI-CSI.** Criterio: la CSI exige la Media Carrier, más grande y de 1.8 V. Se mantiene el TCS34725 porque la cámara anticipa pero no da una lectura de color exacta.
+**15. Cámara USB UVC en lugar de MIPI-CSI.** Criterio: la CSI exige la Media Carrier, más grande y de 1.8 V. Se mantiene el TCS34725 porque la cámara anticipa pero no da una lectura de color exacta; en pista es el mejor componente. Alimentación: el UNO Q no siempre reconocía la cámara aunque tuviera 5 V; se resolvió con un adaptador OTG "tonto" de USB-C a USB-A, y el Arduino va vertical con cinchos para que el OTG no salga del contorno.
 
 **16. Soporte del ToF como pieza aparte con insertos.** Alternativas: integrado en el piso 1, postes con ranura de 1.8 mm, bloque detrás del módulo con insertos. Criterio: reimprimir una pieza pequeña y no el piso; poder roscar en los laterales donde la columna tapa la cara trasera; dejar el header y los dupont libres. Decisión: bloque con 2 insertos y M3x10 por el frente, con 2.2 mm de pared.
 
-**17. Colores: referencias de fábrica y brillo.** Criterio: normalizar r, g, b entre sí hace la clasificación menos sensible a la luz; el brillo c, con peso pequeño, distingue el piso de las marcas. Decisión: referencias calibradas guardadas en `colores.json` y recargadas al arrancar, con tres lecturas seguidas para aceptar un color.
+**17. Colores: referencias de fábrica, brillo y tamaño de zona.** Criterio: en pista, entre más grande la zona de color, mejor, porque el sensor RGB puede pasar por un lado y saltarse una línea amarilla delgada; por eso las marcas deben ser anchas. Además: normalizar r, g, b entre sí hace la clasificación menos sensible a la luz; el brillo c, con peso pequeño, distingue el piso de las marcas. Decisión: referencias calibradas guardadas en `colores.json` y recargadas al arrancar, con tres lecturas seguidas para aceptar un color.
 
 **18. Alto en amarillo con doble confirmación.** Criterio: evitar parar por un falso positivo de un solo sensor, pero sin esperar a Python. Decisión: el STM32 llama `termina()` al confirmar el amarillo con el TCS34725; la cámara ayuda a buscar el amarillo pero no es requisito de la parada.
 
@@ -701,12 +722,18 @@ El repositorio se analizó con graphify, que arma un grafo de conocimiento con e
 - Medir las piezas reales antes de modelar ahorra impresiones. La rueda real (45 x 17), el módulo VL53L0X (11 mm) y el motor (12 x 11) corrigieron el CAD, y el hueco del motor pasó por cinco valores entre 11.85 y 12.05 mm.
 - El tiempo no es una unidad de distancia: el avance por tiempo deriva con batería, piso y carga, y los giros por tiempo acumulan error de rumbo. La referencia debe venir de un sensor.
 - La carga lateral importa: la web que consulta al Bridge, la OLED que bloquea 25 ms y los archivos en `/app` pueden causar fallos que no son del algoritmo.
+- Probar en pista temprano evitó seguir afinando ideas que no servían: el avance y el giro por tiempo fallaban por la batería, y alinear con giros de 5 grados volvía al robot súper lento.
+- Un seguidor de pared solo es completo si siempre prefiere el lado de su mano; mezclar "frente primero" lo dejó atorado en una zona.
+- Una zona de color delgada se puede saltar: el sensor RGB pasa por un lado, así que las marcas deben ser grandes. Y un componente "tonto" (el adaptador OTG) puede resolver un problema de alimentación que parecía de diseño.
 - Quitar código también es una decisión de ingeniería. `alinear()` se retiró tras 15 minutos y la reescritura quitó unos 500 renglones de `main.py` sin perder capacidad, porque los ToF ya hacían ese trabajo.
 
 ## Pendientes
 
-- Compilar el sketch del UNO Q en App Lab; no se ha compilado en esta etapa.
-- Pruebas en pista de la versión actual: avance por distancia, mapa con votos, cambios bruscos y alto en amarillo desde el STM32.
+- Probar en pista la última versión: avance por distancia, cambios bruscos, mapa con votos, máquina de estados y MPU-6050.
+- Verificar que las paredes de madera estén pintadas de blanco, porque la detección de la cámara toma blanco como pared.
+- Calibrar un offset por sensor ToF midiendo a una distancia conocida.
+- Calibrar la exposición de la cámara para distinguir mejor blanco y negro.
+- Pasar el código a mano derecha pura (hoy la prioridad es frente, izquierda, derecha).
 - Conseguir el MPU-6050 (GY-521) y calibrar `ADELANTO` (si se pasa, subirlo; si le falta, bajarlo) y `KG`.
 - Calibrar `ZONA_PASO` y `BLANCO_MAX` hasta que en un pasillo libre el recuadro de la vista de cámara salga verde.
 - Calibrar `TRAS_SALTO` (124 mm, calculado del CAD) y `BORDE_AJ`, con el robot en la pista.

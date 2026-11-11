@@ -23,6 +23,7 @@ Mismo chasis, mismas piezas impresas y misma huella. El Q solo agrega:
 - **MPU:** Qualcomm QRB2210, corre Debian Linux.
 - **MCU:** STM32U585, corre sketches de Arduino.
 - Ambos se comunican por un enlace interno que administra el servicio `arduino-router` en Linux, con MessagePack RPC.
+- Montaje: la placa va vertical, sujeta con cinchos al chasis, para conservar los 12 cm y que el adaptador OTG quede dentro del contorno del robot.
 
 ### R3 frente a Q
 
@@ -120,6 +121,8 @@ Al alimentar por VIN, el puerto USB-C puede arrancar en modo dispositivo y no ve
 
 Con la Q alimentada por VIN, su USB-C no da 5 V al hub: el hub debe recibir energía por su puerto PD (cargador PD; 5 V ≥ 3 A del regulador del robot a un cable USB-C cortado conectado al puerto PD del hub; o módulo DC-DC con salida USB-C PD desde la batería). Alimentar solo la cámara con 5 V externos no basta.
 
+En la práctica (pruebas en pista del equipo) el UNO Q no siempre reconocía la cámara aunque tuviera 5 V y estuviera conectada; se resolvió con un adaptador OTG "tonto" de USB-C a USB-A.
+
 ### Ruta PD en el robot
 
 Batería → interruptor → fusible de 3 A → módulo DC-DC con salida USB-C PD SOURCE (entrada desde 6 V o menos, salida 5 V / 3 A) → Q.
@@ -179,6 +182,8 @@ Parámetros CAD actuales: `D_RUEDA` = 45 mm, `A_RUEDA` = 17 mm.
 ## 12. Pruebas de alimentación
 
 ### Test 1: sin PD (en casa, hub UGREEN)
+
+Nota: en la práctica se resolvió con un adaptador OTG "tonto" USB-C a USB-A (ver sección 7).
 
 1. Q alimentado por VIN desde la batería. Hub sin alimentar. Cámara conectada al hub.
 2. Ejecutar `lsusb` y `v4l2-ctl --list-devices`.
