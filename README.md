@@ -173,7 +173,7 @@ Pruebas en un laberinto de **2 × 2 m** con paredes de madera pintadas de blanco
 | Color | TCS34725 | I²C 0x29 |
 | Orientación | MPU-6050 (opcional) | I²C 0x68, ±500 °/s |
 | Pantalla | OLED SSD1306 128×64 | I²C 0x3C |
-| Visión | Cámara UVC + hub USB-C (adaptador OTG) | USB |
+| Visión | innomaker U20CAM-9281M: OV9281 monocromática 1 MP, obturador global, 120 fps + hub USB-C (adaptador OTG) | USB 2.0 UVC |
 | Potencia | L298N + 2 motores N20 | PWM D5/D6, dirección D7–D10 |
 | Energía | Batería 2S 18650 (7.4 V) | VIN |
 

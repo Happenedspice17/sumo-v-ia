@@ -124,7 +124,7 @@ El resultado es "piso" si la menor distancia es mayor que 0.02 o si el brillo es
 **En simple:** la cámara va arriba de un poste y mira el piso por donde va a pasar. Hace dos cosas: busca el **amarillo** (la meta) y detecta si el piso adelante es **blanco**, que es una pared (el piso es negro). Si ve blanco, el robot avanza más despacio, y el sensor láser frontal confirma si de verdad hay pared. La cámara nunca manda sobre los láser. Sin cámara, el robot funciona igual.
 :::
 
-- **Captura:** cámara UVC a 320 × 240, OpenCV con V4L2.
+- **Captura:** innomaker U20CAM-9281M (OV9281, 1 MP monocromática, obturador global, hasta 720p a 120 fps, lente M12 gran angular), UVC a 320 × 240, OpenCV con V4L2. El obturador global evita la deformación por movimiento (*rolling shutter*) de las cámaras comunes.
 - **Blanco (pared):** fracción de píxeles blancos (HSV `BLANCO_LO`/`BLANCO_HI`) en `ZONA_PASO`, el piso por donde va a pasar. Si pasa de `BLANCO_MAX` (15 %), Python pide `mover(mm, 1)`: avance lento a `VEL_LENTO`. **Doble check:** Python también lee el frontal (`odo(5)`) y lo reporta; el sketch para a 130 mm si la pared es real. Si la cámara ve blanco y el frontal no ve nada, igual va lento.
 - **Amarillo:** el tono `HUE_AMAR` en la mitad de abajo de la imagen, partida en tercios. Solo se usa para desempatar salidas en una isla (sección 7); la meta la confirma el sensor de color.
 - **Montaje:** módulo de 32 × 32 mm sobre un pedestal impreso de 20 × 20 × 75 mm, inclinado hacia abajo para ver el piso adelante del eje. Se conecta por un hub USB-C con entrada de alimentación: con la Q alimentada por VIN, su USB-C no da 5 V al hub, así que el hub se alimenta por su puerto PD.

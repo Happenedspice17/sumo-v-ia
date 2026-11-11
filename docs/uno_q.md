@@ -68,7 +68,7 @@ Funciona sin cámara: el R3 puede hacerlo solo. Un mapa de 16×16 ocupa ~512 byt
 
 ## 5. Cámara
 
-- Cámara USB UVC de 32×32 mm, lente gran angular M12, agujeros M2 a 28 mm.
+- Cámara innomaker U20CAM-9281M (OV9281, 1 MP monocromática, obturador global, hasta 720p a 120 fps, lente M12 gran angular). Es UVC: Linux la ve sin driver. Las medidas de la placa están por confirmar (el CAD aún usa 32×32 mm, agujeros M2 a 28 mm).
 - No es MIPI-CSI porque el Q necesita la Media Carrier board (más grande, 1.8 V) para usar CSI.
 
 Qué hace hoy (no calcula paredes por cámara):

@@ -247,7 +247,7 @@ BOM_ELEC = [
     ["Fusible de 3 A con portafusible", "En el positivo, después del interruptor", "1"],
     ["Capacitor cerámico", "100 nF (104)", "2"],
     ["Header macho recto", "2.54 mm, tira de 40 (los rectos de siempre)", "1"],
-    ["Cámara USB Arducam UB0234 (solo Q)", "OV2710, 32 × 32 mm, lente M12 de 105°; kit con tornillos M2", "1"],
+    ["Cámara USB innomaker U20CAM-9281M (solo Q)", "OV9281 monocromática 1 MP, obturador global, UVC, lente M12 gran angular", "1"],
     ["Cable USB-C corto en ángulo recto (solo Q)", "Del hub a la entrada USB-C de la UNO Q", "1"],
     ["Hub USB-C con entrada PD (solo Q)", "USB-C macho, 1 USB-A de datos y entrada de alimentación", "1"],
     ["Inserto de calor M4 + tornillo M4 × 12 (solo Q)", "Pedestal al piso 2, desde abajo", "1"],
