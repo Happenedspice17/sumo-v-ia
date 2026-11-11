@@ -30,6 +30,8 @@
     <button style="background:#c62828;flex:1" onclick="control('alto')">■ Detener</button>
     <button style="background:#6d4c41;flex:1" onclick="if (confirm('¿Borrar el mapa y el conteo? (laberinto nuevo)')) control('borra')">Borrar mapa</button>
   </div>
+  <div id="ctlT" style="font-size:22px;font-weight:700;margin-top:8px;font-family:monospace">⏱ —</div>
+  <div id="ctlLog" style="font-family:monospace;font-size:14px;margin-top:4px;white-space:pre-line;color:#333"></div>
   <div style="font-size:14px;color:#666;margin-top:6px">Igual que el botón D2: pon el robot en la celda de inicio, viendo al mismo lado, antes de Iniciar.</div>
 </div>
 <h1>Calibrar colores</h1>
@@ -149,7 +151,14 @@ function pinta(d) {
   const k = 255 / Math.max(r, g, b, 0.01);
   document.getElementById("muestra").style.background = `rgb(${r * k},${g * k},${b * k})`;
   document.getElementById("color").textContent = d.color;
-  if (d.odo) document.getElementById("ctlTxt").textContent = d.odo.corriendo ? "· corriendo (" + (d.odo.fase || "...") + ")" : "· quieto";
+  if (d.odo) {
+    const o = d.odo;
+    document.getElementById("ctlTxt").textContent = o.corriendo ? "· corriendo (" + (o.fase || "...") + ")" : "· quieto";
+    document.getElementById("ctlT").textContent = "⏱ " + (o.tiempo == null ? "—" : o.tiempo.toFixed(1) + " s") +
+      (o.t_meta != null ? "   amarillo a los " + o.t_meta.toFixed(1) + " s" : o.tiempo != null && !o.corriendo ? "   sin amarillo" : "");
+    document.getElementById("ctlLog").textContent = (o.log || []).length ? "Colores vistos:\n" +
+      o.log.map(([t, c, p]) => t.toFixed(1).padStart(6) + " s  " + c.padEnd(6) + " celda " + p.join(",")).join("\n") : "";
+  }
   if (d.odo) {
     const o = d.odo, p = o.paredes || 0, si = (b) => (p & b ? "pared" : "libre");
     const mm = (x) => (x === null || x === undefined ? "—" : Math.round(x) + " mm");

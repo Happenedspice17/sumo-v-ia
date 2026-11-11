@@ -66,6 +66,7 @@ bool tofOk = false;
 enum { NADA, AVANZA, GIRA };
 volatile int cmd = NADA;
 volatile int arg = 0;
+volatile bool alin = false;   // el GIRA en curso es una alineacion: no mueve el rumbo deseado
 volatile int ocupado = 0;
 volatile int colorPend = 0;
 volatile int arranque = 0;
@@ -135,6 +136,22 @@ int rpcGirar(int cuartos) {
 // Corrige el rumbo g grados (derecha +) con lo que ve la camara antes de avanzar.
 // Con MPU y signo conocido no gira: mueve el rumbo deseado y la recta lo sostiene (el giroscopio derivo).
 // Si no, gira en su lugar; devuelve 2 si hay que esperar el giro, 1 si no.
+// Con MPU: antes de avanzar gira en su lugar hasta el rumbo deseado si se desvio ALIN_MIN grados o mas
+// (hasta 45; mas es una lectura mala). Devuelve 2 si hay que esperar el giro, 0 si no hizo falta.
+const float ALIN_MIN = 3;
+int rpcAlinear() {
+  ult = 'A';
+  if (ocupado || !(mpuOk && signo)) return 0;
+  float e = ref - signo * yaw;
+  if (fabs(e) < ALIN_MIN || fabs(e) > 45) return 0;
+  arg = (int)roundf(e);
+  if (arg == 0) return 0;
+  alin = true;
+  cmd = GIRA;
+  ocupado = 1;
+  return 2;
+}
+
 int rpcAjustar(int g) {
   ult = 'J';
   if (ocupado || g == 0) return 0;
@@ -263,7 +280,8 @@ void iniciaMov() {
     dirR = -dirL;
     dur = max(abs(arg) * MS_90 / 90, 30L);
     yaw0 = yaw;
-    if (signo) ref += arg;
+    if (signo && !alin) ref += arg;
+    alin = false;
   }
   cmd = NADA;
 }
@@ -565,6 +583,7 @@ void setup() {
   Bridge.provide("mover", rpcMover);
   Bridge.provide("girar", rpcGirar);
   Bridge.provide("ajustar", rpcAjustar);
+  Bridge.provide("alinear", rpcAlinear);
   Bridge.provide("ocupado", rpcOcupado);
   Bridge.provide("color", rpcColor);
   Bridge.provide("arranque", rpcArranque);

@@ -657,6 +657,16 @@ Además, la cámara ya no se busca en `/dev/video0` y `video1` (son internos) y 
 
 **Pruebas.** Simulación de 30 laberintos con la meta en una isla central, con 15 % de lecturas libres leídas como pared: todos llegan a la meta, y en la mayoría con menos pasos que antes.
 
+### Etapa 40. Cronómetro, registro de colores y alineación con MPU (11-nov)
+
+**Pedido del equipo.** Ver en cuánto tiempo encuentra el amarillo, qué colores fue viendo, y aprovechar el MPU para enderezarse mejor.
+
+**Cambio.**
+
+- **Cronómetro:** la web muestra el tiempo de la corrida en vivo, a qué segundo encontró el amarillo y, al terminar, la duración total. También queda en el log de Python.
+- **Registro de colores:** cada color confirmado por el TCS34725 se anota con su segundo y su celda; la web muestra los últimos 15.
+- **Alineación con MPU (`alinear()`):** antes de cada avance, si el rumbo se desvió 3° o más del deseado (hasta 45°; más se toma como lectura mala), gira en su lugar hasta corregirlo. Así no empieza el avance chueco, que es cuando las esquinas tocan la pared. En el sketch sin MPU la función existe y no hace nada, para que el Python sea el mismo.
+
 ## Pruebas realizadas
 
 La tabla distingue lo medido o probado de lo que solo se deduce de la secuencia de commits (marcado **deducido**). Cuando el repositorio guarda la sucesión de valores pero no el resultado de cada intento, se dice. Las pruebas en pista del equipo están en su propia subsección; la última versión (distancia, saltos, votos, máquina de estados, MPU) aún no se ha probado en pista.

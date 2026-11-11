@@ -46,6 +46,7 @@ Se pasan mensajes entre ellas. El STM32 ejecuta cada movimiento por su cuenta y 
 | `mover(mm, lento)` | Avanza hasta *mm* (una celda = 180 mm). Si `lento` es 1 usa `VEL_LENTO`. No bloquea; devuelve 0 si ya hay un movimiento en curso |
 | `girar(k)` | Gira en sitio *k* × 90°; el signo indica el sentido (2 = media vuelta) |
 | `ajustar(g)` | Corrige el rumbo *g* grados (derecha +) con lo que mide la cámara. Con MPU y sentido conocido no gira: mueve el rumbo deseado y la recta lo sostiene (devuelve 1). Si no, gira en su lugar (devuelve 2: hay que esperar) |
+| `alinear()` | Con MPU: antes de avanzar gira en su lugar hasta el rumbo deseado si se desvió 3° o más (`ALIN_MIN`, hasta 45°). Devuelve 2 si hay que esperar. Sin MPU devuelve 0 |
 | `ocupado()` | 1 mientras hay un movimiento activo |
 | `odo(i)` | Lecturas: 0 = mm recorridos, 1 = mm que faltan, 2 = máscara de paredes y movimiento, 3 = saltos (1 izquierda, 2 frente, 4 derecha), 5 / 6 / 7 = distancia frente / izquierda / derecha (mm), 8 = desvío de rumbo en grados (con MPU) |
 | `color()` | Último color confirmado (3 lecturas seguidas), una sola vez |
@@ -286,6 +287,7 @@ Valores tal como están en `sketch.ino` y `main.py`.
 | `D_LADO` | 50 mm | Distancia lateral con el robot centrado |
 | `KC` / `KD` | 0.8 / 0.3 | Centrado (posición / velocidad de acercamiento) |
 | `KG` | 2.0 PWM/° | Sostener rumbo en recta (con MPU-6050) |
+| `ALIN_MIN` | 3° | Con MPU, desvío desde el que endereza en su lugar antes de avanzar |
 | `ADELANTO` | 6° | Corta el giro antes por la inercia (si se pasa, subir) |
 | `AJUSTE_DER` | −10 | Diferencia de PWM en recta; negativo = más fuerza al motor izquierdo (en pista se iba a la izquierda) |
 | `INV_IZQ` / `INV_DER` | true / true | Invierte el sentido del motor por software |
