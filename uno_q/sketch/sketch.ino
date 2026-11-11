@@ -75,6 +75,9 @@ volatile int pideAlto = 0;    // Python pide parar ya (encontro el amarillo)
 int cuenta[NCOL] = {0};
 int estado = 0;
 const char* ESTADOS[] = {"LISTO", "EXPLORA", "REGRESO", "RAPIDO", "META", "BORRADO", "SIN CAM"};
+const char* FASES[] = {"", "SENSA", "DECIDE", "GIRA", "AVANZA", "ESCANEA"};
+int fase = 0;
+const int AMAR = 4;           // refs[4]: la meta; el sketch para solo, sin esperar al Python
 
 int tipo = NADA;
 int dirL, dirR;
@@ -168,6 +171,12 @@ int rpcArranque() {
 
 int rpcCuenta(int idx, int n) {
   if (idx > 0 && idx < NCOL) cuenta[idx] = n;
+  refresca = 1;
+  return 1;
+}
+
+int rpcFase(int f) {
+  fase = constrain(f, 0, 5);
   refresca = 1;
   return 1;
 }
@@ -368,6 +377,7 @@ void leeColor() {
   } else if (armado) {
     armado = false;
     colorPend = k;
+    if (k == AMAR && tipo != NADA) termina();
   }
 }
 
@@ -376,8 +386,9 @@ void pinta() {
   oled.clearDisplay();
   oled.setTextSize(1);
   oled.setCursor(0, 0);
-  oled.print("LABERINTO  ");
-  oled.println(ESTADOS[estado]);
+  oled.print(ESTADOS[estado]);
+  oled.print(" ");
+  oled.println(FASES[fase]);
   oled.drawLine(0, 10, 127, 10, SSD1306_WHITE);
   int total = 0;
   for (int i = 1; i < NCOL; i++) {
@@ -462,6 +473,7 @@ void setup() {
   Bridge.provide("arranque", rpcArranque);
   Bridge.provide("set_cuenta", rpcCuenta);
   Bridge.provide("set_estado", rpcEstado);
+  Bridge.provide("set_fase", rpcFase);
   Bridge.provide("raw", rpcRaw);
   Bridge.provide("set_ref", rpcSetRef);
   Bridge.provide("odo", rpcOdo);

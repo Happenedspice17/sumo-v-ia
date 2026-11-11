@@ -26,8 +26,9 @@ DY = [1, 0, -1, 0]
 CELDA = 180                              # mm por avance; la posicion solo sirve para contar visitas
 PARED = 120                              # mm: lateral con esto o mas = libre
 PARED_F = 130                            # mm: al frente, menos de esto = pared (= PARED_F del sketch)
-FRENTE_LIBRE = 150                       # mm: con el frontal leyendo esto o mas, avanza de frente
+FRENTE_LIBRE = 220                       # mm: frente libre; a la mitad entre pared en su celda (~130) y en la siguiente (~310)
 D_FRENTE_TOF = 130                       # mm donde se detiene el sketch con pared enfrente (= D_FRENTE)
+VOTO_MAX = 5                             # cada lectura vota pared (+1) o libre (-1); tope para que el mapa se corrija
 ISLA = 3                                 # visitas a una celda para decir que rodea una isla
 Y_COLOR = 36                             # mm del eje al sensor de color (adelante)
 
@@ -52,6 +53,12 @@ encontrado = False
 muros = {}
 colores = {}
 meta = None
+# Para la pagina web: durante una corrida lee esto (lo actualiza el robot) en vez de pedirle al Bridge
+corriendo = False
+fase_act = ""
+vivo = {"izq": 9999, "frente": 9999, "der": 9999, "mm": 0, "saltos": 0, "v": [0, 0, 0, 0]}
+ult_img = None
+FASES = ["", "SENSA", "DECIDE", "GIRA", "AVANZA", "ESCANEA"]
 
 
 def escribe(ruta, datos):
@@ -81,6 +88,12 @@ def rpc(nombre, *args):
 
 def estado(e):
     rpc("set_estado", e)
+
+
+def fase(f):
+    global fase_act
+    fase_act = f
+    rpc("set_fase", FASES.index(f))
 
 
 def revisar_color(avanza):
@@ -127,6 +140,7 @@ def tof3(n=3):
     for _ in range(n):
         time.sleep(0.03)                 # lectura nueva de los VL53L0X
         d = [min(a, rpc("odo", i)) for a, i in zip(d, (6, 5, 7))]
+    vivo["izq"], vivo["frente"], vivo["der"] = d
     return d
 
 
@@ -137,10 +151,11 @@ def avanzar():
     rpc("mover", CELDA, int(blanco_adelante()))
     esperar(True)
     mm, saltos = rpc("odo", 0), rpc("odo", 3)
+    vivo["mm"], vivo["saltos"] = mm, saltos
     n = round(mm / CELDA)
-    for _ in range(n):                   # por donde paso no hay pared
+    for _ in range(n):                   # por donde paso no hay pared, seguro
         sig = vecino(pos, rumbo)
-        celda(pos)[rumbo] = celda(sig)[(rumbo + 2) % 4] = 0
+        celda(pos)[rumbo] = celda(sig)[(rumbo + 2) % 4] = -VOTO_MAX
         pos = sig
     print(f"Avanzo {mm} mm -> {pos}" + (f", salto en ToF {saltos}" if saltos else ""))
     return saltos
@@ -157,19 +172,20 @@ def vecino(c, h):
 
 
 def celda(c):
-    return muros.setdefault(c, [None] * 4)
+    return muros.setdefault(c, [0] * 4)
 
 
 def anota(izq, frente, der):
-    """Paredes de la celda actual segun los ToF."""
+    """Votos de pared de la celda actual: una lectura mala no borra lo que vieron las demas."""
+    p = celda(pos)
     for rel, d, lim in ((-1, izq, PARED), (0, frente, FRENTE_LIBRE), (1, der, PARED)):
-        celda(pos)[(rumbo + rel) % 4] = int(d < lim)
+        h = (rumbo + rel) % 4
+        p[h] = max(-VOTO_MAX, min(VOTO_MAX, p[h] + (1 if d < lim else -1)))
 
 
 def libre(c, h):
-    """Paso conocido: algun lado lo vio libre y ninguno vio pared."""
-    v = (muros.get(c, [None] * 4)[h], muros.get(vecino(c, h), [None] * 4)[(h + 2) % 4])
-    return 0 in v and 1 not in v
+    """Paso conocido: los votos de los 2 lados suman libre."""
+    return muros.get(c, [0] * 4)[h] + muros.get(vecino(c, h), [0] * 4)[(h + 2) % 4] < 0
 
 
 def ruta(desde, hasta):
@@ -200,7 +216,7 @@ def cargar():
     d = lee(ARCH_MAPA)
     if not d:
         return
-    muros.update({(x, y): p for x, y, *p in d["muros"]})
+    muros.update({(x, y): [v or 0 for v in p] for x, y, *p in d["muros"]})
     colores.update({(x, y): k for x, y, k in d["colores"]})
     meta = tuple(d["meta"]) if d["meta"] else None
     for k in colores.values():
@@ -228,12 +244,15 @@ def abrir_camara():
 
 
 def foto():
+    global ult_img
     with cam_lock:                       # la usan el robot y la pagina web
         if cam is None:
             return None
         for _ in range(3):
             cam.grab()
         ok, img = cam.read()
+    if ok:
+        ult_img = img
     return img if ok else None
 
 
@@ -290,9 +309,14 @@ def enviar_refs():
 
 
 def api_lectura():
-    v = lectura()
-    odo = {"falta": rpc("odo", 1), "frente": rpc("odo", 5), "paredes": rpc("odo", 2), "mm": rpc("odo", 0),
-           "saltos": rpc("odo", 3), "pos": pos, "celdas": len(muros), "meta": meta}
+    mapa = {"pos": pos, "celdas": len(muros), "meta": meta, "fase": fase_act}
+    if corriendo:                        # sin Bridge: no le quita tiempo al robot
+        v = vivo["v"]
+        odo = {"falta": None, "frente": vivo["frente"], "paredes": 0, "mm": vivo["mm"], "saltos": vivo["saltos"], **mapa}
+    else:
+        v = vivo["v"] = lectura()
+        odo = {"falta": rpc("odo", 1), "frente": rpc("odo", 5), "paredes": rpc("odo", 2), "mm": rpc("odo", 0),
+               "saltos": rpc("odo", 3), **mapa}
     return limpio({"v": v, "color": COLORES[clasifica(v)], "colores": COLORES, "refs": REFS, "odo": odo})
 
 
@@ -310,11 +334,14 @@ def que_haria(izq, frente, der, mueve):
 
 
 def api_tof():
-    izq, frente, der = rpc("odo", 6), rpc("odo", 5), rpc("odo", 7)
-    mueve = bool(rpc("odo", 2) & 8)
+    if corriendo:                        # ultima lectura de tof3 (la que uso para decidir)
+        izq, frente, der, mueve, falta = vivo["izq"], vivo["frente"], vivo["der"], fase_act in ("GIRA", "AVANZA"), None
+    else:
+        izq, frente, der = rpc("odo", 6), rpc("odo", 5), rpc("odo", 7)
+        mueve, falta = bool(rpc("odo", 2) & 8), rpc("odo", 1)
     accion, rel = que_haria(izq, frente, der, mueve)
     return limpio({"izq": izq, "frente": frente, "der": der, "pared": PARED, "pared_f": PARED_F,
-                   "falta": rpc("odo", 1), "mueve": mueve, "accion": accion, "rel": rel})
+                   "falta": falta, "mueve": mueve, "accion": accion, "rel": rel, "fase": fase_act})
 
 
 def api_guardar(i: int):
@@ -330,7 +357,8 @@ def api_guardar(i: int):
 
 
 def api_foto():
-    img = foto() if cam is not None else None   # vigilar_cam la busca si no esta
+    # en corrida reusa la ultima foto del robot: no le gana la camara
+    img = (ult_img.copy() if ult_img is not None else None) if corriendo else (foto() if cam is not None else None)
     if img is None:
         return {"img": None}
     ve = hacia_objetivo(img)
@@ -360,38 +388,50 @@ ui.expose_api("GET", "/api/tof", api_tof)
 
 
 # ---------- Estrategia ----------
+def decidir(izq, frente, der, visitas, usos, saltos):
+    """De frente, si no izquierda, si no derecha. Tras un salto: la salida nueva mas lejana.
+    Con 3 visitas a la celda (isla): la salida menos usada; la camara desempata hacia el amarillo."""
+    ops = salidas(izq, frente, der)
+    nuevas = [r for r in ops if r != 2 and vecino(pos, (rumbo + r) % 4) not in muros]
+    if saltos and nuevas:
+        return max(nuevas, key=lambda r: {-1: izq, 0: frente, 1: der}[r])
+    if visitas[pos] >= ISLA:
+        img = foto() if cam is not None else None
+        ve = hacia_objetivo(img) if img is not None else None
+        return min(ops, key=lambda r: (usos.get((pos, (rumbo + r) % 4), 0), r != ve, ops.index(r)))
+    return ops[0]
+
+
 def buscar_color():
-    """Explora y mapea hasta el amarillo. En cada celda lee los 3 ToF (la menor de 3 lecturas; 5 si hubo un salto)
-    y va de frente, si no a la izquierda, si no a la derecha. Tras un salto (cambio brusco en un ToF) va a la salida
-    nueva mas lejana; si ya paso 3 veces por esa celda (rodea una isla) toma la salida que ha usado menos.
-    Un toque a D2 lo detiene."""
+    """Maquina de estados: SENSA (3 ToF, 3 lecturas; ESCANEA con 5 tras un salto) -> DECIDE -> GIRA -> AVANZA.
+    Todo se decide quieto. El color se revisa todo el tiempo; amarillo o un toque a D2 la terminan."""
     global encontrado
     encontrado = False
     estado(1)
-    visitas, usos, saltos = {}, {}, 0
+    visitas, usos, saltos, f = {}, {}, 0, "SENSA"
     while not encontrado:
         if rpc("arranque"):
             print("Detenido con el boton")
             return False
-        visitas[pos] = visitas.get(pos, 0) + 1
-        izq, frente, der = tof3(5 if saltos else 3)
-        anota(izq, frente, der)
-        ops = salidas(izq, frente, der)
-        rel = ops[0]
-        nuevas = [r for r in ops if r != 2 and vecino(pos, (rumbo + r) % 4) not in muros]
-        if saltos and nuevas:
-            rel = max(nuevas, key=lambda r: {-1: izq, 0: frente, 1: der}[r])
-        elif visitas[pos] >= ISLA:
-            # la camara solo desempata entre salidas igual de usadas
-            img = foto() if cam is not None else None
-            ve = hacia_objetivo(img) if img is not None else None
-            rel = min(ops, key=lambda r: (usos.get((pos, (rumbo + r) % 4), 0), r != ve, ops.index(r)))
-        h = (rumbo + rel) % 4
-        usos[(pos, h)] = usos.get((pos, h), 0) + 1
-        print(f"ToF izq {izq} frente {frente} der {der} en {pos}:",
-              {1: "derecha", 0: "frente", -1: "izquierda", 2: "media vuelta"}[rel])
-        girar(rel)
-        saltos = 0 if encontrado else avanzar()
+        fase(f)
+        if f in ("SENSA", "ESCANEA"):
+            visitas[pos] = visitas.get(pos, 0) + 1
+            lect = tof3(5 if f == "ESCANEA" else 3)
+            anota(*lect)
+            f = "DECIDE"
+        elif f == "DECIDE":
+            rel = decidir(*lect, visitas, usos, saltos)
+            h = (rumbo + rel) % 4
+            usos[(pos, h)] = usos.get((pos, h), 0) + 1
+            print("ToF izq {} frente {} der {} en {}:".format(*lect, pos),
+                  {1: "derecha", 0: "frente", -1: "izquierda", 2: "media vuelta"}[rel])
+            f = "GIRA"
+        elif f == "GIRA":
+            girar(rel)
+            f = "AVANZA"
+        else:
+            saltos = avanzar()
+            f = "ESCANEA" if saltos else "SENSA"
     return True
 
 
@@ -403,8 +443,10 @@ def seguir_ruta():
     estado(3)
     print(f"Ruta a {meta}: {len(camino)} celdas")
     for h in camino:
+        fase("GIRA")
         girar({0: 0, 1: 1, 2: 2, 3: -1}[(h - rumbo) % 4])
         esperado = vecino(pos, h)
+        fase("AVANZA")
         avanzar()
         if encontrado:
             return True
@@ -470,11 +512,15 @@ def loop():
     if not a:
         time.sleep(0.05)
         return
-    global pos, rumbo
-    global encontrado
+    global pos, rumbo, encontrado, corriendo
     pos, rumbo, encontrado = (0, 0), 0, False   # cada corrida empieza en la misma celda viendo al mismo lado
     t = time.time()
-    ok = (meta is not None and seguir_ruta()) or buscar_color()
+    corriendo = True
+    try:
+        ok = (meta is not None and seguir_ruta()) or buscar_color()
+    finally:
+        corriendo = False
+        fase("")
     guardar()
     estado(4 if ok else 0)
     print(f"Corrida: {time.time() - t:.1f} s, marcas {cuenta[1:]}")

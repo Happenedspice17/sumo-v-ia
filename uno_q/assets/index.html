@@ -102,10 +102,10 @@ function pinta(d) {
     const o = d.odo, p = o.paredes || 0, si = (b) => (p & b ? "pared" : "libre");
     const mm = (x) => (x === null || x === undefined ? "—" : Math.round(x) + " mm");
     document.getElementById("odo").textContent =
-      (p & 8 ? "Avanzando, faltan " + mm(o.falta) : "Quieto") + "\n" +
+      (o.fase ? "En corrida (datos de la última lectura del robot)" : p & 8 ? "Avanzando, faltan " + mm(o.falta) : "Quieto") + "\n" +
       "Sensores: izq " + si(1) + " · frente " + si(2) + " (" + mm(o.frente > 2000 ? null : o.frente) + ") · der " + si(4) + "\n" +
       "Último avance: " + mm(o.mm) + (o.saltos ? " · salto en ToF " + o.saltos : "") + "\n" +
-      "Celda " + o.pos + " · mapa " + o.celdas + " celdas · meta " + (o.meta || "sin encontrar");
+      "Fase " + (o.fase || "—") + " · celda " + o.pos + " · mapa " + o.celdas + " celdas · meta " + (o.meta || "sin encontrar");
   }
   document.getElementById("nums").textContent = `r ${r.toFixed(2)}  g ${g.toFixed(2)}  b ${b.toFixed(2)}  c ${c}`;
   const cont = document.getElementById("botones");

@@ -58,14 +58,17 @@ Con el hub conectado al USB-C, App Lab se conecta por WiFi (el puerto no puede i
 
 **Python**, decide en cada paso:
 
-1. Lee los 3 ToF, la menor de 3 lecturas de cada uno (5 si en el avance hubo un cambio brusco). Las anota como paredes de la celda en el mapa.
-2. Prioridad: de frente (≥ 150 mm); si no, izquierda (lateral ≥ 120 mm); si no, derecha; si no, media vuelta.
+Es una máquina de estados: `SENSA` → `DECIDE` → `GIRA` → `AVANZA` → `SENSA` (`ESCANEA` en lugar de `SENSA` tras un salto). Todo se decide con el robot quieto; el color se revisa todo el tiempo. La fase sale en la OLED junto al estado y en la web.
+
+1. Lee los 3 ToF, la menor de 3 lecturas de cada uno (5 si en el avance hubo un cambio brusco). Cada lectura vota pared (+1) o libre (−1) en el mapa, con tope ±`VOTO_MAX`: una lectura mala no borra lo que vieron las demás. Por donde pasó queda libre seguro.
+2. Prioridad: de frente (≥ 220 mm, `FRENTE_LIBRE`: a la mitad entre pared en su celda ~130 y en la siguiente ~310); si no, izquierda (lateral ≥ 120 mm); si no, derecha; si no, media vuelta.
 3. Tras un cambio brusco va a la salida libre que lleve a una celda que no está en el mapa, la de lectura más lejana.
 4. Si ya pasó 3 veces por esa celda (rodea una isla) toma la salida que ha usado menos; la cámara desempata hacia el amarillo. La celda sale de los mm que de verdad avanzó.
 5. Antes de cada avance la cámara revisa el piso del camino: negro → normal; blanco (pared) → va lento y el frontal hace el doble check (el sketch para a 130 mm si de verdad hay pared).
-6. Cada color que lee el TCS34725 (3 lecturas seguidas) va al mapa en la celda donde está el sensor y se cuenta una vez. Amarillo = meta: se detiene (OLED `META`).
+6. Cada color que lee el TCS34725 (3 lecturas seguidas) va al mapa en la celda donde está el sensor y se cuenta una vez. Amarillo = meta: el STM32 para solo en cuanto lo confirma, sin esperar al Python (OLED `META`).
 7. El mapa (paredes, colores y meta) se guarda en `/app/datos/mapa.json`. En la siguiente corrida, si conoce la meta, va por el camino más corto conocido (BFS, OLED `RAPIDO`); si algo no cuadra, sigue explorando desde ahí.
 
 - Botón corto: corrida nueva (pon el robot en el inicio). Otro toque la detiene. Sostenido más de 2 s: borra el mapa y el conteo (laberinto nuevo). Cada corrida empieza en la misma celda y viendo al mismo lado.
+- **Web durante una corrida:** no llama al Bridge; muestra la última lectura que tomó el robot y su última foto, para no quitarle tiempo ni la cámara.
 - **Panel web → Ver sensores ToF:** dibujo en vivo de lo que mide cada VL53L0X y qué haría el robot.
 - **Cámara al arrancar:** la busca una vez (OLED `LISTO` si la encuentra, `SIN CAM` si no). Un hilo revisa cada 2 s: si no hay cámara la busca y si se desconecta pone `SIN CAM`.
