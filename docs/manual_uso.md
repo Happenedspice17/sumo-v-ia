@@ -35,7 +35,7 @@ Si `PY` no sube: conecta la laptop, abre App Lab y dale **Run**.
 # 4. Calibra los colores (una vez por pista)
 
 1. Prende el robot normal y espera a que suba `PY`.
-2. En la laptop o el celular (en el mismo WiFi), abre **http://192.168.3.66:7000**. Si la IP cambia, App Lab la muestra al darle Run.
+2. En la laptop o el celular (en el mismo WiFi), abre **http://192.168.3.66:7000**. Si la IP cambia (depende de la red), App Lab la muestra al darle Run.
 3. Sigue el asistente: pon el robot **en el piso de la pista**, quieto, encima del color que te pide, y aprieta **Guardar**. Son 5: piso, rojo, verde, azul y amarillo.
 4. Al final sale **¡Listo!**. Pasa el sensor por cada color y revisa que arriba diga el nombre correcto. Si uno falla, dale **◀ Atrás** y repítelo.
 
@@ -85,6 +85,7 @@ Entre intentos del mismo laberinto **no borres**: así recuerda el camino.
 | `SIN SENSOR COLOR` | Revisa los cables del sensor de color |
 | La página no abre | Mismo WiFi que la Q; usa la IP que muestra App Lab con `:7000` |
 | La cámara sale negra | Conecta cámara y hub **antes** de darle Run; el hub con su cargador |
+| `SIN CAM` en la pantalla | Revisa que el cargador del hub esté conectado. El robot funciona sin cámara |
 | Un color sale mal | Repítelo en la página con **◀ Atrás** |
 | Gira al revés | Cambia OUT1-2 por OUT3-4 en el puente H |
 | Un motor va al revés | Voltea sus 2 cables en el puente H |

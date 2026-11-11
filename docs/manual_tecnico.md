@@ -93,7 +93,7 @@ La distancia a cada color de referencia *i* suma un término logarítmico de bri
 
 Si la menor distancia es mayor que 0.02, el resultado es "piso".
 
-**Calibración:** desde un panel web que sirve la propia placa (puerto 7000). Cada referencia es el promedio de 5 lecturas tomadas sobre la pista. Se guarda en `/app/colores.json` y Linux la carga al MCU con `set_ref` en cada arranque, sin recompilar el sketch.
+**Calibración:** desde un panel web que sirve la propia placa (puerto 7000). Cada referencia es el promedio de 5 lecturas tomadas sobre la pista. Se guarda en `/app/datos/colores.json`; si no existe, se usan los valores de fábrica. Linux la carga al MCU con `set_ref` en cada arranque, sin recompilar el sketch.
 
 **Antirrebote:** se exigen 3 muestras iguales seguidas (3 × 30 ms). El evento solo se dispara en la transición piso → color.
 
@@ -108,8 +108,8 @@ Si la menor distancia es mayor que 0.02, el resultado es "piso".
 - **Captura:** cámara UVC a 320 × 240, OpenCV con V4L2.
 - **Detección:** segmentación HSV del color de pared y fracción de píxeles en 3 regiones de interés de la celda siguiente (fondo, izquierda, derecha).
 - **Mapa tentativo:** lo detectado va a un mapa separado del confirmado. El *flood fill* lo usa para anticipar callejones sin salida. Si deja al robot sin camino, se recalcula sin él.
-- **Montaje:** módulo de 32 × 32 mm sobre un pedestal impreso de 20 × 20 × 75 mm. Lente a 162 mm del piso, inclinado 25° hacia abajo. Se conecta por un hub USB-C con entrada de alimentación, porque el puerto del Q no da suficiente corriente alimentado por VIN.
-- **Ajuste:** el panel web muestra la imagen a 160 × 120 (JPEG calidad 40, 2 cuadros por segundo) con las 3 regiones en rojo (pared) o verde (libre). Un candado comparte la cámara entre el robot y el panel.
+- **Montaje:** módulo de 32 × 32 mm sobre un pedestal impreso de 20 × 20 × 75 mm. Lente a 162 mm del piso, inclinado 25° hacia abajo. Se conecta por un hub USB-C con entrada de alimentación: con la Q alimentada por VIN, su USB-C no da 5 V al hub, así que el hub se alimenta por su puerto PD.
+- **Ajuste:** el panel web muestra la imagen a 160 × 120 (JPEG calidad 40, 2 cuadros por segundo) con las 3 regiones en rojo (pared) o verde (libre). Un candado comparte la cámara entre el robot y el panel. Al arrancar la busca 30 s; si no la halla, sigue buscándola en segundo plano, y la página la reabre si se desconecta.
 
 # 6. Cómo se mueve
 
