@@ -738,23 +738,20 @@ def iniciar():
     cargar()
     for c in range(1, len(COLORES)):
         rpc("set_cuenta", c, cuenta[c])
-    fin = time.time() + 30               # el hub puede tardar en levantar la camara
-    while USAR_CAM and not abrir_camara() and time.time() < fin:
-        print("Buscando camara...")
-        time.sleep(2)
-    if cam is not None:
+    if USAR_CAM and abrir_camara():
         leer_camara(debug=True)
         estado(0)
     else:
         print("Sin camara: la sigo buscando")
         estado(6)
-        threading.Thread(target=buscar_cam, daemon=True).start()
+        if USAR_CAM:                     # en segundo plano: no frena el arranque de la app
+            threading.Thread(target=buscar_cam, daemon=True).start()
 
 
 def buscar_cam():
-    """Sigue buscando la camara cada 3 s hasta encontrarla."""
+    """Sigue buscando la camara cada 2 s hasta encontrarla."""
     while cam is None:
-        time.sleep(3)
+        time.sleep(2)
         with cam_lock:
             if cam is None:
                 abrir_camara()
