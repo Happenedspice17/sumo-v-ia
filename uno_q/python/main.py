@@ -95,6 +95,7 @@ colores = {}
 meta = None
 # Para la pagina web: durante una corrida lee esto (lo actualiza el robot) en vez de pedirle al Bridge
 corriendo = False
+pedido = None                            # desde la web: "corre", "alto" o "borra" (como el boton D2)
 fase_act = ""
 vivo = {"izq": 9999, "frente": 9999, "der": 9999, "mm": 0, "saltos": 0, "v": [0, 0, 0, 0]}
 ult_img = None
@@ -523,7 +524,7 @@ def estado_tof_cal():
 
 
 def api_lectura():
-    mapa = {"pos": pos, "celdas": len(muros), "meta": meta, "fase": fase_act}
+    mapa = {"pos": pos, "celdas": len(muros), "meta": meta, "fase": fase_act, "corriendo": corriendo}
     if corriendo:                        # sin Bridge: no le quita tiempo al robot
         v = vivo["v"]
         odo = {"falta": None, "frente": vivo["frente"], "paredes": 0, "mm": vivo["mm"], "saltos": vivo["saltos"], **mapa}
@@ -730,8 +731,7 @@ def buscar_color():
     estado(1)
     f = "SENSA"
     while not encontrado:
-        if rpc("arranque"):
-            print("Detenido con el boton")
+        if detener():
             return False
         fase(f)
         if f in ("SENSA", "ESCANEA"):
@@ -761,6 +761,8 @@ def seguir_ruta():
     estado(3)
     print(f"Ruta a {meta}: {len(camino)} celdas")
     for h in camino:
+        if detener():
+            return False
         fase("GIRA")
         girar({0: 0, 1: 1, 2: 2, 3: -1}[(h - rumbo) % 4])
         esperado = vecino(pos, h)
@@ -834,12 +836,35 @@ def vigilar_cam():
                 estado(6)
 
 
+def detener():
+    """Toque a D2 o "Detener" en la web durante una corrida."""
+    global pedido
+    if rpc("arranque") or pedido == "alto":
+        pedido = None
+        print("Detenido con el boton o la web")
+        return True
+    return False
+
+
+def api_control(a: str):
+    """Web: corre (como un toque corto a D2), alto (lo detiene) o borra (como sostener D2: mapa y conteo)."""
+    global pedido
+    if a in ("corre", "alto", "borra"):
+        pedido = a
+    return {"corriendo": corriendo, "pedido": pedido}
+
+
+ui.expose_api("GET", "/api/control", api_control)
+
+
 def loop():
+    global pedido
     a = rpc("arranque")
-    if a == 2:
+    p, pedido = pedido, None
+    if a == 2 or p == "borra":
         borrar()
         return
-    if not a:
+    if not a and p != "corre":
         time.sleep(0.05)
         return
     global pos, rumbo, encontrado, corriendo
