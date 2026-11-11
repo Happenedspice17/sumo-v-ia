@@ -738,7 +738,11 @@ def iniciar():
     cargar()
     for c in range(1, len(COLORES)):
         rpc("set_cuenta", c, cuenta[c])
-    if USAR_CAM and abrir_camara():
+    fin = time.time() + 30               # el hub puede tardar en levantar la camara
+    while USAR_CAM and not abrir_camara() and time.time() < fin:
+        print("Buscando camara...")
+        time.sleep(2)
+    if cam is not None:
         leer_camara(debug=True)
         estado(0)
     else:
