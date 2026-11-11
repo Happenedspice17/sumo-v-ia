@@ -30,7 +30,16 @@ GND común entre todo. No alimentes el UNO Q con el regulador de 5 V del L298N. 
 
 1. Crea una app nueva llamada `Laberinto`.
 2. Copia `sketch/sketch.ino`, `python/main.py`, `python/requirements.txt` y `assets/index.html` (carpeta `assets/` en la raíz de la app).
-   Hay 2 versiones del sketch: `sketch/` (con MPU-6050; si no lo encuentra al arrancar, va por tiempo igual) y `sketch_sin_mpu/` (sin el código del MPU, giros y rectas solo por tiempo). Copia una de las dos, con su `oled.h`. El Python es el mismo para las dos.
+   Hay 4 versiones: se combina un sketch con un Python. Copia **un** sketch (con su `oled.h`) y **un** Python a `python/` de la app; la página web es la misma.
+
+   | Versión | Sketch (STM32) | Python (Linux) | Cámara |
+   |---|---|---|---|
+   | Estable con MPU | `sketch/` | `python/` | 1 a 3: exposición fija, umbral automático (Otsu), corrección de rumbo |
+   | Estable sin MPU | `sketch_sin_mpu/` | `python/` | 1 a 3 |
+   | Experimental con MPU | `sketch/` | `python_experimental/` | 1 a 5: además, distancia por cámara y aberturas adelante |
+   | Experimental sin MPU | `sketch_sin_mpu/` | `python_experimental/` | 1 a 5 |
+
+   `sketch/` también funciona sin el MPU (si no lo encuentra al arrancar, va por tiempo). Los 2 Python difieren solo en `EXPERIMENTAL`: si cambias uno, cambia el otro igual.
 3. Agrega el brick **WebUI - HTML** (panel Bricks). Sin él no hay página web.
 4. En las librerías del sketch agrega `Adafruit SSD1306`, `Adafruit GFX Library`, `Adafruit TCS34725` y `VL53L0X` (de Pololu).
 5. Pulsa **Run**. App Lab carga el sketch al STM32 y arranca el Python.
@@ -48,7 +57,7 @@ Con el hub conectado al USB-C, App Lab se conecta por WiFi (el puerto no puede i
    **Sensores**: enciende con el botón presionado. La OLED muestra `r g b c`, el color detectado y las 3 distancias. Centra el robot en una celda y anota `D_LADO` y `D_FRENTE`.
 2. **Distancia (VL53L0X)**: en la web, "Ver sensores ToF" → "Calibrar distancia". Pon una pared a una distancia medida desde la cara del sensor, escribe los mm y aprieta el sensor (promedia 10 lecturas). Mide cada sensor a 50, 100 y 150 mm con el vernier; el frontal también a 250–300 mm con flexómetro, porque sus umbrales viven ahí (`FRENTE_LIBRE` 220, pared en la celda siguiente ~310). Con 2 o más puntos ajusta una recta `real = a·crudo + b` (con 1 punto, solo el desfase). Se guarda en `/app/datos/tof.json`, se manda al STM32 (`set_tof`) en cada arranque y el panel muestra la lectura sin calibrar (`odo(9..11)`). **Después de calibrar revisa los umbrales** (`D_FRENTE`, `PARED_F`, `PARED`, `D_LADO_MIN`, `FRENTE_LIBRE`): se ajustaron con lecturas sin calibrar.
 3. **Avance**: con pared enfrente a menos de 1 m (`RANGO`) avanza por distancia y no hay que calibrar. Sin pared a la vista avanza por tiempo: ajusta `MS_CELDA` hasta que avance 18 cm, y `MS_90` para giros de 90°. Calibra con la batería cargada. Si se desvía, ajusta `AJUSTE_DER`.
-4. **Cámara** (innomaker U20CAM-9281M, monocromática): busca el blanco de las paredes en el piso por donde va a pasar (`ZONA_PASO`, `BLANCO_MIN`, `BLANCO_MAX` en `main.py`). No ve colores; el amarillo lo detecta el TCS34725. La página web muestra la imagen (160 × 120) con el camino en rojo si ve blanco o verde si ve negro. Ajusta `ZONA_PASO` para que en un pasillo libre salga verde. No se guardan imágenes en `/app`: con ellas App Lab marca "failed to start".
+4. **Cámara** (innomaker U20CAM-9281M, monocromática; no ve colores, el amarillo lo detecta el TCS34725). En la web, "Calibrar cámara": (1) exposición fija hasta que el piso salga negro y las paredes blancas; (2) robot derecho y centrado en un pasillo largo → "Está derecho"; (3) girado a mano unos 15° a la derecha → "Fijar escala"; (4, solo experimental) frente a una pared a varias distancias (100 a 600 mm) → "Agregar punto", usa el ToF frontal como regla. Se guarda en `/app/datos/camara.json`. La inclinación de la cámara no importa: todo se mide con el robot real. La página web muestra la imagen (160 × 120) con el camino en rojo si ve blanco o verde si ve negro. Ajusta `ZONA_PASO` para que en un pasillo libre salga verde. No se guardan imágenes en `/app`: con ellas App Lab marca "failed to start".
 
 ## ⚙️ Funcionamiento
 
@@ -72,7 +81,10 @@ Es una máquina de estados: `SENSA` → `DECIDE` → `GIRA` → `AVANZA` → `SE
 2. Prioridad: de frente (≥ 220 mm, `FRENTE_LIBRE`: a la mitad entre pared en su celda ~130 y en la siguiente ~310); si no, izquierda (lateral ≥ 120 mm); si no, derecha; si no, media vuelta.
 3. Tras un cambio brusco va a la salida libre que lleve a una celda que no está en el mapa, la de lectura más lejana.
 4. Si ya pasó 3 veces por esa celda (rodea una isla) toma la salida que ha usado menos. La celda sale de los mm que de verdad avanzó.
-5. Antes de cada avance la cámara revisa el piso del camino: negro → normal; blanco (pared) → va lento y el frontal hace el doble check (el sketch para a 130 mm si de verdad hay pared).
+5. Antes de cada avance, con una sola foto, la cámara:
+   - Revisa el piso del camino con un umbral de gris automático (Otsu): negro → normal; blanco (pared) → va lento y el frontal hace el doble check (el sketch para a 130 mm si de verdad hay pared).
+   - Mide el rumbo con el punto de fuga de las bases de las 2 paredes; si va chueco 4° o más, lo corrige (`ajustar`). Con MPU no gira: corrige el rumbo que sostiene el giroscopio. Sin MPU gira en su lugar.
+   - Experimental: distancia a la pared en 5 columnas (como 5 ToF virtuales) y aberturas laterales en la celda siguiente (va lento y anota un voto débil de libre).
 6. Cada color que lee el TCS34725 (3 lecturas seguidas) va al mapa en la celda donde está el sensor y se cuenta una vez. Amarillo = meta: el STM32 para solo en cuanto lo confirma, sin esperar al Python (OLED `META`).
 7. El mapa (paredes, colores y meta) se guarda en `/app/datos/mapa.json`. En la siguiente corrida, si conoce la meta, va por el camino más corto conocido (BFS, OLED `RAPIDO`); si algo no cuadra, sigue explorando desde ahí.
 

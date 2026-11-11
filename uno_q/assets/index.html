@@ -74,8 +74,30 @@
   <div>De frente, luego mano izquierda, con los 3 ToF (la menor de 3 lecturas). Tras un cambio brusco en un ToF va a la salida nueva más lejana; si pasa 3 veces por una celda, a la menos usada. Mapea paredes y colores; para al leer amarillo y la siguiente corrida va directo.</div>
 </div>
 <div class="paso">
-  <div>Cámara monocromática (camino rojo = blanco/pared, va lento; verde = negro):</div>
+  <div>Cámara monocromática: camino rojo = blanco/pared (va lento), verde = negro; azul = bases de las paredes y punto de fuga (rumbo); línea blanca = "derecho"<span id="camExpTxt"></span>:</div>
   <img id="cam" alt="sin cámara" style="width:100%;max-width:320px;image-rendering:pixelated;background:#000;border-radius:8px;margin-top:8px">
+  <div id="camTxt" style="font-family:monospace;font-size:14px;margin-top:6px;white-space:pre-line"></div>
+  <details style="margin-top:8px"><summary><b>Calibrar cámara</b></summary>
+    <div style="margin-top:8px">1. Exposición fija (0 = automática; unidades de 100 µs: 100 = 10 ms). Sube o baja hasta que el piso salga negro y las paredes blancas, sin manchas.</div>
+    <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+      <input id="camExpo" type="number" value="0" min="0" style="width:80px;font-size:18px;padding:6px">
+      <button style="background:#455a64;padding:10px 14px" onclick="camApi('cam_expo?v=' + (parseInt(document.getElementById('camExpo').value) || 0))">Aplicar</button>
+    </div>
+    <div style="margin-top:10px">2. Rumbo: pon el robot derecho y centrado en un pasillo largo y aprieta:</div>
+    <button style="background:#455a64;padding:10px 14px;margin-top:6px" onclick="camApi('cam_cero')">Está derecho</button>
+    <div style="margin-top:10px">3. Gíralo a mano unos grados a la <b>derecha</b> (transportador), escríbelos y aprieta:</div>
+    <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+      <input id="camGiro" type="number" value="15" min="1" style="width:80px;font-size:18px;padding:6px"> °
+      <button style="background:#455a64;padding:10px 14px" onclick="camApi('cam_giro?g=' + (parseInt(document.getElementById('camGiro').value) || 0))">Fijar escala</button>
+    </div>
+    <div id="camDistBox" style="display:none;margin-top:10px">4. <b>Experimental</b>, distancia por cámara: pon el robot frente a una pared y aprieta en varias distancias (100 a 600 mm). Usa el ToF frontal como regla.
+      <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">
+        <button style="background:#455a64;padding:10px 14px" onclick="camApi('cam_dist')">Agregar punto</button>
+        <button style="background:#888;padding:6px 10px;font-size:14px" onclick="camApi('cam_dist?borrar=1')">Borrar puntos</button>
+      </div>
+    </div>
+    <div id="camCal" style="font-family:monospace;font-size:14px;margin-top:8px;white-space:pre-line"></div>
+  </details>
 </div>
 <div class="paso">
   <div id="pasoTxt"></div>
@@ -207,11 +229,29 @@ async function ciclo() {
 }
 ciclo();
 
+function pintaCam(d) {
+  if (d.img) document.getElementById("cam").src = "data:image/jpeg;base64," + d.img;
+  document.getElementById("camExpTxt").textContent = d.exp ? "; amarillo = base de la pared por columna (experimental)" : "";
+  document.getElementById("camDistBox").style.display = d.exp ? "" : "none";
+  if (d.img) document.getElementById("camTxt").textContent =
+    "Blanco en el camino: " + Math.round(d.blanco * 100) + " %   umbral de gris: " + d.umbral + "\n" +
+    "Rumbo: " + (d.ang === null ? "no ve las 2 paredes" : (d.ang > 0 ? "gira " + d.ang + "° a la derecha" : d.ang < 0 ? "gira " + -d.ang + "° a la izquierda" : "derecho")) +
+    (d.exp ? "\nDistancias por columna: " + d.virtual.map((v) => (v === null ? "-" : v)).join(" · ") + " mm" +
+      "\nAbertura en la celda siguiente: " + (d.abre.length ? d.abre.map((r) => (r < 0 ? "izquierda" : "derecha")).join(" y ") : "ninguna") : "");
+  const c = d.cal;
+  if (c) document.getElementById("camCal").textContent =
+    "Exposición " + (c.expo || "automática") + " · derecho en x = " + c.x0 + " · escala " + c.k + " rad/px" +
+    (d.exp ? "\nPuntos (fila: mm) " + (Object.entries(c.filas).map(([y, m]) => y + ":" + m).join("  ") || "ninguno") : "");
+}
+
+async function camApi(q) {
+  document.getElementById("msg").textContent = "Cámara...";
+  try { pintaCam(await (await fetch("/api/" + q)).json()); } catch (e) {}
+  document.getElementById("msg").textContent = "Listo ✔";
+}
+
 async function camara() {
-  try {
-    const d = await (await fetch("/api/foto")).json();
-    if (d.img) document.getElementById("cam").src = "data:image/jpeg;base64," + d.img;
-  } catch (e) {}
+  try { pintaCam(await (await fetch("/api/foto")).json()); } catch (e) {}
   setTimeout(camara, 500);
 }
 camara();

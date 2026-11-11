@@ -1,6 +1,8 @@
 from arduino.app_utils import *
 from arduino.app_bricks.web_ui import WebUI
 import cv2
+import math
+import numpy as np
 import json
 import os
 import threading
@@ -35,14 +37,25 @@ VOTO_MAX = 5                             # cada lectura vota pared (+1) o libre 
 ISLA = 3                                 # visitas a una celda para decir que rodea una isla
 Y_COLOR = 36                             # mm del eje al sensor de color (adelante)
 
-# ---------- Camara (OV9281 monocromatica): solo blanco/negro en el piso por donde va a pasar ----------
+# ---------- Camara (OV9281 monocromatica, obturador global): asistencia, nunca decide sola ----------
 CAM_ID = 0
 USAR_CAM = True
+EXPERIMENTAL = False                     # True en python_experimental/: distancias y aberturas por camara
 ANCHO, ALTO = 320, 240
-# Blanco = pared (el piso es negro y no lleva blanco). ZONA_PASO: piso por donde va a pasar, en fraccion de la imagen
-BLANCO_MIN = 170                         # gris 0-255: de aqui para arriba es blanco
-ZONA_PASO = (0.30, 0.55, 0.70, 1.00)
+ARCH_CAM = DATOS + "/camara.json"
+# Calibracion de la camara (se ajusta en la web y se guarda): exposicion (0 = automatica; unidades UVC de 100 us),
+# columna del punto de fuga con el robot derecho (x0), radianes por pixel (k) y, experimental, fila -> mm
+camcal = {"expo": 0, "x0": ANCHO / 2, "k": 0.008, "filas": {}}
+# Blanco = pared (piso negro). Umbral de gris automatico (Otsu) acotado: una imagen toda negra no inventa blanco
+UMBRAL_MIN, UMBRAL_MAX = 100, 220
+ZONA_PASO = (0.30, 0.55, 0.70, 1.00)     # piso por donde va a pasar, en fraccion de la imagen
 BLANCO_MAX = 0.15                        # fraccion de blanco en ZONA_PASO para ir lento
+# Rumbo: punto de fuga de las bases de las 2 paredes del pasillo
+ZONA_BORDES = (0.45, 0.95)               # filas (fraccion) donde busca las bases de las paredes
+ANG_MIN, ANG_MAX = 4, 20                 # grados: menos no corrige; mas es una lectura mala
+# Experimental: profundidad por fila (columnas en fraccion) y aberturas en la celda siguiente
+COLS = (0.1, 0.3, 0.5, 0.7, 0.9)
+SIG = (60, 240)                          # mm del frontal: tramo de las paredes de la celda siguiente
 
 pos = (0, 0)
 rumbo = 0
@@ -147,9 +160,26 @@ def tof3(n=3):
 
 def avanzar():
     """Una celda por distancia (el sketch para con el frontal); la posicion sale de los mm recorridos.
-    Si la camara ve blanco en el camino va lento. Devuelve los ToF que saltaron (0 = ninguno)."""
+    Antes, la camara: blanco en el camino -> lento; rumbo chueco -> lo corrige. Devuelve los ToF que saltaron (0 = ninguno)."""
     global pos
-    rpc("mover", CELDA, int(blanco_adelante()))
+    v = mira()
+    lento = v is not None and v["blanco"] >= BLANCO_MAX
+    if lento:                            # blanco en el camino: lento; el frontal hace el doble check
+        f = rpc("odo", 5)
+        print(f"Camara: blanco adelante ({v['blanco']:.2f}), " + (f"el frontal lo confirma a {f} mm"
+              if f < D_FRENTE_TOF + CELDA else "el frontal no ve nada (punto ciego?)") + ": voy lento")
+    if v and v["ang"] is not None and abs(v["ang"]) >= ANG_MIN:
+        print(f"Camara: rumbo chueco, corrijo {v['ang']:+.0f} grados")
+        if rpc("ajustar", round(v["ang"])) == 2:
+            esperar()
+    if EXPERIMENTAL and v and v["abre"]:  # abertura en la celda siguiente: lento y voto debil de libre
+        lento = True
+        sig = celda(vecino(pos, rumbo))
+        for rel in v["abre"]:
+            h = (rumbo + rel) % 4
+            sig[h] = max(-VOTO_MAX, sig[h] - 1)
+        print("Camara: abertura adelante", ["izq" if r < 0 else "der" for r in v["abre"]])
+    rpc("mover", CELDA, int(lento))
     esperar(True)
     mm, saltos = rpc("odo", 0), rpc("odo", 3)
     vivo["mm"], vivo["saltos"] = mm, saltos
@@ -241,6 +271,7 @@ def abrir_camara():
     cam.set(cv2.CAP_PROP_BUFFERSIZE, 1)
     if not cam.isOpened():
         cam = None
+    aplica_expo()
     return cam is not None
 
 
@@ -257,25 +288,115 @@ def foto():
     return img if ok else None
 
 
-def frac_blanco(img):
-    """Fraccion de blanco (pared) en el piso por donde va a pasar."""
-    h, w = img.shape[:2]
+def aplica_expo():
+    """1. Exposicion fija: el umbral de blanco no cambia con la luz del lugar ni con la gente alrededor."""
+    if cam is None:
+        return
+    if camcal["expo"] > 0:
+        cam.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1)        # V4L2: 1 manual, 3 automatica
+        cam.set(cv2.CAP_PROP_EXPOSURE, camcal["expo"])
+    else:
+        cam.set(cv2.CAP_PROP_AUTO_EXPOSURE, 3)
+
+
+def umbral(g):
+    """2. Umbral de blanco por Otsu en la mitad de abajo (piso negro y pared blanca son 2 grupos de gris)."""
+    t, _ = cv2.threshold(g[g.shape[0] // 2:], 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    return min(max(t, UMBRAL_MIN), UMBRAL_MAX)
+
+
+def bordes(b):
+    """Bases de las paredes: en cada fila, desde el centro hacia cada lado, el primer blanco. [(y, xl, xr)]."""
+    h, w = b.shape
+    c, out = w // 2, []
+    for y in range(int(ZONA_BORDES[0] * h), int(ZONA_BORDES[1] * h)):
+        if b[y, c]:
+            continue                     # pared enfrente en esta fila
+        izq, der = np.flatnonzero(b[y, :c]), np.flatnonzero(b[y, c:])
+        out.append((y, izq[-1] if len(izq) else None, c + der[0] if len(der) else None))
+    return out
+
+
+def recta(pts):
+    """x = a*y + c por minimos cuadrados, sin los puntos que no caen en ella (tramo abierto, pared del fondo,
+    reflejo). Empieza con la mitad mas cercana (abajo), la mas confiable. None si menos del 30 % forma la recta."""
+    if len(pts) < 8:
+        return None
+    ys, xs = np.array(pts, float).T
+    ok = ys >= np.median(ys)
+    for _ in range(3):
+        a, c = np.polyfit(ys[ok], xs[ok], 1)
+        ok = np.abs(a * ys + c - xs) < 5
+        if ok.sum() < max(8, 0.3 * len(ys)):
+            return None
+    return a, c
+
+
+def angulo(bs):
+    """3. Grados que hay que girar (derecha +) para quedar paralelo al pasillo, o None.
+    Las bases de las 2 paredes convergen en el punto de fuga; su columna respecto a x0 da el rumbo."""
+    li = recta([(y, x) for y, x, _ in bs if x is not None])
+    ld = recta([(y, x) for y, _, x in bs if x is not None])
+    if not li or not ld or li[0] >= 0 or ld[0] <= 0:
+        return None, None
+    y = (ld[1] - li[1]) / (li[0] - ld[0])
+    xf = li[0] * y + li[1]
+    ang = math.degrees(math.atan((xf - camcal["x0"]) * camcal["k"]))
+    return (ang if abs(ang) <= ANG_MAX else None), (xf, y, li, ld)
+
+
+def fila_pared(b, x):
+    """Primera fila blanca desde abajo en la columna x (franja de 5 px): la base de la pared."""
+    col = b[:, max(x - 2, 0):x + 3].mean(axis=1) > 0.5
+    i = np.flatnonzero(col[::-1])
+    return len(col) - 1 - int(i[0]) if len(i) else None
+
+
+def mm_fila(y):
+    """4. Profundidad de una fila de la imagen (mm desde el frontal) con la tabla calibrada; None fuera de ella."""
+    f = sorted((int(k), v) for k, v in camcal["filas"].items())
+    if len(f) < 2 or y is None or not f[0][0] <= y <= f[-1][0]:
+        return None
+    return round(float(np.interp(y, [k for k, _ in f], [v for _, v in f])))
+
+
+def aberturas(bs, fuga):
+    """5. Lados (-1 izq, 1 der) sin pared en la celda siguiente: en ese tramo casi ninguna fila tiene la base
+    de la pared sobre la recta de esa pared (sin blanco, o el blanco es la pared del fondo del pasillo lateral)."""
+    if not fuga:
+        return []
+    filas = [(y, xl, xr) for y, xl, xr in bs if (d := mm_fila(y)) is not None and SIG[0] <= d <= SIG[1]]
+    if len(filas) < 5:
+        return []
+    out = []
+    for rel, k, (a, c) in ((-1, 1, fuga[2]), (1, 2, fuga[3])):
+        en = sum(f[k] is not None and abs(f[k] - (a * f[0] + c)) < 8 for f in filas)
+        if en < 0.3 * len(filas):
+            out.append(rel)
+    return out
+
+
+def vision(img):
+    """Todo lo de la camara con una sola foto."""
+    g = cv2.medianBlur(img if img.ndim == 2 else cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), 5)
+    t = umbral(g)
+    b = g >= t
+    h, w = b.shape
     x0, y0, x1, y1 = ZONA_PASO
-    zona = img[int(y0 * h):int(y1 * h), int(x0 * w):int(x1 * w)]
-    if zona.ndim == 3:
-        zona = cv2.cvtColor(zona, cv2.COLOR_BGR2GRAY)
-    return (zona >= BLANCO_MIN).mean()
+    bs = bordes(b)
+    ang, fuga = angulo(bs)
+    v = {"umbral": int(t), "blanco": float(b[int(y0 * h):int(y1 * h), int(x0 * w):int(x1 * w)].mean()),
+         "ang": None if ang is None else round(ang, 1), "fuga": fuga, "b": b}
+    if EXPERIMENTAL:
+        v["virtual"] = [mm_fila(fila_pared(b, int(c * w))) for c in COLS]
+        v["abre"] = aberturas(bs, fuga)
+    return v
 
 
-def blanco_adelante():
-    """La camara ve blanco en el camino: va lento. El frontal hace el doble check (el sketch para a 130 mm)."""
+def mira():
+    """Foto y vision antes de avanzar, o None sin camara."""
     img = foto() if cam is not None else None
-    if img is None or frac_blanco(img) < BLANCO_MAX:
-        return False                     # negro: sigue normal
-    f = rpc("odo", 5)
-    print("Camara: blanco adelante, " + (f"el frontal lo confirma a {f} mm" if f < D_FRENTE_TOF + CELDA
-                                         else "el frontal no ve nada (punto ciego?)") + ": voy lento")
-    return True
+    return vision(img) if img is not None else None
 
 
 # ---------- Dashboard (http://<ip de la Q>:7000) ----------
@@ -397,17 +518,79 @@ def api_foto():
     # en corrida reusa la ultima foto del robot: no le gana la camara
     img = (ult_img.copy() if ult_img is not None else None) if corriendo else (foto() if cam is not None else None)
     if img is None:
-        return {"img": None}
-    b = frac_blanco(img)
-    if img.ndim == 2:
-        img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+        return {"img": None, "exp": EXPERIMENTAL, "cal": camcal}
+    v = vision(img)
+    img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR) if img.ndim == 2 else img
     h, w = img.shape[:2]
     x0, y0, x1, y1 = ZONA_PASO               # rojo = ve blanco (pared) en el camino, verde = negro
     cv2.rectangle(img, (int(x0 * w), int(y0 * h)), (int(x1 * w) - 1, int(y1 * h) - 1),
-                  (0, 0, 255) if b >= BLANCO_MAX else (0, 255, 0), 2)
+                  (0, 0, 255) if v["blanco"] >= BLANCO_MAX else (0, 255, 0), 2)
+    if v["fuga"]:                            # azul: bases de las paredes y punto de fuga
+        xf, yf, li, ld = v["fuga"]
+        for a, c in (li, ld):
+            cv2.line(img, (int(a * h + c), h - 1), (int(xf), int(yf)), (255, 128, 0), 2)
+        cv2.circle(img, (int(xf), int(yf)), 5, (255, 128, 0), -1)
+    cv2.line(img, (int(camcal["x0"]), 0), (int(camcal["x0"]), h // 3), (255, 255, 255), 1)
+    if EXPERIMENTAL:                         # amarillo: base de la pared en cada columna
+        for c in COLS:
+            y = fila_pared(v["b"], int(c * w))
+            if y is not None:
+                cv2.circle(img, (int(c * w), y), 4, (0, 255, 255), -1)
     img = cv2.resize(img, (160, 120))
     ok, buf = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 40])
-    return limpio({"img": base64.b64encode(buf).decode(), "blanco": round(b, 2)})
+    return limpio({"img": base64.b64encode(buf).decode(), "blanco": round(v["blanco"], 2), "umbral": v["umbral"],
+                   "ang": v["ang"], "virtual": v.get("virtual"), "abre": v.get("abre"), "exp": EXPERIMENTAL,
+                   "cal": camcal})
+
+
+def guarda_cam():
+    escribe(ARCH_CAM, camcal)
+    return api_foto()
+
+
+def api_cam_expo(v: int):
+    """Exposicion fija (0 = automatica)."""
+    camcal["expo"] = max(v, 0)
+    with cam_lock:
+        aplica_expo()
+    return guarda_cam()
+
+
+def fuga_ahora():
+    img = foto() if cam is not None else None
+    return vision(img)["fuga"] if img is not None else None
+
+
+def api_cam_cero():
+    """Robot derecho en un pasillo: el punto de fuga que ve ahora es 'derecho'."""
+    f = fuga_ahora()
+    if f:
+        camcal["x0"] = round(f[0], 1)
+    return guarda_cam()
+
+
+def api_cam_giro(g: int):
+    """Robot girado g grados a la derecha del pasillo: fija los radianes por pixel."""
+    f = fuga_ahora()
+    if f and g and abs(camcal["x0"] - f[0]) > 3:
+        k = math.tan(math.radians(g)) / (camcal["x0"] - f[0])
+        if k > 0:
+            camcal["k"] = round(k, 5)
+    return guarda_cam()
+
+
+def api_cam_dist(borrar: int = 0):
+    """Experimental: con una pared enfrente, la fila de su base en la columna central vale lo que lee el frontal."""
+    if borrar:
+        camcal["filas"] = {}
+        return guarda_cam()
+    img = foto() if cam is not None else None
+    y = fila_pared(vision(img)["b"], ANCHO // 2) if img is not None else None
+    f = sorted(rpc("odo", 5) for _ in range(5))[2]
+    if y is not None and f < 2000:
+        camcal["filas"][str(y)] = f
+        print(f"Camara: fila {y} = {f} mm")
+    return guarda_cam()
 
 
 def limpio(x):
@@ -421,6 +604,10 @@ ui.expose_api("GET", "/api/guardar", api_guardar)
 ui.expose_api("GET", "/api/foto", api_foto)
 ui.expose_api("GET", "/api/tof", api_tof)
 ui.expose_api("GET", "/api/tof_cal", api_tof_cal)
+ui.expose_api("GET", "/api/cam_expo", api_cam_expo)
+ui.expose_api("GET", "/api/cam_cero", api_cam_cero)
+ui.expose_api("GET", "/api/cam_giro", api_cam_giro)
+ui.expose_api("GET", "/api/cam_dist", api_cam_dist)
 
 
 # ---------- Estrategia ----------
@@ -513,6 +700,7 @@ def iniciar():
         if n in tof_cal:
             tof_cal[n].update(p)
     enviar_tof()
+    camcal.update(lee(ARCH_CAM) or {})
     cargar()
     for c in range(1, len(COLORES)):
         rpc("set_cuenta", c, cuenta[c])

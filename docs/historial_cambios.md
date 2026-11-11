@@ -51,6 +51,10 @@ Cómo leer la bitácora. La sección "Línea de tiempo" resume todo en una tabla
 | 11-nov | 29 | Mapa de paredes y colores con ruta corta; cambios bruscos de ToF; blanco/negro | Que la segunda corrida no explore de nuevo |
 | 11-nov | 30 | Máquina de estados, votos, frente libre a 220 mm, alto en amarillo desde el STM32, web sin Bridge | Estabilidad y latencia |
 | 11-nov | 31 | MPU-6050 opcional autodetectado | Error de rumbo por giros de tiempo |
+| 11-nov | 32 | Calibración de los ToF desde la web | Error de ±15 mm frente a umbrales |
+| 11-nov | 33 | Dos versiones del sketch: con y sin MPU-6050 | Poder correr sin el MPU |
+| 11-nov | 34 | Cámara monocromática OV9281: solo blanco y negro | La cámara real no ve colores |
+| 11-nov | 35 | Cámara: exposición fija, Otsu, rumbo por punto de fuga; experimental: distancia y aberturas | Desviación en recta y esquinas sin ver |
 
 ## Etapas
 
@@ -593,6 +597,22 @@ Etapa menor de documentación. `docs/manual_uso.md` (uso y calibración: baterí
 
 **Pruebas.** Pruebas automáticas del Python (decisiones, votos, BFS, guardar/cargar) y de `frac_blanco` con imágenes sintéticas: piso negro da 0, una franja blanca en la zona de paso da 0.37. Falta probarlo con la cámara real.
 
+### Etapa 35. Exprimir la cámara monocromática: rumbo, umbral automático y 2 técnicas experimentales (11-nov)
+
+**Problema.** La cámara solo daba un dato (hay blanco o no) y con un umbral fijo que dependía de la luz. Mientras, dos problemas de pista seguían abiertos: el robot se desviaba en recta y no veía las esquinas en diagonal (por eso se habían pensado ultrasónicos a 45°). Además, la inclinación de la cámara nunca se corrigió: quedó la del primer soporte (la última versión del CAD no se imprimió).
+
+**Razonamiento.** Una escena de piso negro y paredes blancas tiene un histograma bimodal (Otsu lo separa solo) y bordes muy marcados. Las bases de las 2 paredes de un pasillo son rectas paralelas en el piso; en la imagen se cortan en el punto de fuga, cuya columna depende solo del ángulo del robot respecto al pasillo, no de su posición lateral ni de la inclinación de la cámara. Eso da una medida **absoluta** de rumbo, que el giroscopio no tiene (integra y deriva). Para no depender de la inclinación sin corregir, todo se calibra con el robot real desde la web, y la distancia por cámara usa el ToF frontal como regla.
+
+**Cambio.**
+
+- Python estable (`python/`): exposición fija desde la web, umbral de Otsu acotado a [100, 220] con filtro de mediana, y rumbo por punto de fuga con rectas ajustadas por mínimos cuadrados con rechazo de atípicos. Una foto por avance.
+- Sketches: nuevo RPC `ajustar(g)`. Con MPU y sentido aprendido no gira: mueve el rumbo deseado y el control de recta (`KG`) lo corrige al avanzar (la cámara corrige la deriva del giroscopio). Sin MPU gira en su lugar por tiempo. `GIRA` pasa a trabajar en grados (`girar(k)` manda *k* × 90), y el corte por inercia se escala para giros chicos.
+- Python experimental (`python_experimental/`, mismo código con `EXPERIMENTAL = True`): distancia a la pared en 5 columnas (calibrada fila → mm con el frontal) y aberturas laterales en la celda siguiente (avance lento y voto débil de libre).
+- Web: "Calibrar cámara" (exposición, "Está derecho", "Fijar escala", y puntos de distancia en la experimental); la imagen dibuja bases de paredes, punto de fuga y, en la experimental, la base por columna.
+- Quedan 4 combinaciones: sketch con o sin MPU × Python estable o experimental.
+
+**Pruebas.** Con imágenes sintéticas de un pasillo generadas por proyección de una cámara a 150 mm de altura y 35° hacia abajo, con ruido: el rumbo medido coincidió con el real dentro de ±0.1° de −12° a 12°, también descentrado 25 mm y con una pared abierta; la distancia central dio 209/306/400/517 mm con paredes a 200/300/400/500 mm; las aberturas izquierda, derecha y con el robot girado 6° se detectaron sin falsos positivos. Se revisó la web con datos simulados (Playwright). Siguen pasando las pruebas de decisiones, votos, BFS y guardar/cargar. Los sketches no se han compilado (pendiente en App Lab) y nada de esto se ha probado con la cámara real.
+
 ## Pruebas realizadas
 
 La tabla distingue lo medido o probado de lo que solo se deduce de la secuencia de commits (marcado **deducido**). Cuando el repositorio guarda la sucesión de valores pero no el resultado de cada intento, se dice. Las pruebas en pista del equipo están en su propia subsección; la última versión (distancia, saltos, votos, máquina de estados, MPU) aún no se ha probado en pista.
@@ -776,7 +796,8 @@ El repositorio se analizó con graphify, que arma un grafo de conocimiento con e
 - Probar en pista la última versión: avance por distancia, cambios bruscos, mapa con votos, máquina de estados y MPU-6050.
 - Verificar que las paredes de madera estén pintadas de blanco, porque la detección de la cámara toma blanco como pared.
 - Calibrar un offset por sensor ToF midiendo a una distancia conocida.
-- Fijar la exposición y la ganancia de la cámara (OV9281) para distinguir mejor blanco y negro, y medir su placa para el CAD.
+- Calibrar la cámara en la pista desde la web (exposición, derecho, escala) y medir su placa para el CAD.
+- Probar la corrección de rumbo con la cámara real (con y sin MPU) y, después, la versión experimental (distancia por cámara y aberturas).
 - Pasar el código a mano derecha pura (hoy la prioridad es frente, izquierda, derecha).
 - Conseguir el MPU-6050 (GY-521) y calibrar `ADELANTO` (si se pasa, subirlo; si le falta, bajarlo) y `KG`.
 - Calibrar `ZONA_PASO` y `BLANCO_MAX` hasta que en un pasillo libre el recuadro de la vista de cámara salga verde.

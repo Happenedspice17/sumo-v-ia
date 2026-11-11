@@ -45,6 +45,7 @@ Se pasan mensajes entre ellas. El STM32 ejecuta cada movimiento por su cuenta y 
 |---|---|
 | `mover(mm, lento)` | Avanza hasta *mm* (una celda = 180 mm). Si `lento` es 1 usa `VEL_LENTO`. No bloquea; devuelve 0 si ya hay un movimiento en curso |
 | `girar(k)` | Gira en sitio *k* × 90°; el signo indica el sentido (2 = media vuelta) |
+| `ajustar(g)` | Corrige el rumbo *g* grados (derecha +) con lo que mide la cámara. Con MPU y sentido conocido no gira: mueve el rumbo deseado y la recta lo sostiene (devuelve 1). Si no, gira en su lugar (devuelve 2: hay que esperar) |
 | `ocupado()` | 1 mientras hay un movimiento activo |
 | `odo(i)` | Lecturas: 0 = mm recorridos, 1 = mm que faltan, 2 = máscara de paredes y movimiento, 3 = saltos (1 izquierda, 2 frente, 4 derecha), 5 / 6 / 7 = distancia frente / izquierda / derecha (mm), 8 = desvío de rumbo en grados (con MPU) |
 | `color()` | Último color confirmado (3 lecturas seguidas), una sola vez |
@@ -121,14 +122,45 @@ El resultado es "piso" si la menor distancia es mayor que 0.02 o si el brillo es
 # 5. Cámara (opcional)
 
 ::: {.simple}
-**En simple:** la cámara va arriba de un poste y mira el piso por donde va a pasar. Es **monocromática** (ve en gris, no en colores), así que hace una sola cosa: detecta si el piso adelante es **blanco**, que es una pared (el piso es negro). Si ve blanco, el robot avanza más despacio, y el sensor láser frontal confirma si de verdad hay pared. La cámara nunca manda sobre los láser. Sin cámara, el robot funciona igual.
+**En simple:** la cámara va arriba de un poste y mira el piso por donde va a pasar. Es **monocromática** (ve en gris), y el piso negro con paredes blancas es justo lo que mejor distingue. Antes de cada avance toma **una foto** y hace tres cosas: revisa si hay blanco (pared) en el camino para ir más despacio, mide si el robot va chueco viendo hacia dónde se juntan las dos paredes del pasillo, y lo endereza. La cámara nunca manda sobre los láser: solo **asiste**. Sin cámara, el robot funciona igual.
 :::
 
-- **Captura:** innomaker U20CAM-9281M (OV9281, 1 MP monocromática, obturador global, hasta 720p a 120 fps, lente M12 gran angular), UVC a 320 × 240, OpenCV con V4L2. El obturador global evita la deformación por movimiento (*rolling shutter*) de las cámaras comunes.
-- **Blanco (pared):** fracción de píxeles con gris ≥ `BLANCO_MIN` (170 de 255) en `ZONA_PASO`, el piso por donde va a pasar. Si pasa de `BLANCO_MAX` (15 %), Python pide `mover(mm, 1)`: avance lento a `VEL_LENTO`. **Doble check:** Python también lee el frontal (`odo(5)`) y lo reporta; el sketch para a 130 mm si la pared es real. Si la cámara ve blanco y el frontal no ve nada, igual va lento.
-- **Sin amarillo:** el sensor OV9281 no tiene filtro de color (matriz de Bayer), así que no puede distinguir el amarillo por su tono. Antes se buscaba con HSV para desempatar islas; se quitó al cambiar a esta cámara. La meta siempre la confirmó el TCS34725, así que no se pierde capacidad. A cambio, el sensor monocromático recibe toda la luz en cada píxel (más sensibilidad y menos ruido), y el contraste blanco/negro, que es lo único que se usa, sale más limpio.
-- **Montaje:** módulo (medida por confirmar; el CAD usa 32 × 32 mm) sobre un pedestal impreso de 20 × 20 × 75 mm, inclinado hacia abajo para ver el piso adelante del eje. Se conecta por un hub USB-C con entrada de alimentación: con la Q alimentada por VIN, su USB-C no da 5 V al hub, así que el hub se alimenta por su puerto PD.
-- **Ajuste:** el panel web muestra la imagen a 160 × 120 (JPEG calidad 40) con el camino en rojo (blanco) o verde (negro). Un candado comparte la cámara entre el robot y el panel. Al arrancar la busca una vez; un hilo revisa cada 2 s si sigue conectada y la vuelve a buscar si se desconecta (OLED `SIN CAM`).
+**Sensor.** innomaker U20CAM-9281M: OV9281 de 1 MP **monocromático** con **obturador global** (todos los píxeles se exponen al mismo tiempo), hasta 720p a 120 fps, lente M12 gran angular, UVC (Linux la ve sin driver). Se captura a 320 × 240 con OpenCV y V4L2. El obturador global evita la deformación por movimiento (*rolling shutter*) de las cámaras comunes, que tuerce las líneas rectas cuando el robot gira. Al no tener filtro de color (matriz de Bayer), cada píxel recibe toda la luz: más sensibilidad y menos ruido en la luminancia, que es lo único que se usa. Por la misma razón **no puede ver el amarillo**; la meta la confirma el TCS34725.
+
+**Versiones.** El Python tiene dos versiones con el mismo código y una sola bandera, `EXPERIMENTAL`. La estable (`python/`) usa las técnicas 1 a 3; la experimental (`python_experimental/`) agrega la 4 y la 5. Cualquiera de las dos funciona con los dos sketches:
+
+| Versión | Sketch (STM32) | Python (Linux) | Cámara |
+|---|---|---|---|
+| Estable con MPU | `sketch/` | `python/` | 1 a 3: exposición fija, umbral automático (Otsu), corrección de rumbo |
+| Estable sin MPU | `sketch_sin_mpu/` | `python/` | 1 a 3 |
+| Experimental con MPU | `sketch/` | `python_experimental/` | 1 a 5: además, distancia por cámara y aberturas adelante |
+| Experimental sin MPU | `sketch_sin_mpu/` | `python_experimental/` | 1 a 5 |
+
+## 5.1 Técnicas 1 a 3 (versión estable)
+
+1. **Exposición fija.** Con exposición automática, la cámara cambia su ganancia según lo que tenga enfrente (una pared blanca cerca la oscurece, la ropa de la gente la aclara), y un mismo piso cambia de gris entre fotos. Desde la web se fija la exposición (`CAP_PROP_AUTO_EXPOSURE` en manual, `CAP_PROP_EXPOSURE` en unidades UVC de 100 µs) y se guarda en `/app/datos/camara.json`.
+2. **Umbral automático (Otsu).** El histograma de gris de la escena es **bimodal**: piso negro y pared blanca. El método de Otsu elige el umbral que maximiza la varianza entre las dos clases, en cada foto, sin calibrar un número. Se calcula sobre la mitad de abajo de la imagen (el piso cercano) después de un filtro de mediana de 5 × 5, que quita reflejos de un píxel. Para que una imagen toda negra no "invente" blanco, el umbral se acota a [`UMBRAL_MIN`, `UMBRAL_MAX`] = [100, 220]. Con él se mide la fracción de blanco en `ZONA_PASO`: si pasa de `BLANCO_MAX` (15 %), Python pide `mover(mm, 1)` (lento) y lee el frontal como doble check; el sketch para a 130 mm si la pared es real.
+3. **Rumbo por punto de fuga.** En cada fila de `ZONA_BORDES` (45 % a 95 % de la altura) se busca, desde el centro hacia cada lado, el primer píxel blanco: la base de la pared izquierda y la derecha. Cada pared se ajusta a una recta *x = a·y + c* por mínimos cuadrados con rechazo de atípicos (empieza con la mitad más cercana, la más confiable, y descarta los puntos a más de 5 px, como el fondo de un pasillo lateral). Las dos rectas, paralelas en el piso, se cortan en la imagen en el **punto de fuga** del pasillo. Con una cámara de proyección central, la columna del punto de fuga depende **solo del ángulo** entre el robot y el pasillo, no de la posición lateral del robot ni de la inclinación de la cámara: *θ = atan(k · (x_f − x₀))*, donde *x₀* es la columna con el robot derecho y *k* los radianes por píxel. Las dos se miden en la web (robot derecho, y girado 15° a mano), así que no hace falta conocer la inclinación de la cámara ni su lente.
+   - Si |θ| ≥ `ANG_MIN` (4°), Python llama `ajustar(θ)` antes de avanzar. Si |θ| > `ANG_MAX` (20°), la lectura se descarta como mala.
+   - **Con MPU-6050:** no gira. El giroscopio deriva con el tiempo, y la cámara ve el error real respecto al pasillo; `ajustar` mueve el rumbo deseado (`ref`) y el control de recta (`KG`) lo corrige durante el avance, sin perder tiempo. La cámara corrige la deriva de la integral y el giroscopio da la respuesta rápida, como un filtro complementario.
+   - **Sin MPU:** gira en su lugar por tiempo (`MS_90` × θ / 90, mínimo 30 ms). Es aproximado, pero corrige el error de rumbo que el avance por tiempo acumula (en pista se vio que se desviaba en recta).
+   - En pruebas con imágenes sintéticas de un pasillo (cámara a 150 mm de altura, 35° hacia abajo, ruido de ±6 niveles de gris), el ángulo medido coincidió con el real dentro de ±0.1° entre −12° y 12°, también con el robot descentrado 25 mm y con una pared abierta.
+
+::: {.nota}
+Un intento anterior de alinear con giros de 5° tomando muestras de los ToF volvió al robot muy lento y se quitó. Aquí es una sola foto por celda y, con MPU, no se gira: solo se cambia la referencia.
+:::
+
+## 5.2 Técnicas 4 y 5 (versión experimental)
+
+4. **Distancia por cámara ("ToF virtuales").** En el piso, una fila de la imagen corresponde a una distancia hacia adelante (geometría de un plano visto por una cámara fija). En lugar de modelar altura, inclinación y distorsión de la lente gran angular, se **calibra con el ToF frontal como regla**: con el robot frente a una pared a varias distancias, la web guarda la fila de la base de la pared en la columna central y la lectura del frontal (`/app/datos/camara.json`). Después, en 5 columnas (`COLS` = 10, 30, 50, 70 y 90 % del ancho) se busca la base de la pared desde abajo y se interpola su distancia. Las columnas laterales ven en diagonal, justo donde los 3 ToF no ven (lo que se buscaba con ultrasónicos a 45°). Fuera del rango calibrado no da valor. En pruebas sintéticas la columna central midió 209, 306, 400 y 517 mm con paredes a 200, 300, 400 y 500 mm.
+5. **Aberturas en la celda siguiente.** Con la tabla anterior se sabe qué filas corresponden a las paredes laterales de la celda siguiente (`SIG` = 60 a 240 mm del frontal). Si en ese tramo menos del 30 % de las filas tiene la base de la pared sobre la recta de esa pared, ese lado está abierto (sin blanco, o el blanco es la pared del fondo del pasillo lateral). Entonces el robot avanza **lento**, para que la detección de saltos del sketch lo detenga centrado, y anota un **voto débil** (−1) de libre en esa celda: si los ToF dicen lo contrario al llegar, ganan ellos. En pruebas sintéticas detectó la abertura izquierda, la derecha (imagen espejo) y la izquierda con el robot girado 6°, sin falsos positivos en el pasillo cerrado.
+
+Son experimentales porque dependen de que la calibración por filas sea estable y de cómo se ve la base de las paredes reales (sombras, uniones, madera). Se prueban primero mirando la web con el robot quieto.
+
+## 5.3 Montaje y web
+
+- **Montaje:** módulo (medida por confirmar; el CAD usa 32 × 32 mm) sobre un pedestal impreso, inclinado hacia abajo para ver el piso adelante del eje. La inclinación quedó la de la primera versión del soporte (la última del CAD no se imprimió); como todo se calibra con el robot real, no afecta. Se conecta por un hub USB-C con entrada de alimentación: con la Q alimentada por VIN, su USB-C no da 5 V al hub, así que el hub se alimenta por su puerto PD.
+- **Web:** la imagen a 160 × 120 (JPEG calidad 40) muestra el camino en rojo (blanco) o verde (negro), las bases de las paredes y el punto de fuga en azul, la línea de "derecho" en blanco y, en la experimental, la base de la pared por columna en amarillo. Abajo: porcentaje de blanco, umbral de Otsu, rumbo, distancias y aberturas. "Calibrar cámara" tiene los 4 pasos. Un candado comparte la cámara entre el robot y el panel. Al arrancar la busca una vez; un hilo revisa cada 2 s si sigue conectada (OLED `SIN CAM`).
 
 # 6. Cómo se mueve
 
@@ -264,7 +296,12 @@ Valores tal como están en `sketch.ino` y `main.py`.
 | `VOTO_MAX` | 5 | Tope de votos por pared |
 | `ISLA` | 3 visitas | Pasa a la salida menos usada |
 | `Y_COLOR` | 36 mm | Del eje al sensor de color |
-| `BLANCO_MIN` | 170 | Gris (0-255) a partir del cual un píxel cuenta como blanco |
+| `UMBRAL_MIN` / `UMBRAL_MAX` | 100 / 220 | Límites del umbral de gris de Otsu |
+| `ZONA_BORDES` | (0.45, 0.95) | Filas donde busca las bases de las paredes |
+| `ANG_MIN` / `ANG_MAX` | 4° / 20° | Corrige el rumbo desde / descarta arriba de |
+| `camcal` (web) | expo 0, x₀ 160, k 0.008 | Exposición, columna "derecho", radianes por píxel; experimental: fila → mm. En `/app/datos/camara.json` |
+| `EXPERIMENTAL` | False / True | `python/` / `python_experimental/` |
+| `COLS` / `SIG` | 5 columnas / 60-240 mm | Experimental: columnas de distancia / tramo de la celda siguiente |
 | `ZONA_PASO` | (0.30, 0.55, 0.70, 1.00) | Piso por donde va a pasar, en fracción de la imagen |
 | `BLANCO_MAX` | 0.15 | Fracción de blanco que activa el avance lento |
 | Colores de referencia | de fábrica en `REFS` | Se miden en el panel web; se guardan en `/app/datos/colores.json` |
@@ -287,6 +324,9 @@ Valores tal como están en `sketch.ino` y `main.py`.
 | **BFS** | Búsqueda en anchura: encuentra el camino más corto entre dos celdas |
 | **Rumbo** | Hacia dónde apunta el robot, en grados |
 | **HSV** | Forma de describir un color por tono, saturación y brillo |
+| **Obturador global** | Todos los píxeles se exponen al mismo tiempo: la imagen no se tuerce con el movimiento |
+| **Otsu** | Método que elige solo el umbral que mejor separa dos grupos de gris (aquí, piso y pared) |
+| **Punto de fuga** | Donde se juntan en la imagen dos líneas que en la realidad son paralelas (las paredes del pasillo) |
 | **Bridge** | Servicio que pasa las llamadas (RPC) entre Linux y el STM32 |
 | **CSG** | Operaciones booleanas entre sólidos 3D (unión, resta, intersección) |
 
@@ -296,7 +336,7 @@ La bitácora completa de cambios, problemas y soluciones está en `historial_cam
 
 - **V1:** movimiento por tiempo, sin encoders, con *flood fill* sobre un mapa de 16 × 16 celdas y respaldo en UNO R3 (ATmega328P).
 - **Sensores:** 3 × VL53L0X reasignados de dirección I²C y sensor de color TCS34725 con calibración desde el panel web.
-- **Cámara:** primero detectaba paredes para anticipar caminos; después buscó también el amarillo; con la cámara monocromática OV9281 solo detecta blanco (pared) en el piso por donde va a pasar.
+- **Cámara:** primero detectaba paredes para anticipar caminos; después buscó también el amarillo; con la cámara monocromática OV9281 detecta blanco (pared) con umbral automático y corrige el rumbo con el punto de fuga del pasillo; la versión experimental además mide distancias y aberturas.
 - **Avance por distancia:** el frontal mide la celda, para a 130 mm y retrocede si queda muy cerca; sin pared va por tiempo.
 - **Cambios bruscos** de los ToF (`SALTO`): el robot se centra en la celda abierta y la escanea.
 - **Decisión:** pasó de *flood fill* con paredes de la cámara, y luego de reglas de pared, a una máquina de estados `SENSA → DECIDE → GIRA → AVANZA` con prioridad frente, izquierda, derecha.

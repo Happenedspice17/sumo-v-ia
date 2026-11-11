@@ -114,10 +114,21 @@ unsigned long tCen;
 int rpcGirar(int cuartos) {
   ult = 'G';
   if (ocupado) return 0;
-  arg = cuartos;
+  arg = cuartos * 90;           // GIRA va en grados
   cmd = GIRA;
   ocupado = 1;
   return 1;
+}
+
+// Corrige el rumbo g grados (derecha +) con lo que ve la camara antes de avanzar.
+// Sin MPU gira en su lugar por tiempo (aproximado). Devuelve 2 si hay que esperar el giro.
+int rpcAjustar(int g) {
+  ult = 'J';
+  if (ocupado || g == 0) return 0;
+  arg = g;
+  cmd = GIRA;
+  ocupado = 1;
+  return 2;
 }
 
 int rpcOcupado() { return ocupado; }
@@ -235,7 +246,7 @@ void iniciaMov() {
   } else {
     dirL = arg > 0 ? 1 : -1;
     dirR = -dirL;
-    dur = abs(arg) * MS_90;
+    dur = max(abs(arg) * MS_90 / 90, 30L);
   }
   cmd = NADA;
 }
@@ -482,6 +493,7 @@ void setup() {
   Monitor.begin();
   Bridge.provide("mover", rpcMover);
   Bridge.provide("girar", rpcGirar);
+  Bridge.provide("ajustar", rpcAjustar);
   Bridge.provide("ocupado", rpcOcupado);
   Bridge.provide("color", rpcColor);
   Bridge.provide("arranque", rpcArranque);

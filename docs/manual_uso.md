@@ -22,7 +22,7 @@ author:
 - [ ] Laberinto nuevo: borra el mapa antes de empezar (paso 3)
 
 ::: {.nota}
-**¿Qué sketch cargar?** `sketch/` si tienes el MPU-6050 (también funciona sin él) o `sketch_sin_mpu/` si no lo vas a usar. El Python es el mismo.
+**¿Qué versión cargar?** Un sketch y un Python. Sketch: `sketch/` si tienes el MPU-6050 (también funciona sin él) o `sketch_sin_mpu/`. Python: `python/` (estable) o `python_experimental/` (la cámara además mide distancias y ve aberturas; para probar).
 :::
 
 # 2. Prende
@@ -74,6 +74,7 @@ La primera corrida explora y mapea hasta encontrar el amarillo. Las siguientes v
 |---|---|
 | Asistente de colores | Calibrar los 5 colores del piso (4.1) |
 | Ver sensores ToF → Calibrar distancia | Calibrar los 3 sensores de distancia con el vernier (4.2) |
+| Cámara → Calibrar cámara | Exposición, rumbo derecho, escala y (experimental) distancia (4.3) |
 | Ver sensores ToF (dibujo) | Ver en vivo lo que mide cada sensor y qué haría el robot, sin moverlo |
 | Cámara | Ver si el camino sale blanco (pared) o negro (sección 5) |
 | Dónde está | Fase, celda, celdas mapeadas, meta y último avance durante la corrida |
@@ -103,14 +104,33 @@ Se guarda solo y se queda aunque apagues. Recalibra solo si cambias de pista o d
 Si un punto salió mal, aprieta **Borrar** de ese sensor y repite sus puntos. Después de calibrar, revisa en el dibujo qué lee el robot centrado en una celda: los umbrales (`PARED`, `D_FRENTE`, `FRENTE_LIBRE`) se ajustaron con lecturas sin calibrar.
 :::
 
+## 4.3 Cámara (una vez, o si mueves la cámara)
+
+1. Abre **Calibrar cámara**, abajo de la imagen.
+2. **Exposición:** escribe un número y aprieta **Aplicar** hasta que el piso salga negro y las paredes blancas, sin manchas. Empieza en 100 (10 ms). 0 la deja automática.
+3. **Derecho:** pon el robot derecho y centrado en un pasillo largo y aprieta **Está derecho**.
+4. **Escala:** gíralo a mano **15° a la derecha** (con transportador) y aprieta **Fijar escala**. Al regresarlo derecho, abajo de la imagen debe decir "Rumbo: derecho" o 1-2°.
+5. **Solo experimental:** pon el robot frente a una pared a 100, 200, 300, 400 y 600 mm y aprieta **Agregar punto** en cada una. El ToF frontal hace de regla, así que calíbralo antes (4.2).
+
+- [ ] Exposición
+- [ ] Derecho
+- [ ] Escala (15°)
+- [ ] Distancia (solo experimental)
+
+::: {.nota}
+La inclinación de la cámara no hay que medirla: estos pasos miden todo con el robot armado. Si mueves la cámara, repítelos.
+:::
+
 # 5. Revisa la cámara
 
 En la página se ve lo que ve la cámara, con estas marcas:
 
 - Camino **rojo**: ve blanco (pared) en el piso por donde va a pasar. El robot va lento.
 - Camino **verde**: ve negro (piso libre). El robot va normal.
+- Líneas **azules**: las bases de las 2 paredes y su punto de fuga. Si el punto queda a un lado de la línea blanca, el robot va chueco y lo corrige antes de avanzar.
+- Puntos **amarillos** (solo experimental): dónde empieza la pared en 5 columnas; abajo dice a cuántos mm y si ve una abertura en la celda siguiente.
 
-Con el robot en un pasillo libre, el camino tiene que salir **verde**. Si sale rojo, ajusta `ZONA_PASO` (la parte del piso que mira) o sube `BLANCO_MAX` (cuánto blanco tolera antes de ir lento), en `python/main.py`.
+Con el robot en un pasillo libre, el camino tiene que salir **verde**. Si sale rojo, revisa primero la exposición (4.3); si sigue, ajusta `ZONA_PASO` (la parte del piso que mira) o sube `BLANCO_MAX` (cuánto blanco tolera antes de ir lento), en `python/main.py`.
 
 Durante una corrida la página no consulta al robot: muestra la última lectura que tomó y su última foto.
 
@@ -157,7 +177,8 @@ Entre intentos del mismo laberinto **no borres**: así recuerda el camino. Borra
 | Gira de más o de menos | Con MPU: `ADELANTO`. Sin MPU: `MS_90` (paso 6) |
 | Gira al revés | Cambia OUT1-2 por OUT3-4 en el puente H |
 | Un motor va al revés | Voltea sus 2 cables en el puente H |
-| Siempre va lento | La cámara ve blanco en el camino. Revisa en la página si el camino sale rojo sobre piso negro; ajusta `ZONA_PASO` o `BLANCO_MAX` |
+| Siempre va lento | La cámara ve blanco en el camino. Revisa en la página si el camino sale rojo sobre piso negro; ajusta la exposición (4.3), `ZONA_PASO` o `BLANCO_MAX` |
+| Antes de avanzar gira un poquito al lado equivocado | Repite "Está derecho" y "Fijar escala" (4.3) girándolo a la **derecha** |
 | No para en el amarillo | Lo detecta el sensor de color, no la cámara. Recalibra el amarillo en la página (paso 4) |
 | Un color sale mal | Repítelo en la página con **◀ Atrás** |
 | `PY` no sube | App Lab → **Run** |
