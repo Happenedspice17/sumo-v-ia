@@ -78,10 +78,11 @@
   <img id="cam" alt="sin cámara" style="width:100%;max-width:320px;image-rendering:pixelated;background:#000;border-radius:8px;margin-top:8px">
   <div id="camTxt" style="font-family:monospace;font-size:14px;margin-top:6px;white-space:pre-line"></div>
   <details style="margin-top:8px"><summary><b>Calibrar cámara</b></summary>
-    <div style="margin-top:8px">1. Exposición fija (0 = automática; unidades de 100 µs: 100 = 10 ms). Sube o baja hasta que el piso salga negro y las paredes blancas, sin manchas.</div>
-    <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
-      <input id="camExpo" type="number" value="0" min="0" style="width:80px;font-size:18px;padding:6px">
-      <button style="background:#455a64;padding:10px 14px" onclick="camApi('cam_expo?v=' + (parseInt(document.getElementById('camExpo').value) || 0))">Aplicar</button>
+    <div style="margin-top:8px">1. Exposición fija (0 = automática; unidades de 100 µs: 100 = 10 ms; la más baja es 1) y ganancia (-1 = no la toca; 0 = la más baja). Baja hasta que el piso salga negro y las paredes blancas, sin manchas.</div>
+    <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap">
+      Exp <input id="camExpo" type="number" value="50" min="0" style="width:70px;font-size:18px;padding:6px">
+      Gan <input id="camGain" type="number" value="-1" min="-1" style="width:70px;font-size:18px;padding:6px">
+      <button style="background:#455a64;padding:10px 14px" onclick="camApi('cam_expo?v=' + (parseInt(document.getElementById('camExpo').value) || 0) + '&g=' + (parseInt(document.getElementById('camGain').value) || 0))">Aplicar</button>
     </div>
     <div style="margin-top:10px">2. Rumbo: pon el robot derecho y centrado en un pasillo largo y aprieta:</div>
     <button style="background:#455a64;padding:10px 14px;margin-top:6px" onclick="camApi('cam_cero')">Está derecho</button>
@@ -240,7 +241,8 @@ function pintaCam(d) {
       "\nAbertura en la celda siguiente: " + (d.abre.length ? d.abre.map((r) => (r < 0 ? "izquierda" : "derecha")).join(" y ") : "ninguna") : "");
   const c = d.cal;
   if (c) document.getElementById("camCal").textContent =
-    "Exposición " + (c.expo || "automática") + " · derecho en x = " + c.x0 + " · escala " + c.k + " rad/px" +
+    "Exposición " + (c.expo || "automática") + (c.gain >= 0 ? " · ganancia " + c.gain : "") +
+    (d.leido && d.leido.expo !== undefined ? "  (la cámara dice: modo " + d.leido.modo + ", exp " + d.leido.expo + ", gan " + d.leido.gain + ")" : "") + "\nDerecho en x = " + c.x0 + " · escala " + c.k + " rad/px" +
     (d.exp ? "\nPuntos (fila: mm) " + (Object.entries(c.filas).map(([y, m]) => y + ":" + m).join("  ") || "ninguno") : "");
 }
 
