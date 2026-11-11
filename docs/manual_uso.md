@@ -53,15 +53,46 @@ Si `PY` no sube: conecta la laptop, abre App Lab y dale **Run**.
 La primera corrida explora y mapea hasta encontrar el amarillo. Las siguientes van directo por la ruta corta si ya conocen la meta. Borra con D2 antes de cada laberinto nuevo.
 :::
 
-# 4. Calibra los colores (una vez por pista)
+# 4. La página web: todo se calibra desde el celular
+
+::: {.nota}
+**La herramienta más útil del robot.** Desde la página web se calibran los colores y los sensores de distancia, se ve en vivo lo que mide cada sensor y qué decidiría el robot, se revisa la cámara y se sigue la corrida. Todo sin cables, sin reprogramar y sin copiar números a mano: lo calibrado se guarda en el robot y se carga solo en cada arranque.
+:::
 
 1. Prende el robot normal y espera a que suba `PY`.
 2. En la laptop o el celular (en el mismo WiFi que la placa), abre **`http://<IP>:7000`**. La IP cambia según la red: App Lab la muestra al darle Run.
-3. Sigue el asistente: pon el robot **en el piso de la pista**, quieto, encima del color que te pide, y aprieta **Guardar**. Son 5: piso, rojo, verde, azul y amarillo. Cada botón promedia 5 lecturas.
+
+| En la página | Para qué |
+|---|---|
+| Asistente de colores | Calibrar los 5 colores del piso (4.1) |
+| Ver sensores ToF → Calibrar distancia | Calibrar los 3 sensores de distancia con el vernier (4.2) |
+| Ver sensores ToF (dibujo) | Ver en vivo lo que mide cada sensor y qué haría el robot, sin moverlo |
+| Cámara | Ver si detecta amarillo y si el camino sale blanco (pared) o negro (sección 5) |
+| Dónde está | Fase, celda, celdas mapeadas, meta y último avance durante la corrida |
+
+## 4.1 Colores (una vez por pista)
+
+1. Sigue el asistente: pon el robot **en el piso de la pista**, quieto, encima del color que te pide, y aprieta **Guardar**. Son 5: piso, rojo, verde, azul y amarillo. Cada botón promedia 5 lecturas.
 4. Al final sale **¡Listo!**. Pasa el sensor por cada color y revisa que arriba diga el nombre correcto. Si uno falla, dale **◀ Atrás** y repítelo.
 
 ::: {.nota}
 Se guarda solo y se queda aunque apagues. Recalibra solo si cambias de pista o de lugar (otra luz).
+:::
+
+## 4.2 Sensores de distancia (una vez, o si mueves un sensor)
+
+1. Abre **Ver sensores ToF** y baja a **Calibrar distancia**. El robot quieto.
+2. Pon algo plano y blanco (un trozo de pared) frente al sensor, a **50 mm** medidos con el vernier desde la cara del sensor.
+3. Escribe `50` y aprieta el sensor (**Izq**, **Frente** o **Der**). Promedia 10 lecturas.
+4. Repite a **100** y **150 mm** con cada sensor. Al frontal agrégale **250** y **300 mm** con flexómetro.
+5. Abajo sale cada sensor con su recta `real = a × crudo + b` y sus puntos. El dibujo de arriba ya muestra la distancia corregida y, debajo, la lectura sin calibrar.
+
+- [ ] Izquierdo: 50 / 100 / 150 mm
+- [ ] Frontal: 50 / 100 / 150 / 250 / 300 mm
+- [ ] Derecho: 50 / 100 / 150 mm
+
+::: {.nota}
+Si un punto salió mal, aprieta **Borrar** de ese sensor y repite sus puntos. Después de calibrar, revisa en el dibujo qué lee el robot centrado en una celda: los umbrales (`PARED`, `D_FRENTE`, `FRENTE_LIBRE`) se ajustaron con lecturas sin calibrar.
 :::
 
 # 5. Revisa la cámara

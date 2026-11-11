@@ -550,6 +550,22 @@ Etapa menor de documentación. `docs/manual_uso.md` (uso y calibración: baterí
 
 **Commits.** 6a6f10b
 
+### Etapa 32. Calibración de los sensores de distancia desde la página web (11-nov)
+
+**Qué cambió.** La página web suma una sección "Calibrar distancia". Por sensor se guardan puntos (mm reales medidos con vernier contra la lectura cruda, promedio de 10) y se ajusta una recta `real = a × crudo + b` por mínimos cuadrados (con un solo punto, solo desfase). Se guarda en `/app/datos/tof.json` y se manda al STM32 (`set_tof`), que la aplica a cada lectura antes del control. `odo(9..11)` da la lectura sin calibrar para comparar.
+
+**Problema.** Los VL53L0X leen con un desfase propio por sensor ("nunca llega a 50" con pared al frente) y varían ±15 mm según las pruebas del equipo; los umbrales se habían ajustado sobre lecturas crudas.
+
+**Solución.** Calibración de 3 puntos (50, 100 y 150 mm con vernier), más 250 a 300 mm para el frontal con flexómetro, porque sus umbrales viven entre 220 y 310 mm y extrapolar la recta más allá de lo medido es donde más se equivoca.
+
+**Pruebas / evidencia.** Prueba automática del ajuste con datos simulados (sin puntos, 1 punto y 3 puntos). Pendiente: calibrar en el robot y volver a medir los umbrales con lecturas calibradas.
+
+**Razonamiento.** Hacerla desde la web siguió el patrón que mejor funcionó en el proyecto: la calibración de colores desde el celular fue, según el equipo, de lo más útil. Calibrar sin reprogramar permite repetirla en la pista en minutos.
+
+**Resultado.** Cada sensor reporta milímetros reales con el mismo procedimiento que los colores.
+
+**Commits:** b416c9f.
+
 ## Pruebas realizadas
 
 La tabla distingue lo medido o probado de lo que solo se deduce de la secuencia de commits (marcado **deducido**). Cuando el repositorio guarda la sucesión de valores pero no el resultado de cada intento, se dice. Las pruebas en pista del equipo están en su propia subsección; la última versión (distancia, saltos, votos, máquina de estados, MPU) aún no se ha probado en pista.
@@ -715,6 +731,7 @@ El repositorio se analizó con graphify, que arma un grafo de conocimiento con e
 
 ## Lecciones aprendidas
 
+- **Calibrar desde la página web fue de lo más útil del proyecto.** Colores, distancia, simulador de decisiones y cámara se ajustan desde el celular en la pista, sin reprogramar ni copiar valores; por eso cada nueva calibración se agregó ahí.
 - Un número geométrico no sirve si el sensor no lo alcanza. `D_FRENTE = 55` nunca se cumplía porque el VL53L0X "nunca llega a 50"; con 130 mm, medido, el robot dejó de empujar la pared.
 - Los umbrales se ponen a la mitad de las dos lecturas reales, no pegados a una. El frente a 150 mm dejaba 20 mm de margen entre 130 y 310; a 220 mm el margen es de unos 90 mm por cada lado.
 - Cada fuente de información debe tener un papel y una jerarquía escritos. La cámara pasó de mandar a encarecer, a desempatar y a buscar amarillo en varios commits; el resto se resolvió cuando los ToF quedaron como autoridad para paredes.

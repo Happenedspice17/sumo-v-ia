@@ -49,6 +49,21 @@ Se pasan mensajes entre ellas. El STM32 ejecuta cada movimiento por su cuenta y 
 | `set_cuenta`, `set_estado`, `set_fase` | Actualizan la pantalla (conteo, estado, fase de la máquina) |
 | `raw(i)` | Lectura cruda del sensor de color (*i* = R, G, B, C) para el panel web |
 | `set_ref(i, r, g, b, c)` | Carga el color de referencia *i* (r, g, b en milésimas) |
+| `set_tof(i, a, b)` | Carga la calibración del ToF *i*: real = *a* × crudo + *b* (*a* en milésimas, *b* en décimas de mm). `odo(9..11)` da la lectura sin calibrar |
+
+## 2.1 Página web: calibración y diagnóstico
+
+Linux sirve una página en el puerto 7000 (brick `web_ui`), que se abre desde el celular por WiFi. Es la herramienta central de puesta a punto: toda la calibración se hace ahí, sin reprogramar ni copiar valores a mano, y queda guardada en `/app/datos/` para cargarse sola en cada arranque.
+
+| Función | Cómo funciona | Archivo |
+|---|---|---|
+| Colores | Asistente de 5 pasos; cada color promedia 5 lecturas del TCS34725 y se manda al STM32 (`set_ref`) | `colores.json` |
+| Distancia | Por sensor, puntos (mm reales con vernier, lectura cruda promedio de 10); ajuste por mínimos cuadrados `real = a × crudo + b` (con 1 punto, solo desfase) que se manda al STM32 (`set_tof`) | `tof.json` |
+| Simulador | Dibuja lo que mide cada ToF y lo que haría el robot (`que_haria()`) sin moverlo | |
+| Cámara | Imagen 160 × 120 con el amarillo detectado y la zona de paso en rojo (blanco) o verde (negro) | |
+| Corrida | Fase, celda, mapa y meta; durante la corrida usa la última lectura del robot y no llama al Bridge | |
+
+Se aplica en el STM32, antes de cualquier decisión, para que el control de 10 ms, los saltos y el alto a 130 mm usen milímetros reales.
 
 Separar los dominios aísla la latencia no determinista de Linux (planificador, E/S, visión) del lazo de control.
 
