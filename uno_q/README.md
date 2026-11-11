@@ -61,7 +61,7 @@ Con el hub conectado al USB-C, App Lab se conecta por WiFi (el puerto no puede i
 
 **Sketch (STM32)**, solo mueve el robot:
 
-- Avanza por distancia: al arrancar toma la lectura del frontal y para cuando bajó 180 mm (`CELDA`). Si el frontal no ve nada a menos de 1 m va por tiempo (`MS_CELDA`), y si a medio avance aparece una pared sigue por distancia. Siempre para a 130 mm de la pared de enfrente (`D_FRENTE`) y se hace para atrás si queda más cerca.
+- Avanza por distancia: al arrancar toma la lectura del frontal y para cuando bajó 180 mm (`CELDA`). Si el frontal no ve nada a menos de 1 m va por tiempo (`MS_CELDA`), y si a medio avance aparece una pared sigue por distancia. Siempre para a 35 mm reales de la pared de enfrente (`D_FRENTE`, con el frontal calibrado) y se hace para atrás si queda a menos de 30.
 - **Cambio brusco** (una lectura cambia `SALTO` = 120 mm o más y se repite en la siguiente): si se abre un lateral, para al centro de esa celda (`TRAS_SALTO` = 124 mm después) para escanearla; si salta el frontal, vuelve a medir lo que falta. Python lo lee con `odo(3)`.
 - Con `mover(mm, lento)` baja a `VEL_LENTO` (la pide Python cuando la cámara ve blanco).
 - En recta solo corrige el rumbo si un lateral lee menos de 90 mm (`D_LADO_MIN`).
@@ -82,7 +82,7 @@ Es una máquina de estados: `SENSA` → `DECIDE` → `GIRA` → `AVANZA` → `SE
 3. Tras un cambio brusco escanea con 5 lecturas y decide igual (izquierda primero si es nueva).
 4. La celda sale de los mm que de verdad avanzó.
 5. Antes de cada avance, con una sola foto, la cámara:
-   - Revisa el piso del camino con un umbral de gris automático (Otsu): negro → normal; blanco (pared) → va lento y el frontal hace el doble check (el sketch para a 130 mm si de verdad hay pared).
+   - Revisa el piso del camino con un umbral de gris automático (Otsu): negro → normal; blanco (pared) → va lento y el frontal hace el doble check (el sketch para a 35 mm si de verdad hay pared).
    - Mide el rumbo con el punto de fuga de las bases de las 2 paredes; si va chueco 4° o más, lo corrige (`ajustar`). Con MPU no gira: corrige el rumbo que sostiene el giroscopio. Sin MPU gira en su lugar.
    - Experimental: distancia a la pared en 5 columnas (como 5 ToF virtuales) y aberturas laterales en la celda siguiente (va lento y anota un voto débil de libre).
 6. Cada color que lee el TCS34725 (3 lecturas seguidas) va al mapa en la celda donde está el sensor y se cuenta una vez. Amarillo = meta: el STM32 para solo en cuanto lo confirma, sin esperar al Python (OLED `META`).
