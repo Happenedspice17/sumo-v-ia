@@ -154,6 +154,8 @@ Para ver por qué gira o avanza, usa **Ver sensores ToF** en la página: dibuja 
 | Choca y el log no dice "choque" | `CHOQUE_G` | Bájalo 0.1 (mira el "golpe" del log) |
 | Se detiene solo: "me levantaron" | `LEVANTA_G` | Bájalo a 0.7 |
 | Gira de más o de menos (con MPU-6050) | `ADELANTO` | Si se pasa del giro, súbelo; si le falta, bájalo |
+| Se ve tieso en pasillos largos | `PASILLO` (main.py) | Súbelo a 4 |
+| Pierde la posición en pasillos largos | `PASILLO` (main.py) | Bájalo a 2 (1 = parar en cada celda) |
 | Se queda antes del centro de la celda al abrirse un lado | `TRAS_SALTO` | Súbelo 5 |
 | Se pasa del centro de la celda al abrirse un lado | `TRAS_SALTO` | Bájalo 5 |
 | Se va a la derecha | `AJUSTE_DER` | Súbelo 5 |

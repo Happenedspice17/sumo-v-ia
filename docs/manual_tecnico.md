@@ -176,12 +176,13 @@ Son experimentales porque dependen de que la calibración por filas sea estable 
 **Avance** (lazo a 100 Hz, *T* = 10 ms):
 
 1. **Por distancia.** Al iniciar toma el frontal; si lee menos de 1 m (`RANGO`) avanza hasta que haya bajado 180 mm (`CELDA`). Si no ve nada a ese alcance avanza por tiempo (`MS_CELDA`) y, si a medio camino aparece una pared, sigue por distancia.
-2. **Alto y retroceso.** Se detiene al leer 30 mm reales al frente (`D_FRENTE`, frontal calibrado): es la lectura con el eje justo al centro de la celda (84 mm del centro a la cara de la pared − 54 mm del eje al sensor, medidas del CAD). Si queda por debajo de 25 mm (`D_FRENTE − D_CERCA`) se hace para atrás hasta 30 mm. Si hay pared y la distancia ya no baja en 300 ms, también para. Desde 130 mm frena de forma proporcional (`FRENA_K`). Un avance nunca pasa de 304 mm (una celda + `TRAS_SALTO`), aunque se abran varios lados seguidos.
+2. **Alto y retroceso.** Se detiene al leer 30 mm reales al frente (`D_FRENTE`, frontal calibrado): es la lectura con el eje justo al centro de la celda (84 mm del centro a la cara de la pared − 54 mm del eje al sensor, medidas del CAD). Si queda por debajo de 25 mm (`D_FRENTE − D_CERCA`) se hace para atrás hasta 30 mm. Si hay pared y la distancia ya no baja en 300 ms, también para. Desde 130 mm frena de forma proporcional (`FRENA_K`). Un avance nunca pasa de lo pedido + `TRAS_SALTO` (304 mm en una celda), aunque se abran varios lados seguidos.
 3. **Perfil de velocidad.** Rampa de +6 PWM por ciclo hasta `VEL_EXPLORA` (o `VEL_LENTO`), y desaceleración lineal en el último cuarto de celda, con piso en `VEL_MIN`.
 4. **Cambios bruscos.** Si una lectura de un ToF cambia `SALTO` = 120 mm o más y la siguiente lo confirma, se reconoce un cambio brusco (se abrió un lateral o saltó el frontal).
    - Si se abre un lateral, el robot avanza `TRAS_SALTO` = 124 mm más y para en el centro de esa celda, para escanearla (fase `ESCANEA`).
    - Si salta el frontal, recalcula lo que falta con la nueva lectura.
    - Python lo lee con `odo(3)`.
+   - **Pasillo.** Si va de frente con pared a ambos lados, Python pide hasta `PASILLO` = 3 celdas de un tirón en vez de parar en cada una. Abrirse un lateral lo detiene en el centro de esa celda como siempre, así que las celdas intermedias se anotan con pared a los 2 lados. Se ve más fluido y hace ~9 % menos paradas en la simulación (30/30 laberintos).
 5. **Centrado en el carril.** Con pared a un lado (lateral < `PARED` = 120 mm) corrige: *u = K꜀·e + K_d·ė*, saturado en ±40 PWM y aplicado en diferencial (*PWM_izq = v − u*, *PWM_der = v + u*). Con las 2 paredes, *e = d_izq − d_der*; con una, *e = 2·(d − D_LADO)*, donde `D_LADO` = 41 mm es la lectura con el robot centrado (84 − 43 mm del centro al sensor lateral, del CAD). Sin paredes va derecho con el rumbo del MPU. Antes solo corregía bajo 90 mm, así que con una sola pared el robot quedaba a 90 mm de ella, 49 mm fuera del centro.
 6. **Corrección de la deriva con las paredes.** Con las 2 paredes, centrado (|e| < 15 mm) y paralelo (*ė* < 15 mm/s) durante 300 ms, el rumbo real es el del pasillo: la mitad de lo que difiera del rumbo deseado del MPU se toma como deriva y se corrige. Así el giroscopio no empuja al robot contra una pared del pasillo.
 
@@ -212,7 +213,7 @@ Son experimentales porque dependen de que la calibración por filas sea estable 
 | **Alinear antes de avanzar** | `alinear(45)`: si el rumbo se desvió 3° a 45°, gira en su lugar hasta `ref` antes de arrancar | `ALIN_MIN` = 3° |
 | **Verificar cada giro** | Python lee el desvío (`odo(8)`); si pasa de 10° termina el giro con `alinear(180)` (2 intentos). Si aun así quedó 45° o más fuera, acepta el rumbo real: corrige el mapa en cuartos de vuelta y mueve `ref` | — |
 | **Giro atorado** | Si girando pasan 400 ms sin 2° de giro, una esquina está trabada: retrocede 200 ms y sigue (hasta 2 veces) | `ATORADO_MS` = 400 ms |
-| **Choque** | Cada 10 ms mide la aceleración horizontal menos un promedio lento (quita la inclinación del montaje). Un golpe de más de 0.8 g en un avance (pasados los primeros 150 ms) solo hace sospechar: es choque si en los 250 ms siguientes el frontal no bajó 10 mm (el robot dejó de avanzar). Sin pared enfrente a la vista solo cuenta un golpe de más de 2.5 g. Confirmado, retrocede 450 ms a PWM 110 y termina; si quedó a menos de 35 mm de una pared lateral, Python se aleja (gira 20°, avanza 50 mm, regresa al rumbo) | `CHOQUE_G` = 0.8 g, `CHOQUE_FUERTE` = 2.5 g, `CONFIRMA_MS` = 250 ms, `RETRO_MS` = 450 ms |
+| **Choque** | Cada 10 ms mide la aceleración horizontal menos un promedio lento (quita la inclinación del montaje). Un golpe de más de 1.5 g en un avance (pasados los primeros 150 ms) solo hace sospechar: es choque si en los 250 ms siguientes el frontal no bajó 10 mm (el robot dejó de avanzar). Sin pared enfrente a la vista solo cuenta un golpe de más de 2.5 g. Confirmado, retrocede 450 ms a PWM 110 y termina; si quedó a menos de 35 mm de una pared lateral, Python se aleja (gira 20°, avanza 50 mm, regresa al rumbo) | `CHOQUE_G` = 1.5 g, `CHOQUE_FUERTE` = 2.5 g, `CONFIRMA_MS` = 250 ms, `RETRO_MS` = 450 ms |
 | **Levantado** | Si la aceleración vertical baja de 0.8 g durante 150 ms (inclinado o en el aire), apaga los motores y Python termina la corrida | `LEVANTA_G` = 0.8 g |
 | **Fusión con la cámara** | La cámara mide el ángulo real respecto al pasillo y `ajustar` mueve `ref`: corrige la deriva lenta del giroscopio, que da la respuesta rápida (filtro complementario) | `ANG_MIN` = 4° |
 
@@ -312,7 +313,7 @@ Valores tal como están en `sketch.ino` y `main.py`.
 | `D_LADO` | 41 mm | Lectura lateral con el robot centrado en el carril (84 − 43, CAD) |
 | `KC` / `KD` | 0.8 / 0.3 | Centrado (posición / velocidad de acercamiento) |
 | `KG` | 2.0 PWM/° | Sostener rumbo en recta (con MPU-6050) |
-| `CHOQUE_G` / `CHOQUE_FUERTE` / `LEVANTA_G` | 0.8 / 2.5 / 0.8 g | Golpe que hace sospechar un choque / golpe que cuenta sin pared enfrente / vertical debajo de la cual está levantado (150 ms) |
+| `CHOQUE_G` / `CHOQUE_FUERTE` / `LEVANTA_G` | 1.5 / 2.5 / 0.8 g | Golpe que hace sospechar un choque / golpe que cuenta sin pared enfrente / vertical debajo de la cual está levantado (150 ms) |
 | `RETRO_MS` / `ATORADO_MS` | 450 / 400 ms | Retroceso tras un choque / giro sin moverse 2° que cuenta como atorado |
 | `ALIN_MIN` | 3° | Con MPU, desvío desde el que endereza en su lugar antes de avanzar |
 | `ADELANTO` | 6° | Corta el giro antes por la inercia (si se pasa, subir) |
@@ -326,6 +327,7 @@ Valores tal como están en `sketch.ino` y `main.py`.
 |---|---|---|
 | `FRENTE_LIBRE` | 120 mm | El frente cuenta como salida (mm reales: a la mitad entre ~30 y ~210) |
 | `VOTO_MAX` | 5 | Tope de votos por pared |
+| `PASILLO` | 3 | Celdas máximas de un tirón en pasillo (1 = parar en cada celda) |
 | `Y_COLOR` | 34 mm | Del eje al sensor de color (CAD: `COLOR_Y`) |
 | `UMBRAL_MIN` / `UMBRAL_MAX` | 100 / 220 | Límites del umbral de gris de Otsu |
 | `ZONA_BORDES` | (0.45, 0.95) | Filas donde busca las bases de las paredes |

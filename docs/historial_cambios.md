@@ -721,6 +721,14 @@ Además, la cámara ya no se busca en `/dev/video0` y `video1` (son internos) y 
 
 **Cambio.** El golpe (> 0.8 g) solo abre una ventana de 250 ms; es choque si en ella el frontal no bajó 10 mm. Sin pared enfrente para medirlo, solo cuenta un golpe de más de 2.5 g. La maniobra de carril solo se hace si un lateral quedó a menos de 35 mm (centrado lee ~41).
 
+### Etapa 46. Pasillos de un tirón; golpe a 1.5 g (11-nov)
+
+**Del equipo.** El robot se veía tieso: paraba, leía, decidía y arrancaba en cada celda. Además, el equipo pidió subir el umbral de golpe a 1.5 g.
+
+**Razonamiento.** El sketch ya vigila los ToF durante el avance y para en cuanto se abre un lateral. En un pasillo (pared a ambos lados) no hay nada que decidir, así que parar en cada celda no aporta información.
+
+**Cambio.** Con pared a ambos lados y yendo de frente, Python pide hasta `PASILLO` = 3 celdas de un tirón. Si se abre un lateral, para en el centro de esa celda como antes; las celdas intermedias se anotan con pared a los 2 lados. El tope de saltos del sketch ahora es lo pedido + `TRAS_SALTO` (antes, una celda + `TRAS_SALTO`). La simulación sigue en 30/30 con ~9 % menos paradas. `CHOQUE_G` pasa de 0.8 a 1.5 g: en el último log los falsos choques fueron de 0.75 a 1.52 g.
+
 ## Pruebas realizadas
 
 La tabla distingue lo medido o probado de lo que solo se deduce de la secuencia de commits (marcado **deducido**). Cuando el repositorio guarda la sucesión de valores pero no el resultado de cada intento, se dice. Las pruebas en pista del equipo están en su propia subsección; la última versión (distancia, saltos, votos, máquina de estados, MPU) aún no se ha probado en pista.
