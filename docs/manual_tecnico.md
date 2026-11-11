@@ -275,8 +275,8 @@ Valores tal como están en `sketch.ino` y `main.py`.
 | `MS_CELDA` | 600 ms | Tiempo por celda cuando no hay pared a la vista |
 | `MS_90` | 250 ms | Giro de 90° por tiempo (solo sin MPU-6050) |
 | `VEL_EXPLORA` / `VEL_LENTO` / `VEL_GIRO` / `VEL_MIN` | 140 / 100 / 130 / 80 | PWM de 0 a 255 |
-| `PARED` / `PARED_F` | 120 / 130 mm | Pared lateral / pared al frente |
-| `D_FRENTE` / `D_CERCA` | 130 / 10 mm | Alto al frente / retrocede si baja de 120 mm |
+| `PARED` / `PARED_F` | 120 / 45 mm | Pared lateral / pared al frente (frente en mm reales: requiere el frontal calibrado) |
+| `D_FRENTE` / `D_CERCA` | 45 / 10 mm | Alto al frente / retrocede si baja de 35 mm (mm reales) |
 | `FRENA_K` | 2 PWM/mm | Frenado proporcional al acercarse |
 | `SALTO` / `TRAS_SALTO` | 120 / 124 mm | Cambio brusco / avance posterior para centrarse en la celda abierta |
 | `D_LADO_MIN` | 90 mm | Solo corrige el centrado si un lateral lee menos |
@@ -292,7 +292,7 @@ Valores tal como están en `sketch.ino` y `main.py`.
 
 | Parámetro | Valor | Qué controla |
 |---|---|---|
-| `FRENTE_LIBRE` | 220 mm | El frente cuenta como salida |
+| `FRENTE_LIBRE` | 135 mm | El frente cuenta como salida (mm reales: a la mitad entre ~45 y ~225) |
 | `VOTO_MAX` | 5 | Tope de votos por pared |
 | `ISLA` | 3 visitas | Pasa a la salida menos usada |
 | `Y_COLOR` | 36 mm | Del eje al sensor de color |
