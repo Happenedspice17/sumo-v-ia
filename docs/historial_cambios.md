@@ -621,6 +621,18 @@ Etapa menor de documentación. `docs/manual_uso.md` (uso y calibración: baterí
 
 **Cambio.** Sketches: `D_FRENTE` y `PARED_F` 130 → 45. Python: `PARED_F` y `D_FRENTE_TOF` 130 → 45, `FRENTE_LIBRE` 220 → 135 (a la mitad entre ~45 y ~225). Los laterales no cambian. **Requiere el frontal calibrado:** si se borra su calibración, el robot se pegaría a la pared.
 
+### Etapa 37. Mano izquierda pura, compensación de motores y alto a 10 mm (11-nov)
+
+**Observación en pista.** Los colores se detectan muy bien. El robot se va un poco a la izquierda: la llanta izquierda avanza menos.
+
+**Cambio.**
+
+- **Regla de la mano izquierda pura:** izquierda, frente, derecha, media vuelta. Corrige lo visto antes: con "frente primero" el robot se atoraba en una zona, porque un seguidor de pared solo es completo si siempre prefiere el lado de su mano.
+- **`AJUSTE_DER` = −10:** en recta le da más PWM al motor izquierdo. Es un valor de partida; si sigue yéndose a la izquierda se baja (−15, −20), y si se va a la derecha se sube.
+- **`D_FRENTE` = 10 mm reales** (antes 45), a pedido del equipo, con el frontal ya calibrado. `D_CERCA` = 5 mm. `FRENTE_LIBRE` = 110 mm y `D_FRENTE_TOF` = 10 mm en Python.
+
+**Riesgo anotado.** Con el robot centrado, el frontal queda a unos 44 mm de la pared de su celda (90 − 6 − 40). Frenar a 10 mm deja el eje unos 34 mm después del centro de la celda. Y por debajo de unos 30 mm el VL53L0X pierde exactitud. Hay que verificar en pista que no toque la pared y que la siguiente decisión siga saliendo bien.
+
 ## Pruebas realizadas
 
 La tabla distingue lo medido o probado de lo que solo se deduce de la secuencia de commits (marcado **deducido**). Cuando el repositorio guarda la sucesión de valores pero no el resultado de cada intento, se dice. Las pruebas en pista del equipo están en su propia subsección; la última versión (distancia, saltos, votos, máquina de estados, MPU) aún no se ha probado en pista.
@@ -806,7 +818,6 @@ El repositorio se analizó con graphify, que arma un grafo de conocimiento con e
 - Calibrar los 3 ToF en la pista desde la web (un punto a 100 mm por sensor: solo desfase; el equipo lo simplificó así en pista) y, con esas lecturas, revisar `PARED`, `PARED_F`, `D_FRENTE`, `D_LADO_MIN` y `FRENTE_LIBRE`. Va **antes** de calibrar la distancia por cámara, que usa el frontal como regla.
 - Calibrar la cámara en la pista desde la web (exposición, derecho, escala) y medir su placa para el CAD.
 - Probar la corrección de rumbo con la cámara real (con y sin MPU) y, después, la versión experimental (distancia por cámara y aberturas).
-- Pasar el código a mano derecha pura (hoy la prioridad es frente, izquierda, derecha).
 - Conseguir el MPU-6050 (GY-521) y calibrar `ADELANTO` (si se pasa, subirlo; si le falta, bajarlo) y `KG`.
 - Calibrar `ZONA_PASO` y `BLANCO_MAX` hasta que en un pasillo libre el recuadro de la vista de cámara salga verde.
 - Calibrar `TRAS_SALTO` (124 mm, calculado del CAD) y `BORDE_AJ`, con el robot en la pista.
