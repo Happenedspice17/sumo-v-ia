@@ -667,6 +667,21 @@ Además, la cámara ya no se busca en `/dev/video0` y `video1` (son internos) y 
 - **Registro de colores:** cada color confirmado por el TCS34725 se anota con su segundo y su celda; la web muestra los últimos 15.
 - **Alineación con MPU (`alinear()`):** antes de cada avance, si el rumbo se desvió 3° o más del deseado (hasta 45°; más se toma como lectura mala), gira en su lugar hasta corregirlo. Así no empieza el avance chueco, que es cuando las esquinas tocan la pared. En el sketch sin MPU la función existe y no hace nada, para que el Python sea el mismo.
 
+### Etapa 41. El MPU completo: choques, atorones, giros verificados y robot levantado (11-nov)
+
+**Pedido del equipo.** Usar todo lo que da el MPU-6050, no solo el giroscopio para girar.
+
+**Cambio (sketch con MPU; el sin MPU responde 0 a todo esto).**
+
+1. **Choques con el acelerómetro.** Cada 10 ms lee la aceleración horizontal y le resta un promedio lento, que quita la inclinación del montaje. Un golpe de más de 0.6 g en un avance, después de los primeros 150 ms (el arranque), es un choque: retrocede 250 ms y termina el avance. Python lo registra con la fuerza del golpe, vuelve a leer los ToF y se endereza antes de seguir. El golpe máximo de cada avance queda en `odo(15)` para calibrar `CHOQUE_G`.
+2. **Giro atorado.** Si girando pasan 400 ms sin que el giroscopio vea 2° de giro, una esquina está trabada contra la pared: retrocede 200 ms y sigue girando (hasta 2 veces).
+3. **Giros verificados.** Después de cada giro, Python lee el desvío respecto al rumbo deseado. Si pasa de 10°, lo termina girando en su lugar (`alinear(180)`, 2 intentos). Si aun así quedó 45° o más fuera, acepta el rumbo real: corrige el rumbo del mapa en cuartos de vuelta y mueve la referencia del sketch, para que el resto del mapa no se tuerza.
+4. **Robot levantado.** Si la aceleración vertical baja de 0.8 g durante 150 ms (inclinado o en el aire), detiene los motores y Python termina la corrida, porque la posición ya no vale.
+
+**No se hizo:** giros en curva. Hoy el robot decide quieto en el centro de cada celda; una curva termina fuera del centro y rompe el mapa por celdas. Queda para cuando lo demás esté estable.
+
+**Pruebas.** Revisión de sintaxis de los 2 sketches con g++ y cabeceras de Arduino simuladas. Pruebas de Python: verificación de giro (desvío de 95°, 92° y 88° → acepta un cuarto de vuelta y mueve la referencia 2°), control web, decisiones y mapa. Los umbrales (0.6 g, 0.8 g, 400 ms) son de partida: hay que calibrarlos en pista con el golpe que muestra el log.
+
 ## Pruebas realizadas
 
 La tabla distingue lo medido o probado de lo que solo se deduce de la secuencia de commits (marcado **deducido**). Cuando el repositorio guarda la sucesión de valores pero no el resultado de cada intento, se dice. Las pruebas en pista del equipo están en su propia subsección; la última versión (distancia, saltos, votos, máquina de estados, MPU) aún no se ha probado en pista.

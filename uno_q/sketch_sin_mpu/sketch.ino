@@ -123,7 +123,7 @@ int rpcGirar(int cuartos) {
 // Corrige el rumbo g grados (derecha +) con lo que ve la camara antes de avanzar.
 // Sin MPU gira en su lugar por tiempo (aproximado). Devuelve 2 si hay que esperar el giro.
 // Sin MPU no sabe cuanto se desvio: no alinea (el Python es el mismo para las 2 versiones).
-int rpcAlinear() { return 0; }
+int rpcAlinear(int lim) { return 0; }
 
 int rpcAjustar(int g) {
   ult = 'J';
@@ -159,6 +159,7 @@ int rpcOdo(int i) {
     case 9: case 10: case 11: return crudo[i - 9];           // izq, frente, der sin calibrar
     case 6: return dist[0];
     case 7: return dist[2];
+    case 8: case 12: case 13: case 14: case 15: return 0;   // solo con MPU (rumbo, choque, atorado, levantado, golpe)
     default: return dist[1];
   }
 }
