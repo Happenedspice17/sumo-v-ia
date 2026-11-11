@@ -53,12 +53,12 @@ DY = [1, 0, -1, 0]
 CELDA = 180                              # mm por avance; la posicion solo sirve para contar visitas
 PARED = 120                              # mm: lateral con esto o mas = libre
 PARED_F = 55                             # mm reales (frontal calibrado): menos de esto = pared (= PARED_F del sketch)
-FRENTE_LIBRE = 130                       # mm reales: a la mitad entre pared en su celda (~35-45) y en la siguiente (~215-225)
-D_FRENTE_TOF = 35                        # mm reales donde se detiene el sketch con pared enfrente (= D_FRENTE)
+FRENTE_LIBRE = 120                       # mm reales: a la mitad entre pared en su celda (~30) y en la siguiente (~210)
+D_FRENTE_TOF = 30                        # mm reales donde se detiene el sketch con pared enfrente (= D_FRENTE)
 FUERA = 2000                             # mm: los 2 laterales sin nada a esta distancia = salio del laberinto
 RECORRIDO = -3                           # voto de un paso por donde ya paso (-5) con hasta 2 lecturas en contra
 VOTO_MAX = 5                             # cada lectura vota pared (+1) o libre (-1); tope para que el mapa se corrija
-Y_COLOR = 36                             # mm del eje al sensor de color (adelante)
+Y_COLOR = 34                             # mm del eje al sensor de color (adelante; CAD: COLOR_Y)
 
 # ---------- Camara (OV9281 monocromatica, obturador global): asistencia, nunca decide sola ----------
 CAM_ID = 2                               # /dev/video0 y video1 son internos de la placa: nunca son la camara
@@ -254,7 +254,8 @@ def avanzar():
     esperar(True)
     mm, saltos = rpc("odo", 0), rpc("odo", 3)
     if rpc("odo", 12):                   # el acelerometro sintio un choque: el sketch ya retrocedio
-        print(f"MPU: choque a los {mm} mm (golpe {rpc('odo', 15) / 1000:.2f} g); retrocedi y vuelvo a leer")
+        print(f"MPU: choque a los {mm} mm (golpe {rpc('odo', 15) / 1000:.2f} g); retrocedi")
+        vuelve_al_carril()
     vivo["mm"], vivo["saltos"] = mm, saltos
     n = round(mm / CELDA)
     for _ in range(n):                   # por donde paso no hay pared, seguro
@@ -263,6 +264,28 @@ def avanzar():
         pos = sig
     print(f"Avanzo {mm} mm -> {pos}" + (f", salto en ToF {saltos}" if saltos else ""))
     return saltos
+
+
+def vuelve_al_carril():
+    """Tras un choque (casi siempre una esquina contra una pared lateral): se aleja de la pared mas cercana.
+    Gira 20 grados hacia el otro lado, avanza 50 mm (unos 17 mm de lado) y regresa al rumbo deseado. Con MPU."""
+    izq, _, der = tof3(2)
+    if min(izq, der) >= PARED:
+        return
+    g = 20 if izq < der else -20         # pared a la izquierda: gira a la derecha (+)
+    print(f"Carril: pared {'izquierda' if g > 0 else 'derecha'} a {min(izq, der)} mm, me alejo")
+    if rpc("ajustar", g) == 2:           # sin MPU ajustar gira en su lugar
+        esperar()
+    elif rpc("alinear", 45) == 2:
+        esperar()
+    time.sleep(0.1)                      # ToF frescos antes de avanzar
+    rpc("mover", 50, 1)
+    esperar(True)
+    if rpc("ajustar", -g) == 2:
+        esperar()
+    elif rpc("alinear", 45) == 2:
+        esperar()
+    time.sleep(0.1)
 
 
 def salidas(izq, frente, der):
@@ -932,6 +955,9 @@ try:
     iniciar()
     paso("App.run")
     App.run(user_loop=loop)
+except SystemExit as e:                  # App Lab la detiene (143 = SIGTERM): no es un error
+    print(f"App detenida (codigo {e.code})", flush=True)
+    raise
 except BaseException:
     print("ERROR al arrancar:", flush=True)
     traceback.print_exc()

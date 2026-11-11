@@ -692,6 +692,27 @@ Además, la cámara ya no se busca en `/dev/video0` y `video1` (son internos) y 
 
 `python_experimental/main.py` era el mismo archivo que `python/main.py` con `EXPERIMENTAL = True`. Tener 2 copias obligaba a mantenerlas iguales y confundía al ver el repositorio. Se retira la carpeta (queda en el commit `2e01996`); la versión experimental se activa cambiando esa línea.
 
+### Etapa 44. Centrado en el carril con la geometría del chasis; choques (11-nov)
+
+**Del log de pista.** La exploración ya encontró el amarillo (113 s en una corrida). Pero en otra el robot se quedó decenas de veces en la misma celda: "choque a los 0 mm" con el frontal libre a 300-450 mm y un lateral a 40-80 mm. Estaba trabado con una esquina contra una pared lateral: retrocedía 250 ms a PWM 80 (muy poco), se enderezaba al mismo rumbo y volvía a chocar, unos 15 s por punto. Además, un avance llegó a 895 mm porque varios saltos laterales seguidos lo alargaron.
+
+**Diagnóstico.**
+
+1. **Centrado.** Solo corregía con un lateral bajo 90 mm (`D_LADO_MIN`): con una sola pared el robot quedaba a 90 mm de ella, unos 49 mm fuera del centro, y en el siguiente pasillo arrancaba pegado a una pared.
+2. **Rumbo del MPU contra las paredes.** Si el giroscopio derivó, el control de recta (`KG`) sostiene un rumbo que no es el del pasillo, y el centrado lo pelea: el robot avanza en diagonal hacia una pared.
+3. **Distancias "a ojo".** `D_LADO` = 50 y `D_FRENTE` = 35 no venían de la geometría.
+
+**Cambio.**
+
+- **Geometría del CAD** (`MEDIA_CELDA` = 84 mm del centro de la celda a la cara de la pared; frontal 54 mm adelante del eje; laterales a 43 mm del centro y 40 adelante): `D_FRENTE` = 84 − 54 = **30 mm**, `D_LADO` = 84 − 43 = **41 mm**, `TRAS_SALTO` = 90 + 40 − 6 = 124 mm, `Y_COLOR` = 34 mm (`COLOR_Y`), `FRENTE_LIBRE` = 120 mm (a la mitad entre ~30 y ~210).
+- **Centrado en el carril:** con pared a un lado (< 120 mm) se centra contra 41 mm; con las 2, que lean igual.
+- **Deriva del MPU con las paredes:** con las 2 paredes, centrado y paralelo durante 300 ms, la mitad de la diferencia entre el rumbo real y el deseado se corrige como deriva.
+- **Choque:** retrocede 450 ms a PWM 110. Python se aleja de la pared más cercana (gira 20°, avanza 50 mm, unos 17 mm de lado, y regresa al rumbo).
+- **Avance máximo** de 304 mm (una celda + `TRAS_SALTO`).
+- El log ya no muestra "ERROR al arrancar" cuando App Lab detiene la app (código 143).
+
+**Pruebas.** Sintaxis del sketch con g++ y cabeceras simuladas; pruebas de Python (maniobra de carril, decisiones, mapa, control web) y simulación de la meta al centro (30/30). Falta probar en pista.
+
 ## Pruebas realizadas
 
 La tabla distingue lo medido o probado de lo que solo se deduce de la secuencia de commits (marcado **deducido**). Cuando el repositorio guarda la sucesión de valores pero no el resultado de cada intento, se dice. Las pruebas en pista del equipo están en su propia subsección; la última versión (distancia, saltos, votos, máquina de estados, MPU) aún no se ha probado en pista.
