@@ -97,7 +97,7 @@ uint32_t tBaja;               // ultima vez que bajo: si ya no baja con pared en
 
 // ---------- MPU-6050 (opcional) ----------
 // Si responde en 0x68 al arrancar, gira por angulo y sostiene el rumbo en recta; si no, todo va por tiempo.
-const int MPU = 0x68;
+const uint8_t MPU_ADDR = 0x68;   // no "MPU": es una macro de CMSIS (la unidad de proteccion de memoria del Cortex-M33)
 const float LSB_DPS = 65.5;   // +-500 grados/s
 const float ADELANTO = 6;     // grados: corta el giro antes por la inercia (calibrar: si se pasa, sube)
 const float KG = 2.0;         // PWM por grado de desvio en recta
@@ -356,17 +356,17 @@ void control() {
 
 // ---------- MPU-6050 ----------
 void mpuEscribe(uint8_t reg, uint8_t v) {
-  Wire.beginTransmission(MPU);
+  Wire.beginTransmission(MPU_ADDR);
   Wire.write(reg);
   Wire.write(v);
   Wire.endTransmission();
 }
 
 int16_t gz() {
-  Wire.beginTransmission(MPU);
+  Wire.beginTransmission(MPU_ADDR);
   Wire.write(0x47);               // GYRO_ZOUT_H
   Wire.endTransmission(false);
-  Wire.requestFrom(MPU, 2);
+  Wire.requestFrom(MPU_ADDR, 2);
   uint8_t hi = Wire.read();
   uint8_t lo = Wire.read();
   return (int16_t)(hi << 8 | lo);
@@ -374,7 +374,7 @@ int16_t gz() {
 
 // Quieto al arrancar: mide el bias del giroscopio
 bool mpuInit() {
-  Wire.beginTransmission(MPU);
+  Wire.beginTransmission(MPU_ADDR);
   if (Wire.endTransmission() != 0) return false;
   mpuEscribe(0x6B, 0);            // despierta
   mpuEscribe(0x1A, 3);            // filtro ~44 Hz
