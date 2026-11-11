@@ -17,7 +17,7 @@ const uint8_t XSHUT[3] = {A0, A1, A2};   // izq, frente, der
 
 // ---------- Calibracion ----------
 const long MS_CELDA = 600;    // ms por celda de 18 cm (solo si el frontal no ve pared: avanza por tiempo)
-const long MS_90 = 250;       // ms por giro de 90 grados
+const long MS_90 = 250;       // ms por giro de 90 grados (solo sin MPU-6050)
 const int VEL_EXPLORA = 140;
 const int VEL_LENTO = 100;    // cuando la camara ve blanco (pared) en el camino
 const int VEL_GIRO = 130;
@@ -93,6 +93,19 @@ float vel;
 int dMin;                     // menor distancia al frente en este avance
 uint32_t tBaja;               // ultima vez que bajo: si ya no baja con pared enfrente, esta empujando la pared
 
+// ---------- MPU-6050 (opcional) ----------
+// Si responde en 0x68 al arrancar, gira por angulo y sostiene el rumbo en recta; si no, todo va por tiempo.
+const int MPU = 0x68;
+const float LSB_DPS = 65.5;   // +-500 grados/s
+const float ADELANTO = 6;     // grados: corta el giro antes por la inercia (calibrar: si se pasa, sube)
+const float KG = 2.0;         // PWM por grado de desvio en recta
+bool mpuOk = false;
+float yaw = 0, bias = 0;      // grados con el signo del montaje
+int signo = 0;                // +1/-1 segun como quedo montado; lo aprende en el primer giro (0 = aun no)
+float ref = 0;                // rumbo deseado (derecha +), valido con signo conocido
+float yaw0;                   // yaw al iniciar el giro
+uint32_t tGyro;
+
 // ---------- RPC desde Python ----------
 int rpcMover(int mm, int lento) {
   ult = 'M';
@@ -139,6 +152,7 @@ int rpcOdo(int i) {
     case 1: return falta();
     case 2: return (dist[0] < PARED) | (dist[1] < PARED_F) << 1 | (dist[2] < PARED) << 2 | (tipo != NADA) << 3;
     case 3: return saltos;
+    case 8: return signo ? (int)(signo * yaw - ref) : 0;   // desvio del rumbo deseado (grados)
     case 6: return dist[0];
     case 7: return dist[2];
     default: return dist[1];
@@ -224,6 +238,8 @@ void iniciaMov() {
     dirL = arg > 0 ? 1 : -1;
     dirR = -dirL;
     dur = abs(arg) * MS_90;
+    yaw0 = yaw;
+    if (signo) ref += arg * 90;
   }
   cmd = NADA;
 }
@@ -250,6 +266,10 @@ void salto(int i, int antes, long f) {
 
 void termina() {
   if (tipo == AVANZA) hecho = total - falta();
+  if (tipo == GIRA && mpuOk && !signo && fabs(yaw - yaw0) > 30) {
+    signo = (yaw - yaw0) * dirL > 0 ? 1 : -1;   // primer giro: aprende hacia donde crece el yaw
+    ref = signo * yaw0 + arg * 90;
+  }
   frena();
   tipo = NADA;
   ocupado = 0;
@@ -276,8 +296,16 @@ float centrado() {
 void control() {
   long t = millis() - tIni;
   if (tipo == GIRA) {
-    if (t >= dur) termina();
-    else motores(dirL * VEL_GIRO, dirR * VEL_GIRO);
+    if (!mpuOk) {
+      if (t >= dur) termina();
+      else motores(dirL * VEL_GIRO, dirR * VEL_GIRO);
+      return;
+    }
+    // con MPU: hasta el rumbo deseado (absoluto: corrige lo que se paso o le falto en giros anteriores)
+    float f = signo ? (ref - signo * yaw) * dirL : abs(arg) * 90 - fabs(yaw - yaw0);
+    if (f <= ADELANTO || t >= 3 * dur) { termina(); return; }
+    int v = f < 25 ? (VEL_GIRO + VEL_MIN) / 2 : VEL_GIRO;
+    motores(dirL * v, dirR * v);
     return;
   }
   // Avanza por distancia con el frontal; sin pared a la vista, por tiempo
@@ -298,7 +326,47 @@ void control() {
   if (dist[1] < D_FRENTE + 100) tope = min(tope, (float)VEL_MIN + FRENA_K * (dist[1] - D_FRENTE));   // frena al acercarse
   vel = min(vel + 6.0f, tope);
   float corr = centrado();
+  if (mpuOk && signo) corr += constrain(KG * (signo * yaw - ref), -20.0f, 20.0f);   // sostiene el rumbo
   motores(vel - corr, vel + corr);
+}
+
+// ---------- MPU-6050 ----------
+void mpuEscribe(uint8_t reg, uint8_t v) {
+  Wire.beginTransmission(MPU);
+  Wire.write(reg);
+  Wire.write(v);
+  Wire.endTransmission();
+}
+
+int16_t gz() {
+  Wire.beginTransmission(MPU);
+  Wire.write(0x47);               // GYRO_ZOUT_H
+  Wire.endTransmission(false);
+  Wire.requestFrom(MPU, 2);
+  uint8_t hi = Wire.read();
+  uint8_t lo = Wire.read();
+  return (int16_t)(hi << 8 | lo);
+}
+
+// Quieto al arrancar: mide el bias del giroscopio
+bool mpuInit() {
+  Wire.beginTransmission(MPU);
+  if (Wire.endTransmission() != 0) return false;
+  mpuEscribe(0x6B, 0);            // despierta
+  mpuEscribe(0x1A, 3);            // filtro ~44 Hz
+  mpuEscribe(0x1B, 0x08);         // +-500 grados/s
+  delay(100);
+  long s = 0;
+  for (int i = 0; i < 200; i++) { s += gz(); delay(3); }
+  bias = s / 200.0f;
+  tGyro = micros();
+  return true;
+}
+
+void leeGyro() {
+  uint32_t t = micros();
+  yaw += (gz() - bias) / LSB_DPS * (t - tGyro) * 1e-6f;
+  tGyro = t;
 }
 
 // ---------- VL53L0X ----------
@@ -403,6 +471,7 @@ void pinta() {
   oled.print(nRpc);
   oled.print(" ");
   oled.print(ult);
+  oled.print(mpuOk ? " G" : "");
   oled.setCursor(90, 54);
   oled.print("T:");
   oled.print(total);
@@ -463,6 +532,7 @@ void setup() {
   tofOk = tofInit();
   if (!tofOk) falla("SIN VL53L0X");
   if (!tcs.begin()) falla("SIN SENSOR COLOR");
+  mpuOk = mpuInit();              // opcional: sin el, giros y rectas por tiempo
 
   Bridge.begin();
   Monitor.begin();
@@ -498,6 +568,7 @@ void loop() {
   if (cmd != NADA && tipo == NADA) iniciaMov();
 
   tofLee();
+  if (mpuOk && micros() - tGyro >= 2000) leeGyro();
 
   if (t - tCtrl >= T_CTRL) {
     tCtrl = t;
@@ -525,7 +596,7 @@ void loop() {
     refresca = 1;
   }
 
-  if (refresca) {
+  if (refresca && tipo == NADA && cmd == NADA) {   // la OLED tarda ~25 ms: nunca en movimiento
     refresca = 0;
     pinta();
   }

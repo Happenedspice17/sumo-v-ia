@@ -16,6 +16,7 @@ El STM32 mueve los motores, lee los sensores y maneja la OLED (`sketch/`). Linux
 | VL53L0X ×3 (VCC), TCS34725 (VIN), OLED | VCC / GND | 3.3V / GND |
 | TCS34725 (morado) | LED / INT | sin conectar (LED siempre encendido) |
 | Botón de arranque | a GND | D2 |
+| MPU-6050 (GY-521), opcional | SDA / SCL, VCC 3.3V, GND (AD0 a GND o suelto: 0x68) | SDA / SCL |
 | Batería 2S 18650 (conector T) | + | interruptor → VIN |
 | Cámara USB | | hub USB‑C |
 
@@ -53,7 +54,10 @@ Con el hub conectado al USB-C, App Lab se conecta por WiFi (el puerto no puede i
 - **Cambio brusco** (una lectura cambia `SALTO` = 120 mm o más y se repite en la siguiente): si se abre un lateral, para al centro de esa celda (`TRAS_SALTO` = 124 mm después) para escanearla; si salta el frontal, vuelve a medir lo que falta. Python lo lee con `odo(3)`.
 - Con `mover(mm, lento)` baja a `VEL_LENTO` (la pide Python cuando la cámara ve blanco).
 - En recta solo corrige el rumbo si un lateral lee menos de 90 mm (`D_LADO_MIN`).
-- Gira 90° por tiempo (`MS_90`).
+- **Giros:** con MPU-6050 gira hasta el ángulo; sin él, por tiempo (`MS_90`). El mismo sketch sirve para los dos: al arrancar busca el MPU en 0x68 (OLED `G` abajo si lo encontró). Enciende el robot quieto: mide el bias del giroscopio.
+  - Con MPU el rumbo es absoluto: cada giro va al ángulo deseado acumulado, así que corrige lo que se pasó o le faltó el anterior. En recta sostiene ese rumbo (`KG`), además del centrado con paredes. El sentido del montaje lo aprende en el primer giro; antes de ese giro no sostiene rumbo.
+  - Calibrar `ADELANTO`: si se pasa del giro, súbelo; si le falta, bájalo. `odo(8)` da el desvío en grados.
+  - La OLED no se refresca en movimiento (tarda ~25 ms y estorba al control).
 - Lee los ToF y el sensor de color y se los da al Python. RPC `odo(i)`: 0 mm recorridos, 1 mm que faltan, 3 saltos (1 izq, 2 frente, 4 der), 5/6/7 frente/izq/der.
 
 **Python**, decide en cada paso:
