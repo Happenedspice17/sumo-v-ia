@@ -122,6 +122,9 @@ int rpcGirar(int cuartos) {
 
 // Corrige el rumbo g grados (derecha +) con lo que ve la camara antes de avanzar.
 // Sin MPU gira en su lugar por tiempo (aproximado). Devuelve 2 si hay que esperar el giro.
+// Sin MPU no sabe cuanto se desvio: no alinea (el Python es el mismo para las 2 versiones).
+int rpcAlinear() { return 0; }
+
 int rpcAjustar(int g) {
   ult = 'J';
   if (ocupado || g == 0) return 0;
@@ -494,6 +497,7 @@ void setup() {
   Bridge.provide("mover", rpcMover);
   Bridge.provide("girar", rpcGirar);
   Bridge.provide("ajustar", rpcAjustar);
+  Bridge.provide("alinear", rpcAlinear);
   Bridge.provide("ocupado", rpcOcupado);
   Bridge.provide("color", rpcColor);
   Bridge.provide("arranque", rpcArranque);

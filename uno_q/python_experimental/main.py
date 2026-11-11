@@ -95,6 +95,10 @@ colores = {}
 meta = None
 # Para la pagina web: durante una corrida lee esto (lo actualiza el robot) en vez de pedirle al Bridge
 corriendo = False
+t_ini = None                             # inicio de la corrida (time.time())
+t_meta = None                            # segundos hasta el amarillo en la ultima corrida
+t_fin = None                             # duracion de la ultima corrida
+log_col = []                             # colores vistos en la corrida: tiempo, color, celda
 pedido = None                            # desde la web: "corre", "alto" o "borra" (como el boton D2)
 fase_act = ""
 vivo = {"izq": 9999, "frente": 9999, "der": 9999, "mm": 0, "saltos": 0, "v": [0, 0, 0, 0]}
@@ -153,10 +157,15 @@ def revisar_color(avanza):
     mm = rpc("odo", 0) if avanza else 0
     k = int((mm + Y_COLOR + CELDA / 2) // CELDA)
     cel = (pos[0] + DX[rumbo] * k, pos[1] + DY[rumbo] * k)
+    global t_meta
+    t = round(time.time() - t_ini, 1) if t_ini else 0
     if c == OBJETIVO:
         encontrado, meta = True, cel
         rpc("alto")
-        print(f"{COLORES[c]} encontrado en {cel}: meta")
+        t_meta = t
+        print(f"{COLORES[c]} encontrado en {cel}: meta a los {t} s")
+    if not log_col or log_col[-1][1:] != [COLORES[c], list(cel)]:
+        log_col.append([t, COLORES[c], list(cel)])
     if cel in colores:                   # cada celda se cuenta una vez
         return
     colores[cel] = c
@@ -207,6 +216,9 @@ def avanzar():
         print(f"Camara: rumbo chueco, corrijo {v['ang']:+.0f} grados")
         if rpc("ajustar", round(v["ang"])) == 2:
             esperar()
+    if rpc("alinear") == 2:              # con MPU: endereza al rumbo deseado antes de avanzar (hasta 45 grados)
+        esperar()
+        time.sleep(0.1)                  # ToF frescos
     if EXPERIMENTAL and v and v["abre"]:  # abertura en la celda siguiente: lento y voto debil de libre
         lento = True
         sig = celda(vecino(pos, rumbo))
@@ -524,7 +536,9 @@ def estado_tof_cal():
 
 
 def api_lectura():
-    mapa = {"pos": pos, "celdas": len(muros), "meta": meta, "fase": fase_act, "corriendo": corriendo}
+    mapa = {"pos": pos, "celdas": len(muros), "meta": meta, "fase": fase_act, "corriendo": corriendo,
+            "tiempo": round(time.time() - t_ini, 1) if corriendo and t_ini else t_fin, "t_meta": t_meta,
+            "log": log_col[-15:]}
     if corriendo:                        # sin Bridge: no le quita tiempo al robot
         v = vivo["v"]
         odo = {"falta": None, "frente": vivo["frente"], "paredes": 0, "mm": vivo["mm"], "saltos": vivo["saltos"], **mapa}
@@ -867,18 +881,22 @@ def loop():
     if not a and p != "corre":
         time.sleep(0.05)
         return
-    global pos, rumbo, encontrado, corriendo
+    global pos, rumbo, encontrado, corriendo, t_ini, t_meta, t_fin
     pos, rumbo, encontrado = (0, 0), 0, False   # cada corrida empieza en la misma celda viendo al mismo lado
-    t = time.time()
+    t = t_ini = time.time()
+    t_meta = t_fin = None
+    log_col.clear()
     corriendo = True
     try:
         ok = (meta is not None and seguir_ruta()) or buscar_color()
     finally:
         corriendo = False
         fase("")
+    t_fin = round(time.time() - t, 1)
     guardar()
     estado(4 if ok else 0)
-    print(f"Corrida: {time.time() - t:.1f} s, marcas {cuenta[1:]}")
+    print(f"Corrida: {t_fin} s" + (f", amarillo a los {t_meta} s" if t_meta is not None else ", sin amarillo") +
+          f", marcas {cuenta[1:]}")
 
 
 try:
