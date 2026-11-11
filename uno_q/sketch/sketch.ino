@@ -19,6 +19,7 @@ const uint8_t XSHUT[3] = {A0, A1, A2};   // izq, frente, der
 const long MS_CELDA = 600;    // ms por celda de 18 cm (solo si el frontal no ve pared: avanza por tiempo)
 const long MS_90 = 250;       // ms por giro de 90 grados
 const int VEL_EXPLORA = 140;
+const int VEL_LENTO = 100;    // cuando la camara ve blanco (pared) en el camino
 const int VEL_GIRO = 130;
 const int VEL_MIN = 80;
 const int AJUSTE_DER = 0;     // suma PWM al motor derecho si se desvia
@@ -35,6 +36,8 @@ const float KD = 0.3;         // ganancia de rumbo: corrige segun que tan rapido
 const int D_LADO_MIN = 90;    // mm: solo corrige si un lateral lee menos de esto (se aleja de esa pared)
 const int CELDA = 180;        // mm de centro a centro de celda
 const int RANGO = 1000;       // mm: con el frontal leyendo menos, avanza por distancia; mas lejos, por tiempo
+const int SALTO = 120;        // mm: cambio brusco entre 2 lecturas (50 -> 200, 100 -> 300)
+const int TRAS_SALTO = 124;   // mm tras abrirse un lateral: centro de esa celda (90 + 40 del sensor - 6 de media pared)
 const uint32_t T_CTRL = 10;
 const uint32_t T_COLOR = 30;
 
@@ -79,16 +82,20 @@ long dur;
 long total;                   // mm del avance en curso
 int objetivo = -1;            // lectura del frontal donde parar; -1 = no ve pared, va por tiempo
 long hecho = 0;               // mm que recorrio el ultimo avance
+int vmax = VEL_EXPLORA;
+int saltos = 0;               // ToF que saltaron hacia lejos en este avance (1 izq, 2 frente, 4 der)
+int nSalto[3];                // lecturas seguidas con cambio brusco (cuenta a la 2a: una lectura mala no)
 uint32_t tIni;
 float vel;
 int dMin;                     // menor distancia al frente en este avance
 uint32_t tBaja;               // ultima vez que bajo: si ya no baja con pared enfrente, esta empujando la pared
 
 // ---------- RPC desde Python ----------
-int rpcMover(int mm) {
+int rpcMover(int mm, int lento) {
   ult = 'M';
   if (ocupado) return 0;
   arg = mm;
+  vmax = lento ? VEL_LENTO : VEL_EXPLORA;
   cmd = AVANZA;
   ocupado = 1;
   return 1;
@@ -122,12 +129,13 @@ long falta() {
 }
 
 // 0 mm recorridos (en curso o el ultimo avance), 1 mm que faltan, 2 paredes (1 izq, 2 frente, 4 der,
-// 8 en movimiento), 5/6/7 distancia frente/izq/der (mm)
+// 8 en movimiento), 3 saltos del avance, 5/6/7 distancia frente/izq/der (mm)
 int rpcOdo(int i) {
   switch (i) {
     case 0: return tipo == AVANZA ? total - falta() : hecho;
     case 1: return falta();
     case 2: return (dist[0] < PARED) | (dist[1] < PARED_F) << 1 | (dist[2] < PARED) << 2 | (tipo != NADA) << 3;
+    case 3: return saltos;
     case 6: return dist[0];
     case 7: return dist[2];
     default: return dist[1];
@@ -199,6 +207,7 @@ void iniciaMov() {
     total = max((long)arg, 1L);
     dur = max(total * MS_CELDA / CELDA, 50L);
     objetivo = dist[1] < RANGO ? max(dist[1] - (int)total, D_FRENTE) : -1;
+    saltos = 0;
     dMin = 9999;
     tBaja = millis();
     tCen = 0;
@@ -208,6 +217,26 @@ void iniciaMov() {
     dur = abs(arg) * MS_90;
   }
   cmd = NADA;
+}
+
+// Deja el avance con f mm por recorrer (antes faltaban fAntes): por el frontal o, sin pared a la vista, por tiempo
+void faltan(long fAntes, long f) {
+  total += f - fAntes;
+  if (dist[1] < RANGO) {
+    objetivo = max(dist[1] - (int)f, D_FRENTE);
+  } else {
+    objetivo = -1;
+    tIni = millis() - (total - f) * MS_CELDA / CELDA;
+    dur = max(total * MS_CELDA / CELDA, 50L);
+  }
+}
+
+// Cambio brusco en un ToF durante un avance. Se abre un lateral: para al centro de esa celda para escanearla.
+// Salta el frontal: vuelve a medir lo que falta desde la nueva lectura.
+void salto(int i, int antes, long f) {
+  if (dist[i] > antes) saltos |= 1 << i;
+  if (i == 1) faltan(f, f);
+  else if (dist[i] > antes && dist[i] >= PARED) faltan(f, TRAS_SALTO);
 }
 
 void termina() {
@@ -256,7 +285,7 @@ void control() {
   long f = falta();
   if (f <= 0 || t > 3 * dur) { termina(); return; }   // 3 * dur: seguro si el frontal deja de bajar
   const float zona = CELDA / 4.0f;
-  float tope = f < zona ? VEL_MIN + (VEL_EXPLORA - VEL_MIN) * f / zona : VEL_EXPLORA;
+  float tope = f < zona ? VEL_MIN + (vmax - VEL_MIN) * f / zona : vmax;
   if (dist[1] < D_FRENTE + 100) tope = min(tope, (float)VEL_MIN + FRENA_K * (dist[1] - D_FRENTE));   // frena al acercarse
   vel = min(vel + 6.0f, tope);
   float corr = centrado();
@@ -288,7 +317,15 @@ void tofLee() {
   for (int i = 0; i < 3; i++) {
     if ((tof[i].readReg(VL53L0X::RESULT_INTERRUPT_STATUS) & 0x07) == 0) continue;
     int d = tof[i].readRangeContinuousMillimeters();
-    dist[i] = (d == 0 || d > 2000) ? 9999 : d;
+    if (d == 0 || d > 2000) d = 9999;
+    bool brusco = abs(d - dist[i]) >= SALTO;
+    if (!brusco) nSalto[i] = 0;
+    else if (++nSalto[i] < 2) continue;
+    else nSalto[i] = 0;
+    int antes = dist[i];
+    long f = falta();               // con la lectura vieja
+    dist[i] = d;
+    if (brusco && tipo == AVANZA) salto(i, antes, f);
   }
 }
 

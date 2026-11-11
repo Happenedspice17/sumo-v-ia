@@ -14,6 +14,7 @@ OBJETIVO = 4                             # se detiene al encontrar este color (4
 DATOS = "/app/datos"                     # en una subcarpeta: archivos en la raiz de la app confunden a App Lab
 os.makedirs(DATOS, exist_ok=True)
 ARCH_COL = DATOS + "/colores.json"
+ARCH_MAPA = DATOS + "/mapa.json"
 # r, g, b normalizados y brillo c; los mismos de refs[] del sketch
 REFS = [[0.282, 0.379, 0.333, 153], [0.602, 0.208, 0.188, 581], [0.155, 0.535, 0.309, 636],
         [0.16, 0.329, 0.508, 354], [0.409, 0.449, 0.142, 1836]]
@@ -28,6 +29,7 @@ PARED_F = 130                            # mm: al frente, menos de esto = pared 
 FRENTE_LIBRE = 150                       # mm: con el frontal leyendo esto o mas, avanza de frente
 D_FRENTE_TOF = 130                       # mm donde se detiene el sketch con pared enfrente (= D_FRENTE)
 ISLA = 3                                 # visitas a una celda para decir que rodea una isla
+Y_COLOR = 36                             # mm del eje al sensor de color (adelante)
 
 # ---------- Camara: solo busca el amarillo ----------
 CAM_ID = 0
@@ -35,6 +37,10 @@ USAR_CAM = True
 ANCHO, ALTO = 320, 240
 SAT_MIN, VAL_MIN, FRAC_COLOR = 90, 70, 0.08   # pixel "de color": saturado y no oscuro (piso negro, pared blanca)
 HUE_AMAR = (20, 35)                      # h min, h max del amarillo en HSV de OpenCV
+# Blanco = pared (el piso es negro y no lleva blanco). ZONA_PASO: piso por donde va a pasar, en fraccion de la imagen
+BLANCO_LO, BLANCO_HI = (0, 0, 170), (180, 60, 255)
+ZONA_PASO = (0.30, 0.55, 0.70, 1.00)
+BLANCO_MAX = 0.15                        # fraccion de blanco en ZONA_PASO para ir lento
 
 pos = (0, 0)
 rumbo = 0
@@ -42,6 +48,10 @@ cam = None
 cam_lock = threading.Lock()
 cuenta = [0] * len(COLORES)
 encontrado = False
+# Mapa: celda -> [N, E, S, O] con 1 pared, 0 libre, None sin dato; colores: celda -> color; meta: celda del amarillo
+muros = {}
+colores = {}
+meta = None
 
 
 def escribe(ruta, datos):
@@ -73,26 +83,33 @@ def estado(e):
     rpc("set_estado", e)
 
 
-def revisar_color():
-    """El sketch manda un color solo si lo leyo 3 veces seguidas; el amarillo es la meta."""
-    global encontrado
+def revisar_color(avanza):
+    """El sketch manda un color solo si lo leyo 3 veces seguidas. Va al mapa en la celda donde esta el sensor;
+    el amarillo es la meta."""
+    global encontrado, meta
     c = rpc("color")
     if not c:
         return
+    mm = rpc("odo", 0) if avanza else 0
+    k = int((mm + Y_COLOR + CELDA / 2) // CELDA)
+    cel = (pos[0] + DX[rumbo] * k, pos[1] + DY[rumbo] * k)
+    if c == OBJETIVO:
+        encontrado, meta = True, cel
+        rpc("alto")
+        print(f"{COLORES[c]} encontrado en {cel}: meta")
+    if cel in colores:                   # cada celda se cuenta una vez
+        return
+    colores[cel] = c
     cuenta[c] += 1
     rpc("set_cuenta", c, cuenta[c])
-    print(f"Marca {COLORES[c]} cerca de {pos} -> {cuenta[c]}")
-    if c == OBJETIVO:
-        encontrado = True
-        rpc("alto")
-        print(f"{COLORES[c]} encontrado: meta")
+    print(f"Marca {COLORES[c]} en {cel} -> {cuenta[c]}")
 
 
-def esperar():
+def esperar(avanza=False):
     while rpc("ocupado"):
-        revisar_color()
+        revisar_color(avanza)
         time.sleep(0.02)
-    revisar_color()
+    revisar_color(avanza)
 
 
 def girar(rel):
@@ -104,29 +121,91 @@ def girar(rel):
     rumbo = (rumbo + rel) % 4
 
 
-def tof3():
-    """izq, frente, der: la menor de 3 lecturas de cada VL53L0X (una lectura mala no deja pasar)."""
+def tof3(n=3):
+    """izq, frente, der: la menor de n lecturas de cada VL53L0X (una lectura mala no deja pasar)."""
     d = [9999] * 3
-    for _ in range(3):
+    for _ in range(n):
         time.sleep(0.03)                 # lectura nueva de los VL53L0X
         d = [min(a, rpc("odo", i)) for a, i in zip(d, (6, 5, 7))]
     return d
 
 
 def avanzar():
-    """Una celda por distancia (el sketch para con el frontal); la posicion sale de los mm recorridos."""
+    """Una celda por distancia (el sketch para con el frontal); la posicion sale de los mm recorridos.
+    Si la camara ve blanco en el camino va lento. Devuelve los ToF que saltaron (0 = ninguno)."""
     global pos
-    rpc("mover", CELDA)
-    esperar()
-    mm = rpc("odo", 0)
+    rpc("mover", CELDA, int(blanco_adelante()))
+    esperar(True)
+    mm, saltos = rpc("odo", 0), rpc("odo", 3)
     n = round(mm / CELDA)
-    pos = (pos[0] + DX[rumbo] * n, pos[1] + DY[rumbo] * n)
-    print(f"Avanzo {mm} mm -> {pos}")
+    for _ in range(n):                   # por donde paso no hay pared
+        sig = vecino(pos, rumbo)
+        celda(pos)[rumbo] = celda(sig)[(rumbo + 2) % 4] = 0
+        pos = sig
+    print(f"Avanzo {mm} mm -> {pos}" + (f", salto en ToF {saltos}" if saltos else ""))
+    return saltos
 
 
 def salidas(izq, frente, der):
-    """Salidas libres en orden de la mano izquierda (-1 izq, 0 frente, 1 der); sin ninguna, media vuelta (2)."""
-    return [r for r, ok in ((-1, izq >= PARED), (0, frente >= FRENTE_LIBRE), (1, der >= PARED)) if ok] or [2]
+    """Salidas libres: primero de frente, luego mano izquierda (0 frente, -1 izq, 1 der); sin ninguna, media vuelta."""
+    return [r for r, ok in ((0, frente >= FRENTE_LIBRE), (-1, izq >= PARED), (1, der >= PARED)) if ok] or [2]
+
+
+# ---------- Mapa ----------
+def vecino(c, h):
+    return c[0] + DX[h], c[1] + DY[h]
+
+
+def celda(c):
+    return muros.setdefault(c, [None] * 4)
+
+
+def anota(izq, frente, der):
+    """Paredes de la celda actual segun los ToF."""
+    for rel, d, lim in ((-1, izq, PARED), (0, frente, FRENTE_LIBRE), (1, der, PARED)):
+        celda(pos)[(rumbo + rel) % 4] = int(d < lim)
+
+
+def libre(c, h):
+    """Paso conocido: algun lado lo vio libre y ninguno vio pared."""
+    v = (muros.get(c, [None] * 4)[h], muros.get(vecino(c, h), [None] * 4)[(h + 2) % 4])
+    return 0 in v and 1 not in v
+
+
+def ruta(desde, hasta):
+    """Rumbos del camino mas corto por pasos conocidos (BFS), o None."""
+    previo, cola = {desde: None}, [desde]
+    for c in cola:
+        if c == hasta:
+            camino = []
+            while previo[c]:
+                c, h = previo[c]
+                camino.append(h)
+            return camino[::-1]
+        for h in range(4):
+            n = vecino(c, h)
+            if n not in previo and (n in muros or n == hasta) and libre(c, h):
+                previo[n] = (c, h)
+                cola.append(n)
+    return None
+
+
+def guardar():
+    escribe(ARCH_MAPA, {"muros": [[*c, *p] for c, p in muros.items()],
+                        "colores": [[*c, k] for c, k in colores.items()], "meta": meta})
+
+
+def cargar():
+    global meta
+    d = lee(ARCH_MAPA)
+    if not d:
+        return
+    muros.update({(x, y): p for x, y, *p in d["muros"]})
+    colores.update({(x, y): k for x, y, k in d["colores"]})
+    meta = tuple(d["meta"]) if d["meta"] else None
+    for k in colores.values():
+        cuenta[k] += 1
+    print(f"Mapa: {len(muros)} celdas, meta {meta}")
 
 
 # ---------- Vision ----------
@@ -169,6 +248,25 @@ def hacia_objetivo(img):
     return i - 1 if tercios[i] >= FRAC_COLOR / 2 else None
 
 
+def frac_blanco(img):
+    """Fraccion de blanco (pared) en el piso por donde va a pasar."""
+    h, w = img.shape[:2]
+    x0, y0, x1, y1 = ZONA_PASO
+    hsv = cv2.cvtColor(img[int(y0 * h):int(y1 * h), int(x0 * w):int(x1 * w)], cv2.COLOR_BGR2HSV)
+    return (cv2.inRange(hsv, BLANCO_LO, BLANCO_HI) > 0).mean()
+
+
+def blanco_adelante():
+    """La camara ve blanco en el camino: va lento. El frontal hace el doble check (el sketch para a 130 mm)."""
+    img = foto() if cam is not None else None
+    if img is None or frac_blanco(img) < BLANCO_MAX:
+        return False                     # negro: sigue normal
+    f = rpc("odo", 5)
+    print("Camara: blanco adelante, " + (f"el frontal lo confirma a {f} mm" if f < D_FRENTE_TOF + CELDA
+                                         else "el frontal no ve nada (punto ciego?)") + ": voy lento")
+    return True
+
+
 # ---------- Dashboard (http://<ip de la Q>:7000) ----------
 def lectura():
     r, g, b, c = (rpc("raw", i) for i in range(4))
@@ -193,8 +291,9 @@ def enviar_refs():
 
 def api_lectura():
     v = lectura()
-    odo = {"falta": rpc("odo", 1), "frente": rpc("odo", 5), "paredes": rpc("odo", 2), "mm": rpc("odo", 0)}
-    return {"v": v, "color": COLORES[clasifica(v)], "colores": COLORES, "refs": REFS, "odo": odo}
+    odo = {"falta": rpc("odo", 1), "frente": rpc("odo", 5), "paredes": rpc("odo", 2), "mm": rpc("odo", 0),
+           "saltos": rpc("odo", 3), "pos": pos, "celdas": len(muros), "meta": meta}
+    return limpio({"v": v, "color": COLORES[clasifica(v)], "colores": COLORES, "refs": REFS, "odo": odo})
 
 
 def que_haria(izq, frente, der, mueve):
@@ -235,13 +334,17 @@ def api_foto():
     if img is None:
         return {"img": None}
     ve = hacia_objetivo(img)
+    b = frac_blanco(img)
     h, w = img.shape[:2]
+    x0, y0, x1, y1 = ZONA_PASO               # rojo = ve blanco (pared) en el camino, verde = negro
+    cv2.rectangle(img, (int(x0 * w), int(y0 * h)), (int(x1 * w) - 1, int(y1 * h) - 1),
+                  (0, 0, 255) if b >= BLANCO_MAX else (0, 255, 0), 2)
     if ve is not None:                   # marca el tercio donde ve el amarillo
         x0 = (ve + 1) * w // 3
         cv2.rectangle(img, (x0, int(h * 0.4)), (x0 + w // 3 - 1, h - 1), (0, 255, 255), 2)
     img = cv2.resize(img, (160, 120))
     ok, buf = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 40])
-    return {"img": base64.b64encode(buf).decode(), "amarillo": ve}
+    return limpio({"img": base64.b64encode(buf).decode(), "amarillo": ve, "blanco": round(b, 2)})
 
 
 def limpio(x):
@@ -258,22 +361,27 @@ ui.expose_api("GET", "/api/tof", api_tof)
 
 # ---------- Estrategia ----------
 def buscar_color():
-    """Explora hasta el amarillo. En cada paso lee los 3 ToF (la menor de 3 lecturas) y sigue la mano izquierda;
-    si ya paso 3 veces por esa celda (rodea una isla) toma la salida que ha usado menos. Un toque a D2 lo detiene."""
-    global encontrado, pos, rumbo
+    """Explora y mapea hasta el amarillo. En cada celda lee los 3 ToF (la menor de 3 lecturas; 5 si hubo un salto)
+    y va de frente, si no a la izquierda, si no a la derecha. Tras un salto (cambio brusco en un ToF) va a la salida
+    nueva mas lejana; si ya paso 3 veces por esa celda (rodea una isla) toma la salida que ha usado menos.
+    Un toque a D2 lo detiene."""
+    global encontrado
     encontrado = False
-    pos, rumbo = (0, 0), 0
     estado(1)
-    visitas, usos = {}, {}
+    visitas, usos, saltos = {}, {}, 0
     while not encontrado:
         if rpc("arranque"):
             print("Detenido con el boton")
             return False
         visitas[pos] = visitas.get(pos, 0) + 1
-        izq, frente, der = tof3()
+        izq, frente, der = tof3(5 if saltos else 3)
+        anota(izq, frente, der)
         ops = salidas(izq, frente, der)
         rel = ops[0]
-        if visitas[pos] >= ISLA:
+        nuevas = [r for r in ops if r != 2 and vecino(pos, (rumbo + r) % 4) not in muros]
+        if saltos and nuevas:
+            rel = max(nuevas, key=lambda r: {-1: izq, 0: frente, 1: der}[r])
+        elif visitas[pos] >= ISLA:
             # la camara solo desempata entre salidas igual de usadas
             img = foto() if cam is not None else None
             ve = hacia_objetivo(img) if img is not None else None
@@ -283,24 +391,49 @@ def buscar_color():
         print(f"ToF izq {izq} frente {frente} der {der} en {pos}:",
               {1: "derecha", 0: "frente", -1: "izquierda", 2: "media vuelta"}[rel])
         girar(rel)
-        if not encontrado:
-            avanzar()
+        saltos = 0 if encontrado else avanzar()
     return True
+
+
+def seguir_ruta():
+    """Con la meta en el mapa va por el camino mas corto conocido. False si algo no cuadra (sigue explorando)."""
+    camino = ruta(pos, meta)
+    if camino is None:
+        return False
+    estado(3)
+    print(f"Ruta a {meta}: {len(camino)} celdas")
+    for h in camino:
+        girar({0: 0, 1: 1, 2: 2, 3: -1}[(h - rumbo) % 4])
+        esperado = vecino(pos, h)
+        avanzar()
+        if encontrado:
+            return True
+        if pos != esperado:
+            print(f"Ruta: quede en {pos} y esperaba {esperado}, sigo explorando")
+            return False
+    return pos == meta
 
 
 # ---------- Principal ----------
 def borrar():
+    global meta
+    muros.clear()
+    colores.clear()
+    meta = None
+    if os.path.exists(ARCH_MAPA):
+        os.remove(ARCH_MAPA)
     for c in range(1, len(COLORES)):
         cuenta[c] = 0
         rpc("set_cuenta", c, 0)
     estado(5)
-    print("Conteo borrado")
+    print("Mapa y conteo borrados")
 
 
 def iniciar():
     global REFS
     REFS = lee(ARCH_COL) or lee("/app/colores.json") or REFS   # tambien los de la version anterior
     enviar_refs()
+    cargar()
     for c in range(1, len(COLORES)):
         rpc("set_cuenta", c, cuenta[c])
     if USAR_CAM and abrir_camara():
@@ -337,8 +470,13 @@ def loop():
     if not a:
         time.sleep(0.05)
         return
+    global pos, rumbo
+    global encontrado
+    pos, rumbo, encontrado = (0, 0), 0, False   # cada corrida empieza en la misma celda viendo al mismo lado
     t = time.time()
-    estado(4 if buscar_color() else 0)
+    ok = (meta is not None and seguir_ruta()) or buscar_color()
+    guardar()
+    estado(4 if ok else 0)
     print(f"Corrida: {time.time() - t:.1f} s, marcas {cuenta[1:]}")
 
 

@@ -56,10 +56,10 @@
   <div id="odo" style="font-family:monospace;font-size:15px;margin-top:6px;white-space:pre-line">...</div>
 </div>
 <div class="paso">
-  <div>Mano izquierda con los 3 ToF (la menor de 3 lecturas); si pasa 3 veces por una celda toma la salida menos usada. Para al leer amarillo.</div>
+  <div>De frente, luego mano izquierda, con los 3 ToF (la menor de 3 lecturas). Tras un cambio brusco en un ToF va a la salida nueva más lejana; si pasa 3 veces por una celda, a la menos usada. Mapea paredes y colores; para al leer amarillo y la siguiente corrida va directo.</div>
 </div>
 <div class="paso">
-  <div>Cámara (recuadro amarillo = donde ve el amarillo):</div>
+  <div>Cámara (amarillo = donde ve el amarillo; camino rojo = blanco/pared, va lento; verde = negro):</div>
   <img id="cam" alt="sin cámara" style="width:100%;max-width:320px;image-rendering:pixelated;background:#000;border-radius:8px;margin-top:8px">
 </div>
 <div class="paso">
@@ -104,7 +104,8 @@ function pinta(d) {
     document.getElementById("odo").textContent =
       (p & 8 ? "Avanzando, faltan " + mm(o.falta) : "Quieto") + "\n" +
       "Sensores: izq " + si(1) + " · frente " + si(2) + " (" + mm(o.frente > 2000 ? null : o.frente) + ") · der " + si(4) + "\n" +
-      "Último avance: " + mm(o.mm);
+      "Último avance: " + mm(o.mm) + (o.saltos ? " · salto en ToF " + o.saltos : "") + "\n" +
+      "Celda " + o.pos + " · mapa " + o.celdas + " celdas · meta " + (o.meta || "sin encontrar");
   }
   document.getElementById("nums").textContent = `r ${r.toFixed(2)}  g ${g.toFixed(2)}  b ${b.toFixed(2)}  c ${c}`;
   const cont = document.getElementById("botones");

@@ -43,24 +43,29 @@ Con el hub conectado al USB-C, App Lab se conecta por WiFi (el puerto no puede i
 1. **Colores**: con la app corriendo abre `http://<ip de la Q>:7000` (App Lab muestra el link). El asistente pide los 5 colores uno por uno; cada botón promedia 5 lecturas. Se guarda en `/app/datos/colores.json` y se carga al MCU en cada arranque (`set_ref`). Los guardados tienen prioridad. Sin archivo guardado se usan los valores de fábrica (`REFS` en `main.py`, igual a `refs[]` del sketch): PISO 0.282,0.379,0.333,153; ROJO 0.602,0.208,0.188,581; VERDE 0.155,0.535,0.309,636; AZUL 0.16,0.329,0.508,354; AMAR 0.409,0.449,0.142,1836.
    **Sensores**: enciende con el botón presionado. La OLED muestra `r g b c`, el color detectado y las 3 distancias. Centra el robot en una celda y anota `D_LADO` y `D_FRENTE`.
 2. **Avance**: con pared enfrente a menos de 1 m (`RANGO`) avanza por distancia y no hay que calibrar. Sin pared a la vista avanza por tiempo: ajusta `MS_CELDA` hasta que avance 18 cm, y `MS_90` para giros de 90°. Calibra con la batería cargada. Si se desvía, ajusta `AJUSTE_DER`.
-3. **Cámara**: solo busca el amarillo (`HUE_AMAR` en `main.py`). La página web muestra la imagen (160 × 120) con un recuadro donde lo ve. No se guardan imágenes en `/app`: con ellas App Lab marca "failed to start".
+3. **Cámara**: busca el amarillo (`HUE_AMAR`) y el blanco de las paredes en el piso por donde va a pasar (`ZONA_PASO`, `BLANCO_LO/HI`, `BLANCO_MAX` en `main.py`). La página web muestra la imagen (160 × 120): recuadro amarillo donde ve el amarillo, y el camino en rojo si ve blanco o verde si ve negro. Ajusta `ZONA_PASO` para que en un pasillo libre salga verde. No se guardan imágenes en `/app`: con ellas App Lab marca "failed to start".
 
 ## Funcionamiento
 
 **Sketch (STM32)**, solo mueve el robot:
 
 - Avanza por distancia: al arrancar toma la lectura del frontal y para cuando bajó 180 mm (`CELDA`). Si el frontal no ve nada a menos de 1 m va por tiempo (`MS_CELDA`), y si a medio avance aparece una pared sigue por distancia. Siempre para a 130 mm de la pared de enfrente (`D_FRENTE`) y se hace para atrás si queda más cerca.
+- **Cambio brusco** (una lectura cambia `SALTO` = 120 mm o más y se repite en la siguiente): si se abre un lateral, para al centro de esa celda (`TRAS_SALTO` = 124 mm después) para escanearla; si salta el frontal, vuelve a medir lo que falta. Python lo lee con `odo(3)`.
+- Con `mover(mm, lento)` baja a `VEL_LENTO` (la pide Python cuando la cámara ve blanco).
 - En recta solo corrige el rumbo si un lateral lee menos de 90 mm (`D_LADO_MIN`).
 - Gira 90° por tiempo (`MS_90`).
-- Lee los ToF y el sensor de color y se los da al Python. RPC `odo(i)`: 0 mm recorridos, 1 mm que faltan, 5/6/7 frente/izq/der.
+- Lee los ToF y el sensor de color y se los da al Python. RPC `odo(i)`: 0 mm recorridos, 1 mm que faltan, 3 saltos (1 izq, 2 frente, 4 der), 5/6/7 frente/izq/der.
 
 **Python**, decide en cada paso:
 
-1. Lee los 3 ToF, la menor de 3 lecturas de cada uno.
-2. Mano izquierda: izquierda libre (lateral ≥ 120 mm) → gira a la izquierda y avanza; si no, frente ≥ 150 mm → avanza; si no, derecha; si no, media vuelta.
-3. Si ya pasó 3 veces por esa celda (rodea una isla) toma la salida que ha usado menos; la cámara desempata hacia el amarillo. La celda sale de los mm que de verdad avanzó.
-4. Si el sensor de color lee amarillo 3 veces seguidas se detiene: llegó a la meta (OLED `META`).
+1. Lee los 3 ToF, la menor de 3 lecturas de cada uno (5 si en el avance hubo un cambio brusco). Las anota como paredes de la celda en el mapa.
+2. Prioridad: de frente (≥ 150 mm); si no, izquierda (lateral ≥ 120 mm); si no, derecha; si no, media vuelta.
+3. Tras un cambio brusco va a la salida libre que lleve a una celda que no está en el mapa, la de lectura más lejana.
+4. Si ya pasó 3 veces por esa celda (rodea una isla) toma la salida que ha usado menos; la cámara desempata hacia el amarillo. La celda sale de los mm que de verdad avanzó.
+5. Antes de cada avance la cámara revisa el piso del camino: negro → normal; blanco (pared) → va lento y el frontal hace el doble check (el sketch para a 130 mm si de verdad hay pared).
+6. Cada color que lee el TCS34725 (3 lecturas seguidas) va al mapa en la celda donde está el sensor y se cuenta una vez. Amarillo = meta: se detiene (OLED `META`).
+7. El mapa (paredes, colores y meta) se guarda en `/app/datos/mapa.json`. En la siguiente corrida, si conoce la meta, va por el camino más corto conocido (BFS, OLED `RAPIDO`); si algo no cuadra, sigue explorando desde ahí.
 
-- Botón corto: corrida nueva (pon el robot en el inicio). Otro toque la detiene. Sostenido más de 2 s: borra el conteo de colores.
+- Botón corto: corrida nueva (pon el robot en el inicio). Otro toque la detiene. Sostenido más de 2 s: borra el mapa y el conteo (laberinto nuevo). Cada corrida empieza en la misma celda y viendo al mismo lado.
 - **Panel web → Ver sensores ToF:** dibujo en vivo de lo que mide cada VL53L0X y qué haría el robot.
 - **Cámara al arrancar:** la busca una vez (OLED `LISTO` si la encuentra, `SIN CAM` si no). Un hilo revisa cada 2 s: si no hay cámara la busca y si se desconecta pone `SIN CAM`.
