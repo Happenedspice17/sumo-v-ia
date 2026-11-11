@@ -69,6 +69,8 @@ Separar los dominios aísla la latencia no determinista de Linux (planificador, 
 
 ::: {.nota}
 **Respaldo:** si el UNO Q falla, el mismo chasis acepta un UNO R3 (ATmega328P) con firmware *bare-metal* propio (carpeta `atmega328p/`) que hace todo en un solo chip, sin Arduino core. Este manual describe la versión del UNO Q.
+
+**Dos versiones del sketch del UNO Q:** `uno_q/sketch/` incluye el MPU-6050 (si no lo detecta al arrancar, gira y avanza por tiempo) y `uno_q/sketch_sin_mpu/` es la misma lógica sin el código del giroscopio. El Python es el mismo para las dos.
 :::
 
 # 3. Sensores de distancia

@@ -17,6 +17,10 @@ subtitle: Robot de laberinto · UNO Q
 - [ ] Robot en la esquina de inicio, mirando hacia adelante, y quieto
 - [ ] Laberinto nuevo: borra el mapa antes de empezar (paso 3)
 
+::: {.nota}
+**¿Qué sketch cargar?** `sketch/` si tienes el MPU-6050 (también funciona sin él) o `sketch_sin_mpu/` si no lo vas a usar. El Python es el mismo.
+:::
+
 # 2. Prende
 
 1. Prende el switch **sin tocar el botón**.

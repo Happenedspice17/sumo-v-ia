@@ -566,6 +566,16 @@ Etapa menor de documentación. `docs/manual_uso.md` (uso y calibración: baterí
 
 **Commits:** b416c9f.
 
+### Etapa 33. Dos versiones del sketch: con y sin MPU-6050 (11-nov)
+
+**Qué cambió.** Se conserva `uno_q/sketch/` (con MPU-6050 autodetectado) y se agrega `uno_q/sketch_sin_mpu/`, la misma lógica sin el código del giroscopio (giros y rectas solo por tiempo).
+
+**Razonamiento.** La versión con MPU ya funciona sin él, pero tener la versión sin MPU por separado da un respaldo simple y fácil de leer mientras se consigue y calibra el giroscopio, y permite comparar en pista los dos métodos de giro.
+
+**Pendiente.** Compilar ambas en App Lab y confirmar en pista `MS_90` (~320 ms, porque con 250 ms giraba ~70°) y el cambio a mano derecha pura.
+
+**Commits:** 5906d64.
+
 ## Pruebas realizadas
 
 La tabla distingue lo medido o probado de lo que solo se deduce de la secuencia de commits (marcado **deducido**). Cuando el repositorio guarda la sucesión de valores pero no el resultado de cada intento, se dice. Las pruebas en pista del equipo están en su propia subsección; la última versión (distancia, saltos, votos, máquina de estados, MPU) aún no se ha probado en pista.
