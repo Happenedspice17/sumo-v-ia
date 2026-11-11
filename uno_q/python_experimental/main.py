@@ -48,9 +48,9 @@ DX = [0, 1, 0, -1]
 DY = [1, 0, -1, 0]
 CELDA = 180                              # mm por avance; la posicion solo sirve para contar visitas
 PARED = 120                              # mm: lateral con esto o mas = libre
-PARED_F = 130                            # mm: al frente, menos de esto = pared (= PARED_F del sketch)
-FRENTE_LIBRE = 220                       # mm: frente libre; a la mitad entre pared en su celda (~130) y en la siguiente (~310)
-D_FRENTE_TOF = 130                       # mm donde se detiene el sketch con pared enfrente (= D_FRENTE)
+PARED_F = 45                             # mm reales (frontal calibrado): menos de esto = pared (= PARED_F del sketch)
+FRENTE_LIBRE = 135                       # mm reales: a la mitad entre pared en su celda (~45) y en la siguiente (~225)
+D_FRENTE_TOF = 45                        # mm reales donde se detiene el sketch con pared enfrente (= D_FRENTE)
 VOTO_MAX = 5                             # cada lectura vota pared (+1) o libre (-1); tope para que el mapa se corrija
 ISLA = 3                                 # visitas a una celda para decir que rodea una isla
 Y_COLOR = 36                             # mm del eje al sensor de color (adelante)

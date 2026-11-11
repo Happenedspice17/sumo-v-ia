@@ -613,6 +613,14 @@ Etapa menor de documentación. `docs/manual_uso.md` (uso y calibración: baterí
 
 **Pruebas.** Con imágenes sintéticas de un pasillo generadas por proyección de una cámara a 150 mm de altura y 35° hacia abajo, con ruido: el rumbo medido coincidió con el real dentro de ±0.1° de −12° a 12°, también descentrado 25 mm y con una pared abierta; la distancia central dio 209/306/400/517 mm con paredes a 200/300/400/500 mm; las aberturas izquierda, derecha y con el robot girado 6° se detectaron sin falsos positivos. Se revisó la web con datos simulados (Playwright). Siguen pasando las pruebas de decisiones, votos, BFS y guardar/cargar. Los sketches no se han compilado (pendiente en App Lab) y nada de esto se ha probado con la cámara real.
 
+### Etapa 36. Umbrales del frontal en milímetros reales (11-nov)
+
+**Problema.** Al calibrar en pista con una pared a 100 mm, el frontal leyó 187 mm (antes 192): mide unos 87 mm de más. Los laterales salieron casi exactos (−5 y −0.2 mm). Los umbrales del frente (`D_FRENTE` y `PARED_F` en 130, `FRENTE_LIBRE` en 220) se habían ajustado con lecturas sin calibrar; con la corrección aplicada, el robot habría frenado una celda antes y confundido la pared de la celda siguiente con un frente libre.
+
+**Razonamiento.** El desfase explica una observación vieja: "el sensor lee de más, nunca llega a 50". Con el robot centrado, el frontal queda a 90 − 6 − 40 = 44 mm reales de la pared de su celda, y 130 sin calibrar ≈ 43 reales. Pasar los umbrales a milímetros reales deja el código igual para cualquier sensor calibrado, en vez de depender del error de un sensor en particular.
+
+**Cambio.** Sketches: `D_FRENTE` y `PARED_F` 130 → 45. Python: `PARED_F` y `D_FRENTE_TOF` 130 → 45, `FRENTE_LIBRE` 220 → 135 (a la mitad entre ~45 y ~225). Los laterales no cambian. **Requiere el frontal calibrado:** si se borra su calibración, el robot se pegaría a la pared.
+
 ## Pruebas realizadas
 
 La tabla distingue lo medido o probado de lo que solo se deduce de la secuencia de commits (marcado **deducido**). Cuando el repositorio guarda la sucesión de valores pero no el resultado de cada intento, se dice. Las pruebas en pista del equipo están en su propia subsección; la última versión (distancia, saltos, votos, máquina de estados, MPU) aún no se ha probado en pista.
