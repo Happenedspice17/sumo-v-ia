@@ -76,7 +76,7 @@ Separar los dominios aísla la latencia no determinista de Linux (planificador, 
 ::: {.nota}
 **Respaldo:** si el UNO Q falla, el mismo chasis acepta un UNO R3 (ATmega328P) con firmware *bare-metal* propio (carpeta `atmega328p/`) que hace todo en un solo chip, sin Arduino core. Este manual describe la versión del UNO Q.
 
-**Dos versiones del sketch del UNO Q:** `uno_q/sketch/` incluye el MPU-6050 (si no lo detecta al arrancar, gira y avanza por tiempo) y `uno_q/sketch_sin_mpu/` es la misma lógica sin el código del giroscopio. El Python es el mismo para las dos.
+**Un solo sketch, con MPU-6050:** `uno_q/sketch/`. La versión sin MPU (`sketch_sin_mpu/`) se retiró del repositorio para no confundir; queda en el historial de git (ver la sección "Control de versiones").
 :::
 
 # 3. Sensores de distancia
@@ -128,14 +128,12 @@ El resultado es "piso" si la menor distancia es mayor que 0.02 o si el brillo es
 
 **Sensor.** innomaker U20CAM-9281M: OV9281 de 1 MP **monocromático** con **obturador global** (todos los píxeles se exponen al mismo tiempo), hasta 720p a 120 fps, lente M12 gran angular, UVC (Linux la ve sin driver). Se captura a 320 × 240 con OpenCV y V4L2. El obturador global evita la deformación por movimiento (*rolling shutter*) de las cámaras comunes, que tuerce las líneas rectas cuando el robot gira. Al no tener filtro de color (matriz de Bayer), cada píxel recibe toda la luz: más sensibilidad y menos ruido en la luminancia, que es lo único que se usa. Por la misma razón **no puede ver el amarillo**; la meta la confirma el TCS34725.
 
-**Versiones.** El Python tiene dos versiones con el mismo código y una sola bandera, `EXPERIMENTAL`. La estable (`python/`) usa las técnicas 1 a 3; la experimental (`python_experimental/`) agrega la 4 y la 5. Cualquiera de las dos funciona con los dos sketches:
+**Versiones.** El Python tiene dos versiones con el mismo código y una sola bandera, `EXPERIMENTAL`. La estable (`python/`) usa las técnicas 1 a 3; la experimental (`python_experimental/`) agrega la 4 y la 5. Las dos usan el mismo sketch:
 
 | Versión | Sketch (STM32) | Python (Linux) | Cámara |
 |---|---|---|---|
-| Estable con MPU | `sketch/` | `python/` | 1 a 3: exposición fija, umbral automático (Otsu), corrección de rumbo |
-| Estable sin MPU | `sketch_sin_mpu/` | `python/` | 1 a 3 |
-| Experimental con MPU | `sketch/` | `python_experimental/` | 1 a 5: además, distancia por cámara y aberturas adelante |
-| Experimental sin MPU | `sketch_sin_mpu/` | `python_experimental/` | 1 a 5 |
+| Estable | `sketch/` | `python/` | 1 a 3: exposición fija, umbral automático (Otsu), corrección de rumbo |
+| Experimental | `sketch/` | `python_experimental/` | 1 a 5: además, distancia por cámara y aberturas adelante |
 
 ## 5.1 Técnicas 1 a 3 (versión estable)
 
@@ -144,7 +142,7 @@ El resultado es "piso" si la menor distancia es mayor que 0.02 o si el brillo es
 3. **Rumbo por punto de fuga.** En cada fila de `ZONA_BORDES` (45 % a 95 % de la altura) se busca, desde el centro hacia cada lado, el primer píxel blanco: la base de la pared izquierda y la derecha. Cada pared se ajusta a una recta *x = a·y + c* por mínimos cuadrados con rechazo de atípicos (empieza con la mitad más cercana, la más confiable, y descarta los puntos a más de 5 px, como el fondo de un pasillo lateral). Las dos rectas, paralelas en el piso, se cortan en la imagen en el **punto de fuga** del pasillo. Con una cámara de proyección central, la columna del punto de fuga depende **solo del ángulo** entre el robot y el pasillo, no de la posición lateral del robot ni de la inclinación de la cámara: *θ = atan(k · (x_f − x₀))*, donde *x₀* es la columna con el robot derecho y *k* los radianes por píxel. Las dos se miden en la web (robot derecho, y girado 15° a mano), así que no hace falta conocer la inclinación de la cámara ni su lente.
    - Si |θ| ≥ `ANG_MIN` (4°), Python llama `ajustar(θ)` antes de avanzar. Si |θ| > `ANG_MAX` (20°), la lectura se descarta como mala.
    - **Con MPU-6050:** no gira. El giroscopio deriva con el tiempo, y la cámara ve el error real respecto al pasillo; `ajustar` mueve el rumbo deseado (`ref`) y el control de recta (`KG`) lo corrige durante el avance, sin perder tiempo. La cámara corrige la deriva de la integral y el giroscopio da la respuesta rápida, como un filtro complementario.
-   - **Sin MPU:** gira en su lugar por tiempo (`MS_90` × θ / 90, mínimo 30 ms). Es aproximado, pero corrige el error de rumbo que el avance por tiempo acumula (en pista se vio que se desviaba en recta).
+   - **Si el MPU no respondió al arrancar** (sin `G` en la OLED): gira en su lugar por tiempo (`MS_90` × θ / 90, mínimo 30 ms). Es un respaldo aproximado.
    - En pruebas con imágenes sintéticas de un pasillo (cámara a 150 mm de altura, 35° hacia abajo, ruido de ±6 niveles de gris), el ángulo medido coincidió con el real dentro de ±0.1° entre −12° y 12°, también con el robot descentrado 25 mm y con una pared abierta.
 
 ::: {.nota}
@@ -192,10 +190,37 @@ Son experimentales porque dependen de que la calibración por filas sea estable 
   - **Rumbo absoluto:** cada giro va al ángulo deseado acumulado, así corrige lo que se pasó o faltó en el giro anterior. Se corta `ADELANTO` = 6° antes por la inercia.
   - **Aprende el signo:** el sentido de montaje del sensor se determina en el primer giro. Antes de ese giro no sostiene rumbo.
   - **Rumbo en recta:** durante el avance sostiene el rumbo con ganancia `KG`, además del centrado con paredes.
-- **Sin MPU-6050:** gira por tiempo (`MS_90`) a PWM constante `VEL_GIRO`. El mismo sketch sirve para los dos casos.
+- **Respaldo si el MPU no responde al arrancar:** gira por tiempo (`MS_90`) a PWM constante `VEL_GIRO`.
+
+## 6.1 MPU-6050: giroscopio y acelerómetro
+
+::: {.simple}
+**En simple:** el MPU-6050 es un chip que siente **giros** (giroscopio) y **empujones** (acelerómetro). Con el giroscopio el robot sabe exactamente cuántos grados ha girado y hacia dónde debe apuntar; con el acelerómetro se da cuenta si chocó o si alguien lo levantó. Con él, el robot gira a 90° de verdad, avanza derecho, se endereza antes de cada avance y se recupera solo de los choques.
+:::
+
+**Conexión.** Módulo GY-521 en el bus I²C (dirección 0x68, AD0 a GND), VCC a 3.3 V. Va atornillado **plano** sobre el piso del chasis: el eje Z queda vertical y es el que mide los giros. La orientación en el plano no importa: el signo lo aprende en el primer giro.
+
+**Configuración** (`mpuInit`): sale del modo de reposo (registro 0x6B = 0), filtro digital de ~44 Hz (0x1A = 3), giroscopio a ±500 °/s (0x1B = 0x08, 65.5 LSB por °/s) y acelerómetro a ±2 g (0x1C = 0, 16384 LSB/g). Con el robot quieto promedia 200 lecturas del giroscopio Z para restar su **sesgo** (*bias*); por eso hay que encenderlo sin moverlo.
+
+**Rumbo.** Cada 2 ms integra la velocidad angular: *ψ ← ψ + (g_z − b) / 65.5 · Δt*. El sketch guarda un **rumbo deseado absoluto** (`ref`) que cada giro aumenta en ±90°. Así el error de un giro no se acumula: el siguiente gira lo que haga falta para llegar a `ref`.
+
+| Función | Cómo | Parámetro |
+|---|---|---|
+| **Giro por ángulo** | Gira hasta `ref`; baja la velocidad en los últimos 25° y corta `ADELANTO` antes por la inercia | `ADELANTO` = 6° |
+| **Rumbo en recta** | Suma *K_G · (ψ − ref)* (saturado a ±20 PWM) a la corrección de centrado | `KG` = 2.0 PWM/° |
+| **Alinear antes de avanzar** | `alinear(45)`: si el rumbo se desvió 3° a 45°, gira en su lugar hasta `ref` antes de arrancar | `ALIN_MIN` = 3° |
+| **Verificar cada giro** | Python lee el desvío (`odo(8)`); si pasa de 10° termina el giro con `alinear(180)` (2 intentos). Si aun así quedó 45° o más fuera, acepta el rumbo real: corrige el mapa en cuartos de vuelta y mueve `ref` | — |
+| **Giro atorado** | Si girando pasan 400 ms sin 2° de giro, una esquina está trabada: retrocede 200 ms y sigue (hasta 2 veces) | `ATORADO_MS` = 400 ms |
+| **Choque** | Cada 10 ms mide la aceleración horizontal menos un promedio lento (quita la inclinación del montaje). Más de 0.6 g en un avance, pasados los primeros 150 ms, es un choque: retrocede 250 ms y termina. Python lo registra y se endereza antes de seguir | `CHOQUE_G` = 0.6 g, `RETRO_MS` = 250 ms |
+| **Levantado** | Si la aceleración vertical baja de 0.8 g durante 150 ms (inclinado o en el aire), apaga los motores y Python termina la corrida | `LEVANTA_G` = 0.8 g |
+| **Fusión con la cámara** | La cámara mide el ángulo real respecto al pasillo y `ajustar` mueve `ref`: corrige la deriva lenta del giroscopio, que da la respuesta rápida (filtro complementario) | `ANG_MIN` = 4° |
+
+**Lecturas para depurar** (`odo`): 8 = desvío en grados, 12 = el último avance chocó, 13 = veces que el último giro se atoró, 14 = lo levantaron, 15 = golpe máximo del último avance en mg (sirve para calibrar `CHOQUE_G` con el log).
+
+**Calibración en pista.** `ADELANTO`: si se pasa del giro, subirlo de 2 en 2; si le falta, bajarlo. `KG`: si zigzaguea en recta, 1.5; si tarda en enderezarse, 3. `CHOQUE_G`: si detecta choques sin chocar, subirlo; si no los detecta, bajarlo, con el golpe que muestra el log. `LEVANTA_G`: si se detiene solo, bajarlo a 0.7.
 
 ::: {.aviso}
-**Limitación reconocida:** sin encoders, la distancia depende del frontal. En tramos largos sin pared a la vista, y en giros sin MPU-6050, el resultado depende del voltaje de la batería y de la fricción.
+**Limitación reconocida:** sin encoders, la distancia depende del frontal. En tramos largos sin pared a la vista el resultado depende del voltaje de la batería y de la fricción.
 
 - **Cómo lo mitigamos:** el frontal mide el avance por distancia, el MPU-6050 corrige el rumbo, y las ruedas patinan poco por la rampa de arranque.
 - **Mejora natural:** encoders en cuadratura para medir también los tramos sin pared.
@@ -277,7 +302,7 @@ Valores tal como están en `sketch.ino` y `main.py`.
 | `CELDA` | 180 mm | Avance de una celda |
 | `RANGO` | 1000 mm | Con el frontal por debajo avanza por distancia; más lejos, por tiempo |
 | `MS_CELDA` | 600 ms | Tiempo por celda cuando no hay pared a la vista |
-| `MS_90` | 250 ms | Giro de 90° por tiempo (solo sin MPU-6050) |
+| `MS_90` | 250 ms | Giro de 90° por tiempo (solo de respaldo, si el MPU no responde) |
 | `VEL_EXPLORA` / `VEL_LENTO` / `VEL_GIRO` / `VEL_MIN` | 140 / 100 / 130 / 80 | PWM de 0 a 255 |
 | `PARED` / `PARED_F` | 120 / 55 mm | Pared lateral / pared al frente (frente en mm reales: requiere el frontal calibrado) |
 | `D_FRENTE` / `D_CERCA` | 35 / 5 mm | Alto al frente / retrocede si baja de 30 mm (mm reales, frontal calibrado) |
@@ -350,3 +375,23 @@ La bitácora completa de cambios, problemas y soluciones está en `historial_cam
 - **Meta:** el STM32 para solo al confirmar el amarillo, sin esperar a Python.
 - **Giros con MPU-6050** opcional: rumbo absoluto y rumbo sostenido en recta; sin él, por tiempo.
 - **Web:** durante la corrida no usa el Bridge para no quitarle tiempo al robot.
+
+# 12. Control de versiones
+
+| Revisión | Fecha | Qué cambió en el código |
+|---|---|---|
+| A | 19-oct a 9-nov | Iteración A: UNO R3 / Nano con firmware *bare-metal* (`atmega328p/`, respaldo) |
+| B1 | 9 a 11-nov | UNO Q: sketch + Python, mapa por votos, avance por distancia, máquina de estados |
+| B2 | 11-nov | MPU-6050 opcional; se agregan 2 sketches: `sketch/` (con MPU) y `sketch_sin_mpu/` (sin MPU) |
+| B3 | 11-nov | Cámara OV9281 monocromática: Otsu, rumbo por punto de fuga; `python_experimental/` |
+| B4 | 11-nov | Exploración completa (meta al centro), calibración de ToF a 100 mm, control desde la web, cronómetro |
+| B5 | 11-nov | MPU completo: alinear, giros verificados, choques, giro atorado, robot levantado |
+| **B6** | **11-nov** | **Se retira `sketch_sin_mpu/` del repositorio: el robot lleva MPU-6050. Queda un solo sketch, `sketch/`** |
+
+**Recuperar la versión sin MPU.** La última versión de `uno_q/sketch_sin_mpu/` está en el commit `2e01996` del repositorio. Se recupera con:
+
+```
+git show 2e01996:uno_q/sketch_sin_mpu/sketch.ino > sketch_sin_mpu.ino
+```
+
+(o en GitHub, abriendo el commit `2e01996` y la carpeta `uno_q/sketch_sin_mpu/`). Funciona con el mismo Python y la misma página web; gira y avanza por tiempo (`MS_90`, `MS_CELDA`). Además, `uno_q/sketch/` sigue funcionando sin MPU si no lo detecta al arrancar.

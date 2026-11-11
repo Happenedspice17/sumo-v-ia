@@ -239,6 +239,7 @@ BOM_ELEC = [
     ["Sensor de color TCS34725", "Módulo morado 20.5 × 20.5 mm", "1"],
     ["Sensor de distancia VL53L0X", "CJVL53L0XV2, 25 × 10.7 mm", "3"],
     ["Pantalla OLED SSD1306", "0.96\", I2C, dirección 0x3C, 4 pines", "1"],
+    ["MPU-6050 (módulo GY-521)", "Giroscopio y acelerómetro I2C, dirección 0x68 (AD0 a GND), VCC 3.3 V; plano y atornillado al piso", "1"],
     ["Botón de panel", "Ø7 mm, normalmente abierto", "1"],
     ["Interruptor de palanca", "MTS-102, Ø6 mm", "1"],
     ["Batería 2S 18650", "7.4 V, 3000 mAh, conector T y balanceo JST-XH", "1"],
