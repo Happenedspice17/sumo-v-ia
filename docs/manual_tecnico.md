@@ -139,7 +139,7 @@ El resultado es "piso" si la menor distancia es mayor que 0.02 o si el brillo es
 ## 5.1 Técnicas 1 a 3 (versión estable)
 
 1. **Exposición fija.** Con exposición automática, la cámara cambia su ganancia según lo que tenga enfrente (una pared blanca cerca la oscurece, la ropa de la gente la aclara), y un mismo piso cambia de gris entre fotos. Desde la web se fija la exposición (`CAP_PROP_AUTO_EXPOSURE` en manual, `CAP_PROP_EXPOSURE` en unidades UVC de 100 µs) y se guarda en `/app/datos/camara.json`.
-2. **Umbral automático (Otsu).** El histograma de gris de la escena es **bimodal**: piso negro y pared blanca. El método de Otsu elige el umbral que maximiza la varianza entre las dos clases, en cada foto, sin calibrar un número. Se calcula sobre la mitad de abajo de la imagen (el piso cercano) después de un filtro de mediana de 5 × 5, que quita reflejos de un píxel. Para que una imagen toda negra no "invente" blanco, el umbral se acota a [`UMBRAL_MIN`, `UMBRAL_MAX`] = [100, 220]. Con él se mide la fracción de blanco en `ZONA_PASO`: si pasa de `BLANCO_MAX` (15 %), Python pide `mover(mm, 1)` (lento) y lee el frontal como doble check; el sketch para a 130 mm si la pared es real.
+2. **Umbral automático (Otsu) con contraste y sensibilidad.** Antes de Otsu, el gris se **estira**: el 2 % más oscuro de la mitad de abajo pasa a 0 y el 2 % más claro a 255 (si la imagen es casi uniforme no se estira, para no inventar contraste). Con poca luz o exposición baja, piso y pared quedan bien separados. La **sensibilidad** (web, de −80 a 80) baja el umbral de Otsu esos niveles de gris: más alta, ve blanco antes. El histograma de gris de la escena es **bimodal**: piso negro y pared blanca. El método de Otsu elige el umbral que maximiza la varianza entre las dos clases, en cada foto, sin calibrar un número. Se calcula sobre la mitad de abajo de la imagen (el piso cercano) después de un filtro de mediana de 5 × 5, que quita reflejos de un píxel. Para que una imagen toda negra no "invente" blanco, el umbral se acota a [`UMBRAL_MIN`, `UMBRAL_MAX`] = [100, 220]. Con él se mide la fracción de blanco en `ZONA_PASO`: si pasa de `BLANCO_MAX` (15 %), Python pide `mover(mm, 1)` (lento) y lee el frontal como doble check; el sketch para a 130 mm si la pared es real.
 3. **Rumbo por punto de fuga.** En cada fila de `ZONA_BORDES` (45 % a 95 % de la altura) se busca, desde el centro hacia cada lado, el primer píxel blanco: la base de la pared izquierda y la derecha. Cada pared se ajusta a una recta *x = a·y + c* por mínimos cuadrados con rechazo de atípicos (empieza con la mitad más cercana, la más confiable, y descarta los puntos a más de 5 px, como el fondo de un pasillo lateral). Las dos rectas, paralelas en el piso, se cortan en la imagen en el **punto de fuga** del pasillo. Con una cámara de proyección central, la columna del punto de fuga depende **solo del ángulo** entre el robot y el pasillo, no de la posición lateral del robot ni de la inclinación de la cámara: *θ = atan(k · (x_f − x₀))*, donde *x₀* es la columna con el robot derecho y *k* los radianes por píxel. Las dos se miden en la web (robot derecho, y girado 15° a mano), así que no hace falta conocer la inclinación de la cámara ni su lente.
    - Si |θ| ≥ `ANG_MIN` (4°), Python llama `ajustar(θ)` antes de avanzar. Si |θ| > `ANG_MAX` (20°), la lectura se descarta como mala.
    - **Con MPU-6050:** no gira. El giroscopio deriva con el tiempo, y la cámara ve el error real respecto al pasillo; `ajustar` mueve el rumbo deseado (`ref`) y el control de recta (`KG`) lo corrige durante el avance, sin perder tiempo. La cámara corrige la deriva de la integral y el giroscopio da la respuesta rápida, como un filtro complementario.
@@ -203,7 +203,7 @@ Son experimentales porque dependen de que la calibración por filas sea estable 
 # 7. Cómo decide y qué mapa guarda
 
 ::: {.simple}
-**En simple:** el robot decide siempre quieto, en cuatro pasos que se repiten: **mira** (con los láser), **decide** (a dónde ir), **gira** y **avanza** una celda. Sigue la regla de la mano izquierda: si puede, gira a la izquierda; si no, sigue de frente; si no, a la derecha; y si está encerrado, da media vuelta. Si pasa tres veces por el mismo lugar (da vueltas a una isla), prueba la salida que menos ha usado.
+**En simple:** el robot decide siempre quieto, en cuatro pasos que se repiten: **mira** (con los láser), **decide** (a dónde ir), **gira** y **avanza** una celda. Sigue la regla de la mano izquierda: si puede, gira a la izquierda; si no, sigue de frente; si no, a la derecha; y si está encerrado, da media vuelta. Prefiere siempre los lugares donde no ha estado; si ya no hay ninguno cerca, regresa por donde conoce al lugar más cercano que le falte explorar. Así entra a la meta del centro aunque esté rodeada de paredes.
 :::
 
 **Máquina de estados** (Python; la fase se ve en la OLED y en la web):
@@ -218,19 +218,20 @@ Son experimentales porque dependen de que la calibración por filas sea estable 
 | `GIRA` | Pide `girar(k)` y espera |
 | `AVANZA` | Pide `mover(180, lento)` y espera; lee mm recorridos y saltos |
 
-**Prioridad de salidas: regla de la mano izquierda pura** (todas con lecturas de ToF):
+**Salidas libres** (todas con lecturas de ToF), en orden de mano izquierda:
 
 1. **Izquierda** si el lateral lee ≥ 120 mm.
-2. **Frente** si el frontal (calibrado) lee ≥ 110 mm (`FRENTE_LIBRE`): entre la pared de su celda (10 a 45 mm reales) y la de la siguiente (190 a 225).
+2. **Frente** si el frontal (calibrado) lee ≥ 130 mm (`FRENTE_LIBRE`): a la mitad entre la pared de su celda (~35-45 mm reales) y la de la siguiente (~215-225).
 3. **Derecha**, con el mismo criterio que la izquierda.
 4. **Media vuelta** si no hay ninguna.
 
-Antes se probó "frente primero, luego izquierda". En pista se atoraba en una zona: preferir el frente rompe la garantía del seguidor de pared, que solo recorre todo el muro conexo si **siempre** prefiere el lado de su mano. Con la mano izquierda pura esa garantía vuelve.
+**Exploración completa (tipo Trémaux / búsqueda en profundidad).** De las salidas libres elige la primera, en ese orden, que lleve a una celda **sin ver** (`vistas`: celdas donde ya leyó sus 3 ToF; se guardan con el mapa). Si todas llevan a celdas vistas, busca con BFS, por pasos conocidos, la celda vista más cercana que tenga un lado libre hacia una celda sin ver (`frontera()`), y da el primer paso hacia ella. Así recorre todas las celdas alcanzables.
 
-**Reglas que la modifican**
+**Por qué.** La meta está al centro y solo tiene 2 entradas: las paredes que la rodean forman una **isla**, separada del muro exterior. Un seguidor de pared (mano izquierda o derecha) solo recorre el muro al que está pegado, así que rodea la isla para siempre sin entrar. En simulación (laberintos de 9 × 9 con la meta en una isla central de 3 × 3 con 2 entradas, 30 laberintos), la mano izquierda pura llegó a la meta 0 de 30 veces y la exploración completa 30 de 30.
 
-- **Tras un salto:** de las salidas que llevan a una celda que aún no está en el mapa, toma la de lectura más lejana.
-- **Isla:** si ya pasó 3 veces (`ISLA`) por esa celda, toma la salida que ha usado menos. Si hay empate, sigue la prioridad normal.
+Historia: antes se probó "frente primero, luego izquierda". En pista se atoraba en una zona: preferir el frente rompe la garantía del seguidor de pared, que solo recorre todo el muro conexo si **siempre** prefiere el lado de su mano. Con la mano izquierda pura esa garantía vuelve.
+
+**Tras un salto** (cambio brusco en un ToF) escanea con 5 lecturas en lugar de 3 y decide con la misma regla.
 
 **Mapa por celdas.** Cada celda guarda 4 votos (N, E, S, O) en un diccionario de coordenadas.
 
@@ -277,8 +278,8 @@ Valores tal como están en `sketch.ino` y `main.py`.
 | `MS_CELDA` | 600 ms | Tiempo por celda cuando no hay pared a la vista |
 | `MS_90` | 250 ms | Giro de 90° por tiempo (solo sin MPU-6050) |
 | `VEL_EXPLORA` / `VEL_LENTO` / `VEL_GIRO` / `VEL_MIN` | 140 / 100 / 130 / 80 | PWM de 0 a 255 |
-| `PARED` / `PARED_F` | 120 / 45 mm | Pared lateral / pared al frente (frente en mm reales: requiere el frontal calibrado) |
-| `D_FRENTE` / `D_CERCA` | 10 / 5 mm | Alto al frente / retrocede si baja de 5 mm (mm reales, frontal calibrado) |
+| `PARED` / `PARED_F` | 120 / 55 mm | Pared lateral / pared al frente (frente en mm reales: requiere el frontal calibrado) |
+| `D_FRENTE` / `D_CERCA` | 35 / 5 mm | Alto al frente / retrocede si baja de 30 mm (mm reales, frontal calibrado) |
 | `FRENA_K` | 2 PWM/mm | Frenado proporcional al acercarse |
 | `SALTO` / `TRAS_SALTO` | 120 / 124 mm | Cambio brusco / avance posterior para centrarse en la celda abierta |
 | `D_LADO_MIN` | 90 mm | Solo corrige el centrado si un lateral lee menos |
@@ -294,9 +295,8 @@ Valores tal como están en `sketch.ino` y `main.py`.
 
 | Parámetro | Valor | Qué controla |
 |---|---|---|
-| `FRENTE_LIBRE` | 110 mm | El frente cuenta como salida (mm reales: entre 10-45 y 190-225) |
+| `FRENTE_LIBRE` | 130 mm | El frente cuenta como salida (mm reales: a la mitad entre ~35-45 y ~215-225) |
 | `VOTO_MAX` | 5 | Tope de votos por pared |
-| `ISLA` | 3 visitas | Pasa a la salida menos usada |
 | `Y_COLOR` | 36 mm | Del eje al sensor de color |
 | `UMBRAL_MIN` / `UMBRAL_MAX` | 100 / 220 | Límites del umbral de gris de Otsu |
 | `ZONA_BORDES` | (0.45, 0.95) | Filas donde busca las bases de las paredes |

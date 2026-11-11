@@ -26,8 +26,8 @@ const int AJUSTE_DER = -10;   // PWM de diferencia: negativo = mas fuerza al mot
 const bool INV_IZQ = true;    // true si ese motor gira al reves (en vez de voltear cables)
 const bool INV_DER = true;
 const int PARED = 120;        // mm: lectura menor = hay pared (lados)
-const int PARED_F = 45;       // mm reales (frontal calibrado): menos de esto = pared en su celda (antes 130 sin calibrar; el frontal leia ~87 de mas)
-const int D_FRENTE = 10;      // mm reales: al leer esto al frente se detiene (frontal calibrado; pedido en pista)
+const int PARED_F = 55;       // mm reales (frontal calibrado): menos de esto = pared en su celda (se detiene a 35)
+const int D_FRENTE = 35;      // mm reales: al leer esto al frente se detiene (frontal calibrado; pedido en pista: 30-40)
 const int D_CERCA = 5;        // mm: si queda mas de esto por debajo de D_FRENTE, se hace para atras
 const int FRENA_K = 2;        // PWM por mm: con pared al frente baja la velocidad al acercarse
 const int D_LADO = 50;        // mm a una pared lateral con el robot centrado

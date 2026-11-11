@@ -48,11 +48,10 @@ DX = [0, 1, 0, -1]
 DY = [1, 0, -1, 0]
 CELDA = 180                              # mm por avance; la posicion solo sirve para contar visitas
 PARED = 120                              # mm: lateral con esto o mas = libre
-PARED_F = 45                             # mm reales (frontal calibrado): menos de esto = pared (= PARED_F del sketch)
-FRENTE_LIBRE = 110                       # mm reales: entre pared en su celda (10 a 45) y en la siguiente (190 a 225)
-D_FRENTE_TOF = 10                        # mm reales donde se detiene el sketch con pared enfrente (= D_FRENTE)
+PARED_F = 55                             # mm reales (frontal calibrado): menos de esto = pared (= PARED_F del sketch)
+FRENTE_LIBRE = 130                       # mm reales: a la mitad entre pared en su celda (~35-45) y en la siguiente (~215-225)
+D_FRENTE_TOF = 35                        # mm reales donde se detiene el sketch con pared enfrente (= D_FRENTE)
 VOTO_MAX = 5                             # cada lectura vota pared (+1) o libre (-1); tope para que el mapa se corrija
-ISLA = 3                                 # visitas a una celda para decir que rodea una isla
 Y_COLOR = 36                             # mm del eje al sensor de color (adelante)
 
 # ---------- Camara (OV9281 monocromatica, obturador global): asistencia, nunca decide sola ----------
@@ -63,7 +62,7 @@ ANCHO, ALTO = 320, 240
 ARCH_CAM = DATOS + "/camara.json"
 # Calibracion de la camara (se ajusta en la web y se guarda): exposicion (0 = automatica; unidades UVC de 100 us),
 # columna del punto de fuga con el robot derecho (x0), radianes por pixel (k) y, experimental, fila -> mm
-camcal = {"expo": 0, "gain": -1, "x0": ANCHO / 2, "k": 0.008, "filas": {}}   # gain -1: no la toca
+camcal = {"expo": 0, "gain": -1, "sens": 0, "x0": ANCHO / 2, "k": 0.008, "filas": {}}   # gain -1: no la toca
 cam_leido = {}
 # Blanco = pared (piso negro). Umbral de gris automatico (Otsu) acotado: una imagen toda negra no inventa blanco
 UMBRAL_MIN, UMBRAL_MAX = 100, 220
@@ -85,6 +84,7 @@ cuenta = [0] * len(COLORES)
 encontrado = False
 # Mapa: celda -> [N, E, S, O] con 1 pared, 0 libre, None sin dato; colores: celda -> color; meta: celda del amarillo
 muros = {}
+vistas = set()                           # celdas donde el robot ya leyo sus 3 ToF (se guarda con el mapa)
 colores = {}
 meta = None
 # Para la pagina web: durante una corrida lee esto (lo actualiza el robot) en vez de pedirle al Bridge
@@ -266,7 +266,8 @@ def ruta(desde, hasta):
 
 def guardar():
     escribe(ARCH_MAPA, {"muros": [[*c, *p] for c, p in muros.items()],
-                        "colores": [[*c, k] for c, k in colores.items()], "meta": meta})
+                        "colores": [[*c, k] for c, k in colores.items()], "meta": meta,
+                        "vistas": [list(c) for c in vistas]})
 
 
 def cargar():
@@ -277,6 +278,7 @@ def cargar():
     muros.update({(x, y): [v or 0 for v in p] for x, y, *p in d["muros"]})
     colores.update({(x, y): k for x, y, k in d["colores"]})
     meta = tuple(d["meta"]) if d["meta"] else None
+    vistas.update(tuple(c) for c in d.get("vistas", []))
     for k in colores.values():
         cuenta[k] += 1
     print(f"Mapa: {len(muros)} celdas, meta {meta}")
@@ -337,6 +339,15 @@ def aplica_expo():
     cam_leido.update(modo=cam.get(cv2.CAP_PROP_AUTO_EXPOSURE), expo=cam.get(cv2.CAP_PROP_EXPOSURE),
                      gain=cam.get(cv2.CAP_PROP_GAIN))
     print("Camara: exposicion", cam_leido, flush=True)
+
+
+def contraste(g):
+    """Estira el gris: el 2 % mas oscuro de la mitad de abajo pasa a 0 y el 2 % mas claro a 255.
+    Con poca luz o exposicion baja, piso y pared quedan bien separados antes de Otsu."""
+    lo, hi = np.percentile(g[g.shape[0] // 2:], (2, 98))
+    if hi - lo < 25:                     # imagen casi uniforme (todo piso o todo pared): no inventa contraste
+        return g
+    return np.clip((g.astype(np.float32) - lo) * (255.0 / (hi - lo)), 0, 255).astype(np.uint8)
 
 
 def umbral(g):
@@ -418,8 +429,8 @@ def aberturas(bs, fuga):
 
 def vision(img):
     """Todo lo de la camara con una sola foto."""
-    g = cv2.medianBlur(img if img.ndim == 2 else cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), 5)
-    t = umbral(g)
+    g = contraste(cv2.medianBlur(img if img.ndim == 2 else cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), 5))
+    t = min(max(umbral(g) - camcal.get("sens", 0), UMBRAL_MIN // 2), UMBRAL_MAX)
     b = g >= t
     h, w = b.shape
     x0, y0, x1, y1 = ZONA_PASO
@@ -602,6 +613,12 @@ def fuga_ahora():
     return vision(img)["fuga"] if img is not None else None
 
 
+def api_cam_sens(v: int):
+    """Sensibilidad al blanco: baja el umbral de Otsu v niveles de gris (0 = sin cambio; mas = ve blanco antes)."""
+    camcal["sens"] = max(min(v, 80), -80)
+    return guarda_cam()
+
+
 def api_cam_cero():
     """Robot derecho en un pasillo: el punto de fuga que ve ahora es 'derecho'."""
     f = fuga_ahora()
@@ -648,20 +665,43 @@ ui.expose_api("GET", "/api/tof", api_tof)
 ui.expose_api("GET", "/api/tof_cal", api_tof_cal)
 ui.expose_api("GET", "/api/cam_expo", api_cam_expo)
 ui.expose_api("GET", "/api/cam_cero", api_cam_cero)
+ui.expose_api("GET", "/api/cam_sens", api_cam_sens)
 ui.expose_api("GET", "/api/cam_giro", api_cam_giro)
 ui.expose_api("GET", "/api/cam_dist", api_cam_dist)
 
 
 # ---------- Estrategia ----------
-def decidir(izq, frente, der, visitas, usos, saltos):
-    """Mano izquierda: izquierda, si no frente, si no derecha. Tras un salto: la salida nueva mas lejana.
-    Con 3 visitas a la celda (isla): la salida menos usada."""
+def frontera():
+    """Rumbo (0-3) del primer paso hacia la celda vista mas cercana que tiene un lado libre hacia una celda
+    sin ver (BFS por pasos conocidos), o None si ya no queda nada por explorar."""
+    previo, cola = {pos: None}, [pos]
+    for c in cola:
+        if c != pos and any(muros.get(c, [0] * 4)[h] < 0 and vecino(c, h) not in vistas for h in range(4)):
+            while previo[c][0] != pos:
+                c = previo[c][0]
+            return previo[c][1]
+        for h in range(4):
+            n = vecino(c, h)
+            if n not in previo and n in vistas and libre(c, h):
+                previo[n] = (c, h)
+                cola.append(n)
+    return None
+
+
+def decidir(izq, frente, der):
+    """Exploracion completa con mano izquierda (tipo Tremaux / DFS):
+    1. Salidas libres hacia celdas sin ver: la primera en orden izquierda, frente, derecha.
+    2. Si todas llevan a celdas ya vistas: va por el camino conocido mas corto a la celda con lados sin explorar.
+    Asi entra a una meta en una isla (al centro, con pocas entradas), que la mano izquierda sola rodea sin entrar."""
     ops = salidas(izq, frente, der)
-    nuevas = [r for r in ops if r != 2 and vecino(pos, (rumbo + r) % 4) not in muros]
-    if saltos and nuevas:
-        return max(nuevas, key=lambda r: {-1: izq, 0: frente, 1: der}[r])
-    if visitas[pos] >= ISLA:
-        return min(ops, key=lambda r: (usos.get((pos, (rumbo + r) % 4), 0), ops.index(r)))
+    nuevas = [r for r in ops if r != 2 and vecino(pos, (rumbo + r) % 4) not in vistas]
+    if nuevas:
+        return nuevas[0]
+    h = frontera()
+    if h is not None:
+        rel = {0: 0, 1: 1, 2: 2, 3: -1}[(h - rumbo) % 4]
+        if rel in ops or rel == 2:           # atras siempre esta libre: de ahi vino
+            return rel
     return ops[0]
 
 
@@ -671,21 +711,19 @@ def buscar_color():
     global encontrado
     encontrado = False
     estado(1)
-    visitas, usos, saltos, f = {}, {}, 0, "SENSA"
+    f = "SENSA"
     while not encontrado:
         if rpc("arranque"):
             print("Detenido con el boton")
             return False
         fase(f)
         if f in ("SENSA", "ESCANEA"):
-            visitas[pos] = visitas.get(pos, 0) + 1
             lect = tof3(5 if f == "ESCANEA" else 3)
             anota(*lect)
+            vistas.add(pos)
             f = "DECIDE"
         elif f == "DECIDE":
-            rel = decidir(*lect, visitas, usos, saltos)
-            h = (rumbo + rel) % 4
-            usos[(pos, h)] = usos.get((pos, h), 0) + 1
+            rel = decidir(*lect)
             print("ToF izq {} frente {} der {} en {}:".format(*lect, pos),
                   {1: "derecha", 0: "frente", -1: "izquierda", 2: "media vuelta"}[rel])
             f = "GIRA"
@@ -724,6 +762,7 @@ def borrar():
     global meta
     muros.clear()
     colores.clear()
+    vistas.clear()
     meta = None
     if os.path.exists(ARCH_MAPA):
         os.remove(ARCH_MAPA)
