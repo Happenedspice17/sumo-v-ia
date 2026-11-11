@@ -1,14 +1,30 @@
+import sys
+import time
+import traceback
+sys.stdout.reconfigure(line_buffering=True)   # sin esto los print salen tarde o se pierden si la app truena
+T0 = time.monotonic()
+
+
+def paso(m):
+    """Debug de arranque: en la pestana Python se ve hasta donde llego."""
+    print(f"[arranque {time.monotonic() - T0:5.1f} s] {m}", flush=True)
+
+
+paso("Python " + sys.version.split()[0])
 from arduino.app_utils import *
+paso("arduino.app_utils OK")
 from arduino.app_bricks.web_ui import WebUI
+paso("WebUI OK")
 import os
 os.environ.setdefault("OPENCV_LOG_LEVEL", "ERROR")   # sin camara, OpenCV llena el log de WARN cada 2 s
 import cv2
+paso("cv2 OK")
 import glob
 import math
 import numpy as np
+paso("numpy OK")
 import json
 import threading
-import time
 import base64
 
 print("Python OK, cv2", cv2.__version__)
@@ -95,11 +111,17 @@ def lee(ruta):
 
 
 # ---------- Comunicacion con el MCU ----------
+rpc_err = set()
+
+
 def rpc(nombre, *args):
     while True:
         try:
             return Bridge.call(nombre, *args)
-        except Exception:
+        except Exception as e:
+            if nombre not in rpc_err:        # avisa una vez por RPC: si se repite, el sketch no lo tiene o no corre
+                rpc_err.add(nombre)
+                print(f"RPC {nombre}{args} fallo: {e!r} (reintento cada 0.2 s)", flush=True)
             time.sleep(0.2)
 
 
@@ -606,6 +628,7 @@ def limpio(x):
     return json.loads(json.dumps(x, default=lambda o: o.item() if hasattr(o, "item") else str(o)))
 
 
+paso("creando WebUI")
 ui = WebUI()
 ui.expose_api("GET", "/api/lectura", api_lectura)
 ui.expose_api("GET", "/api/guardar", api_guardar)
@@ -702,16 +725,21 @@ def borrar():
 
 def iniciar():
     global REFS
+    paso("archivos en /app: " + str(sorted(os.listdir("/app"))) + " datos: " + str(sorted(os.listdir(DATOS))))
     REFS = lee(ARCH_COL) or lee("/app/colores.json") or REFS   # tambien los de la version anterior
+    paso("colores leidos; mandando al STM32 (si se queda aqui, el sketch no responde por Bridge)")
     enviar_refs()
+    paso("colores enviados")
     for n, p in (lee(ARCH_TOF) or {}).items():
         if n in tof_cal:
             tof_cal[n].update(p)
     enviar_tof()
+    paso("ToF enviados")
     camcal.update(lee(ARCH_CAM) or {})
     cargar()
     for c in range(1, len(COLORES)):
         rpc("set_cuenta", c, cuenta[c])
+    paso("mapa cargado; buscando camara")
     if USAR_CAM and abrir_camara():
         estado(0)
     else:
@@ -719,6 +747,7 @@ def iniciar():
         estado(6)
     if USAR_CAM:                         # en segundo plano: no frena el arranque de la app
         threading.Thread(target=vigilar_cam, daemon=True).start()
+    paso("iniciar() listo")
 
 
 def vigilar_cam():
@@ -760,5 +789,12 @@ def loop():
     print(f"Corrida: {time.time() - t:.1f} s, marcas {cuenta[1:]}")
 
 
-iniciar()
-App.run(user_loop=loop)
+try:
+    iniciar()
+    paso("App.run")
+    App.run(user_loop=loop)
+except BaseException:
+    print("ERROR al arrancar:", flush=True)
+    traceback.print_exc()
+    sys.stdout.flush()
+    raise
