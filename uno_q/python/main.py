@@ -323,6 +323,8 @@ def abrir_camara():
 
 def foto():
     with cam_lock:                       # la usan el robot y la pagina web
+        if cam is None:
+            return None
         for _ in range(3):
             cam.grab()
         ok, img = cam.read()
@@ -556,9 +558,21 @@ def api_guardar(i: int):
     return api_lectura()
 
 
+reintento = 0
+
+
 def api_foto():
+    global cam, reintento
+    if cam is None and USAR_CAM and time.time() > reintento:   # la camara pudo conectarse despues de arrancar
+        reintento = time.time() + 5
+        with cam_lock:
+            abrir_camara()
     img = foto() if cam is not None else None
     if img is None:
+        if cam is not None:              # se desconecto: la vuelve a buscar
+            with cam_lock:
+                cam.release()
+                cam = None
         return {"img": None}
     c = color_piso(img)
     cg = ciegos(img)                     # antes de dibujar encima
