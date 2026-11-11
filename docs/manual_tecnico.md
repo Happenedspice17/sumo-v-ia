@@ -63,7 +63,7 @@ Linux sirve una página en el puerto 7000 (brick `web_ui`), que se abre desde el
 | Función | Cómo funciona | Archivo |
 |---|---|---|
 | Colores | Asistente de 5 pasos; cada color promedia 5 lecturas del TCS34725 y se manda al STM32 (`set_ref`) | `colores.json` |
-| Distancia | Por sensor, puntos (mm reales con vernier, lectura cruda promedio de 10); ajuste por mínimos cuadrados `real = a × crudo + b` (con 1 punto, solo desfase) que se manda al STM32 (`set_tof`) | `tof.json` |
+| Distancia | Por sensor, puntos (mm reales con vernier, lectura cruda promedio de 10); en pista se usa 1 punto a 100 mm por sensor: solo desfase `real = crudo + b` (con varios puntos el código ajusta `real = a × crudo + b` por mínimos cuadrados) que se manda al STM32 (`set_tof`) | `tof.json` |
 | Simulador | Dibuja lo que mide cada ToF y lo que haría el robot (`que_haria()`) sin moverlo | |
 | Cámara | Imagen 160 × 120 en gris con la zona de paso en rojo (blanco) o verde (negro) | |
 | Corrida | Fase, celda, mapa y meta; durante la corrida usa la última lectura del robot y no llama al Bridge | |

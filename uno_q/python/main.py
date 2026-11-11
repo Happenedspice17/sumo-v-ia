@@ -478,11 +478,11 @@ def enviar_tof():
 
 
 def api_tof_cal(s: int, mm: int):
-    """Guarda un punto: el sensor s (0 izq, 1 frente, 2 der) a mm reales. mm = 0 borra sus puntos."""
+    """Calibra el sensor s (0 izq, 1 frente, 2 der) con una pared a mm reales (la web manda 100): un solo punto,
+    que reemplaza al anterior, y de ahi solo el desfase (real = crudo + b). mm = 0 borra su calibracion."""
     n = TOF_NOM[s]
-    if mm <= 0:
-        tof_cal[n].clear()
-    else:
+    tof_cal[n].clear()
+    if mm > 0:
         lect = []
         for _ in range(10):
             time.sleep(0.04)

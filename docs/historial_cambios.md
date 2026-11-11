@@ -795,7 +795,7 @@ El repositorio se analizó con graphify, que arma un grafo de conocimiento con e
 
 - Probar en pista la última versión: avance por distancia, cambios bruscos, mapa con votos, máquina de estados y MPU-6050.
 - Verificar que las paredes de madera estén pintadas de blanco, porque la detección de la cámara toma blanco como pared.
-- Calibrar los 3 ToF en la pista desde la web (50, 100 y 150 mm con vernier; el frontal también a 250 y 300 mm) y, con esas lecturas, revisar `PARED`, `PARED_F`, `D_FRENTE`, `D_LADO_MIN` y `FRENTE_LIBRE`. Va **antes** de calibrar la distancia por cámara, que usa el frontal como regla.
+- Calibrar los 3 ToF en la pista desde la web (un punto a 100 mm por sensor: solo desfase; el equipo lo simplificó así en pista) y, con esas lecturas, revisar `PARED`, `PARED_F`, `D_FRENTE`, `D_LADO_MIN` y `FRENTE_LIBRE`. Va **antes** de calibrar la distancia por cámara, que usa el frontal como regla.
 - Calibrar la cámara en la pista desde la web (exposición, derecho, escala) y medir su placa para el CAD.
 - Probar la corrección de rumbo con la cámara real (con y sin MPU) y, después, la versión experimental (distancia por cámara y aberturas).
 - Pasar el código a mano derecha pura (hoy la prioridad es frente, izquierda, derecha).
