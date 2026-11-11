@@ -88,7 +88,7 @@ Es una máquina de estados: `SENSA` → `DECIDE` → `GIRA` → `AVANZA` → `SE
 6. Cada color que lee el TCS34725 (3 lecturas seguidas) va al mapa en la celda donde está el sensor y se cuenta una vez. Amarillo = meta: el STM32 para solo en cuanto lo confirma, sin esperar al Python (OLED `META`).
 7. El mapa (paredes, colores y meta) se guarda en `/app/datos/mapa.json`. En la siguiente corrida, si conoce la meta, va por el camino más corto conocido (BFS, OLED `RAPIDO`); si algo no cuadra, sigue explorando desde ahí.
 
-- Botón corto: corrida nueva (pon el robot en el inicio). Otro toque la detiene. Sostenido más de 2 s: borra el mapa y el conteo (laberinto nuevo). Cada corrida empieza en la misma celda y viendo al mismo lado.
+- Botón corto: corrida nueva (pon el robot en el inicio). Otro toque la detiene. Sostenido más de 2 s: borra el mapa y el conteo (laberinto nuevo). Lo mismo desde la web, arriba: **▶ Iniciar**, **■ Detener** y **Borrar mapa** (`/api/control`). Cada corrida empieza en la misma celda y viendo al mismo lado.
 - **Web durante una corrida:** no llama al Bridge; muestra la última lectura que tomó el robot y su última foto, para no quitarle tiempo ni la cámara.
 - **Panel web → Ver sensores ToF:** dibujo en vivo de lo que mide cada VL53L0X y qué haría el robot.
 - **Cámara al arrancar:** la busca una vez (OLED `LISTO` si la encuentra, `SIN CAM` si no). Un hilo revisa cada 2 s: si no hay cámara la busca y si se desconecta pone `SIN CAM`.

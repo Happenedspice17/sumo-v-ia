@@ -55,6 +55,7 @@ Si `PY` no sube: conecta la laptop, abre App Lab y dale **Run**.
 | **Toque corto** | Arranca una corrida. Empieza siempre en la misma celda y viendo al mismo lado |
 | **Otro toque corto** (mientras corre) | La detiene |
 | **Mantener más de 2 s** y soltar | Borra el mapa y el conteo (laberinto nuevo) |
+| **En la web: ▶ Iniciar / ■ Detener / Borrar mapa** | Lo mismo que el toque corto, otro toque y mantener 2 s, desde el celular |
 | **Presionado al prender** | Modo prueba de sensores: la pantalla muestra `CALIBRACION` con r, g, b, color y distancias |
 
 ::: {.nota}
@@ -72,6 +73,7 @@ La primera corrida explora y mapea hasta encontrar el amarillo. Las siguientes v
 
 | En la página | Para qué |
 |---|---|
+| Corrida (arriba) | Iniciar, detener y borrar el mapa sin tocar el robot |
 | Asistente de colores | Calibrar los 5 colores del piso (4.1) |
 | Ver sensores ToF → Calibrar distancia | Calibrar los 3 sensores de distancia con el vernier (4.2) |
 | Cámara → Calibrar cámara | Exposición, rumbo derecho, escala y (experimental) distancia (4.3) |
