@@ -633,6 +633,18 @@ Etapa menor de documentación. `docs/manual_uso.md` (uso y calibración: baterí
 
 **Riesgo anotado.** Con el robot centrado, el frontal queda a unos 44 mm de la pared de su celda (90 − 6 − 40). Frenar a 10 mm deja el eje unos 34 mm después del centro de la celda. Y por debajo de unos 30 mm el VL53L0X pierde exactitud. Hay que verificar en pista que no toque la pared y que la siguiente decisión siga saliendo bien.
 
+### Etapa 38. Exploración completa: la meta al centro (11-nov)
+
+**Problema en pista.** El robot no encontraba la meta. La meta está al centro del laberinto y solo tiene 2 entradas.
+
+**Diagnóstico.** Las paredes que rodean el centro no tocan el muro exterior: forman una isla. Un seguidor de pared solo recorre el muro conexo al que está pegado, así que con mano izquierda (o derecha) rodea la isla sin entrar nunca. La regla anterior de "3 visitas → salida menos usada" no basta: el robot casi nunca repite la celda exacta.
+
+**Cambio.** Exploración tipo Trémaux / búsqueda en profundidad: prefiere salidas hacia celdas sin ver, en orden de mano izquierda; si no hay, BFS por el mapa conocido a la celda más cercana con lados sin explorar. Se quitan la regla de islas y la de "salida más lejana tras un salto" (ahora también va a la izquierda si es nueva, como pidió el equipo). Las celdas vistas se guardan con el mapa.
+
+**Pruebas.** Simulación con 30 laberintos de 9 × 9 con la meta en una isla central de 3 × 3 con 2 entradas: mano izquierda pura 0/30, exploración completa 30/30. Pruebas unitarias de `decidir()` y `frontera()`.
+
+**Otros cambios de la misma etapa.** `D_FRENTE` = 35 mm (pedido: 30 a 40), `PARED_F` = 55, `FRENTE_LIBRE` = 130. Cámara: estiramiento de contraste antes de Otsu y sensibilidad ajustable desde la web.
+
 ## Pruebas realizadas
 
 La tabla distingue lo medido o probado de lo que solo se deduce de la secuencia de commits (marcado **deducido**). Cuando el repositorio guarda la sucesión de valores pero no el resultado de cada intento, se dice. Las pruebas en pista del equipo están en su propia subsección; la última versión (distancia, saltos, votos, máquina de estados, MPU) aún no se ha probado en pista.

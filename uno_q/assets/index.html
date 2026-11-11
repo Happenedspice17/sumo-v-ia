@@ -70,7 +70,7 @@
   <div id="odo" style="font-family:monospace;font-size:15px;margin-top:6px;white-space:pre-line">...</div>
 </div>
 <div class="paso">
-  <div>Regla de la mano izquierda (izquierda, frente, derecha, media vuelta), con los 3 ToF (la menor de 3 lecturas). Tras un cambio brusco en un ToF va a la salida nueva más lejana; si pasa 3 veces por una celda, a la menos usada. Mapea paredes y colores; para al leer amarillo y la siguiente corrida va directo.</div>
+  <div>Explora todo con mano izquierda: va a celdas sin ver (izquierda, frente, derecha); si no hay, regresa por el camino conocido a la celda más cercana con lados sin explorar. Con los 3 ToF (la menor de 3 lecturas). Tras un cambio brusco en un ToF escanea con 5 lecturas. Mapea paredes y colores; para al leer amarillo y la siguiente corrida va directo.</div>
 </div>
 <div class="paso">
   <div>Cámara monocromática: camino rojo = blanco/pared (va lento), verde = negro; azul = bases de las paredes y punto de fuga (rumbo); línea blanca = "derecho"<span id="camExpTxt"></span>:</div>
@@ -82,6 +82,11 @@
       Exp <input id="camExpo" type="number" value="50" min="0" style="width:70px;font-size:18px;padding:6px">
       Gan <input id="camGain" type="number" value="-1" min="-1" style="width:70px;font-size:18px;padding:6px">
       <button style="background:#455a64;padding:10px 14px" onclick="camApi('cam_expo?v=' + (parseInt(document.getElementById('camExpo').value) || 0) + '&g=' + (parseInt(document.getElementById('camGain').value) || 0))">Aplicar</button>
+    </div>
+    <div style="margin-top:10px">Sensibilidad al blanco (0 = normal; súbela de 10 en 10 si no ve la pared como blanco; negativa si ve blanco donde hay piso negro):</div>
+    <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+      <input id="camSens" type="number" value="0" min="-80" max="80" style="width:70px;font-size:18px;padding:6px">
+      <button style="background:#455a64;padding:10px 14px" onclick="camApi('cam_sens?v=' + (parseInt(document.getElementById('camSens').value) || 0))">Aplicar</button>
     </div>
     <div style="margin-top:10px">2. Rumbo: pon el robot derecho y centrado en un pasillo largo y aprieta:</div>
     <button style="background:#455a64;padding:10px 14px;margin-top:6px" onclick="camApi('cam_cero')">Está derecho</button>
@@ -239,7 +244,7 @@ function pintaCam(d) {
       "\nAbertura en la celda siguiente: " + (d.abre.length ? d.abre.map((r) => (r < 0 ? "izquierda" : "derecha")).join(" y ") : "ninguna") : "");
   const c = d.cal;
   if (c) document.getElementById("camCal").textContent =
-    "Exposición " + (c.expo || "automática") + (c.gain >= 0 ? " · ganancia " + c.gain : "") +
+    "Exposición " + (c.expo || "automática") + (c.gain >= 0 ? " · ganancia " + c.gain : "") + " · sensibilidad " + (c.sens || 0) +
     (d.leido && d.leido.expo !== undefined ? "  (la cámara dice: modo " + d.leido.modo + ", exp " + d.leido.expo + ", gan " + d.leido.gain + ")" : "") + "\nDerecho en x = " + c.x0 + " · escala " + c.k + " rad/px" +
     (d.exp ? "\nPuntos (fila: mm) " + (Object.entries(c.filas).map(([y, m]) => y + ":" + m).join("  ") || "ninguno") : "");
 }
