@@ -75,7 +75,7 @@ Qué hace hoy (no calcula paredes por cámara):
 
 - Es monocromática: no busca el amarillo (lo detecta el TCS34725). Solo mide cuánto blanco (pared) hay en el piso por donde va a pasar.
 - Revisa el piso del camino (`ZONA_PASO`) con umbral automático de Otsu: blanco = pared, negro = libre. Con blanco el robot va lento y el frontal hace el doble check.
-- Mide el rumbo con el punto de fuga de las bases de las paredes y lo corrige con `ajustar` (con MPU sin girar). La versión `python_experimental/` además mide distancias y aberturas por cámara.
+- Mide el rumbo con el punto de fuga de las bases de las paredes y lo corrige con `ajustar` (con MPU sin girar). Con `EXPERIMENTAL = True` en `main.py` además mide distancias y aberturas por cámara.
 - No ve el laberinto completo de antemano: las paredes bloquean la vista.
 - Geometría actual:
 

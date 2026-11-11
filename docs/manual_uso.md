@@ -23,7 +23,7 @@ author:
 - [ ] Laberinto nuevo: borra el mapa antes de empezar (paso 3)
 
 ::: {.nota}
-**¿Qué versión cargar?** El sketch es siempre `sketch/` (con MPU-6050). Python: `python/` (estable) o `python_experimental/` (la cámara además mide distancias y ve aberturas; para probar). La versión vieja sin MPU está en el historial: ver "Control de versiones" al final.
+**¿Qué versión cargar?** El sketch es siempre `sketch/` (con MPU-6050). Python: `python/`. Para probar la versión experimental de la cámara (además mide distancias y ve aberturas) cambia `EXPERIMENTAL = False` a `True` en `main.py`. La versión vieja sin MPU está en el historial: ver "Control de versiones" al final.
 :::
 
 # 2. Prende
@@ -206,6 +206,7 @@ Entre intentos del mismo laberinto **no borres**: así recuerda el camino. Borra
 | B2 | Llegan 2 sketches: `sketch/` (con MPU-6050) y `sketch_sin_mpu/` |
 | B4 | La web inicia, detiene y borra el mapa; cronómetro y colores vistos |
 | B5 | El MPU se usa completo: se endereza antes de avanzar, verifica giros, se recupera de choques y se detiene si lo levantan |
-| **B6** | **Queda un solo sketch, `sketch/` (con MPU-6050). `sketch_sin_mpu/` se quitó del repositorio** |
+| B6 | Queda un solo sketch, `sketch/` (con MPU-6050). `sketch_sin_mpu/` se quitó del repositorio |
+| **B7** | **Queda un solo Python. La versión experimental de la cámara es `EXPERIMENTAL = True` en `main.py`** |
 
 **Si algún día hace falta la versión sin MPU:** está en el commit `2e01996` del repositorio (carpeta `uno_q/sketch_sin_mpu/`). Detalle en el manual técnico, sección "Control de versiones".
