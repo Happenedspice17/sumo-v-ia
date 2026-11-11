@@ -1,8 +1,10 @@
-# Iteración B – Arduino UNO Q (con cámara)
+# 🤖 Iteración B – Arduino UNO Q (con cámara)
+
+> Versión actual del robot. Documentación completa: [manual técnico](../docs/pdf/manual_tecnico.pdf) · [manual de uso](../docs/pdf/manual_uso.pdf) · [bitácora](../docs/pdf/historial_cambios.pdf)
 
 El STM32 mueve los motores, lee los sensores y maneja la OLED (`sketch/`). Linux corre Python con la cámara y resuelve el laberinto (`python/`). Se comunican por Bridge.
 
-## Conexiones
+## 🔌 Conexiones
 
 | Componente | Pin del módulo | UNO Q |
 |---|---|---|
@@ -24,7 +26,7 @@ VCC (3.3V), GND, SDA y SCL se reparten en la mini protoboard del Proto Shield: c
 
 GND común entre todo. No alimentes el UNO Q con el regulador de 5 V del L298N. La posición física de cada pieza está en `../chasis/chasis.pdf`.
 
-## Programación (Arduino App Lab)
+## 💻 Programación (Arduino App Lab)
 
 1. Crea una app nueva llamada `Laberinto`.
 2. Copia `sketch/sketch.ino`, `python/main.py`, `python/requirements.txt` y `assets/index.html` (carpeta `assets/` en la raíz de la app).
@@ -40,7 +42,7 @@ Con el hub conectado al USB-C, App Lab se conecta por WiFi (el puerto no puede i
 
 **Alimentación del hub:** con la Q alimentada por VIN, su USB-C no da 5 V al hub. El hub debe recibir energía por su puerto PD: cargador PD, o 5 V ≥ 3 A del regulador del robot a un cable USB-C cortado conectado al puerto PD del hub, o módulo DC-DC con salida USB-C PD desde la batería. Alimentar solo la cámara con 5 V externos no basta.
 
-## Calibración
+## 🎛️ Calibración
 
 1. **Colores**: con la app corriendo abre `http://<ip de la Q>:7000` (App Lab muestra el link). El asistente pide los 5 colores uno por uno; cada botón promedia 5 lecturas. Se guarda en `/app/datos/colores.json` y se carga al MCU en cada arranque (`set_ref`). Los guardados tienen prioridad. Sin archivo guardado se usan los valores de fábrica (`REFS` en `main.py`, igual a `refs[]` del sketch): PISO 0.282,0.379,0.333,153; ROJO 0.602,0.208,0.188,581; VERDE 0.155,0.535,0.309,636; AZUL 0.16,0.329,0.508,354; AMAR 0.409,0.449,0.142,1836.
    **Sensores**: enciende con el botón presionado. La OLED muestra `r g b c`, el color detectado y las 3 distancias. Centra el robot en una celda y anota `D_LADO` y `D_FRENTE`.
@@ -48,7 +50,7 @@ Con el hub conectado al USB-C, App Lab se conecta por WiFi (el puerto no puede i
 3. **Avance**: con pared enfrente a menos de 1 m (`RANGO`) avanza por distancia y no hay que calibrar. Sin pared a la vista avanza por tiempo: ajusta `MS_CELDA` hasta que avance 18 cm, y `MS_90` para giros de 90°. Calibra con la batería cargada. Si se desvía, ajusta `AJUSTE_DER`.
 4. **Cámara**: busca el amarillo (`HUE_AMAR`) y el blanco de las paredes en el piso por donde va a pasar (`ZONA_PASO`, `BLANCO_LO/HI`, `BLANCO_MAX` en `main.py`). La página web muestra la imagen (160 × 120): recuadro amarillo donde ve el amarillo, y el camino en rojo si ve blanco o verde si ve negro. Ajusta `ZONA_PASO` para que en un pasillo libre salga verde. No se guardan imágenes en `/app`: con ellas App Lab marca "failed to start".
 
-## Funcionamiento
+## ⚙️ Funcionamiento
 
 **Sketch (STM32)**, solo mueve el robot:
 

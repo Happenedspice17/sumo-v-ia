@@ -1,6 +1,10 @@
 ---
 title: Manual de uso
 subtitle: Robot de laberinto · UNO Q
+author:
+  - Manuel Harari López
+  - Víctor Miguel Vázquez
+  - Carlos Emiliano Escamilla Garibay
 ---
 
 ::: {.aviso}
