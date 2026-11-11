@@ -35,14 +35,12 @@ VOTO_MAX = 5                             # cada lectura vota pared (+1) o libre 
 ISLA = 3                                 # visitas a una celda para decir que rodea una isla
 Y_COLOR = 36                             # mm del eje al sensor de color (adelante)
 
-# ---------- Camara: solo busca el amarillo ----------
+# ---------- Camara (OV9281 monocromatica): solo blanco/negro en el piso por donde va a pasar ----------
 CAM_ID = 0
 USAR_CAM = True
 ANCHO, ALTO = 320, 240
-SAT_MIN, VAL_MIN, FRAC_COLOR = 90, 70, 0.08   # pixel "de color": saturado y no oscuro (piso negro, pared blanca)
-HUE_AMAR = (20, 35)                      # h min, h max del amarillo en HSV de OpenCV
 # Blanco = pared (el piso es negro y no lleva blanco). ZONA_PASO: piso por donde va a pasar, en fraccion de la imagen
-BLANCO_LO, BLANCO_HI = (0, 0, 170), (180, 60, 255)
+BLANCO_MIN = 170                         # gris 0-255: de aqui para arriba es blanco
 ZONA_PASO = (0.30, 0.55, 0.70, 1.00)
 BLANCO_MAX = 0.15                        # fraccion de blanco en ZONA_PASO para ir lento
 
@@ -259,23 +257,14 @@ def foto():
     return img if ok else None
 
 
-def hacia_objetivo(img):
-    """Si la camara ve amarillo en el piso: -1 izquierda, 0 al frente, 1 derecha (None si no lo ve).
-    Mira la mitad de abajo de la imagen partida en tercios y elige el tercio con mas amarillo."""
-    h, w = img.shape[:2]
-    hsv = cv2.cvtColor(img[int(h * 0.4):], cv2.COLOR_BGR2HSV)
-    m = cv2.inRange(hsv, (HUE_AMAR[0], SAT_MIN, VAL_MIN), (HUE_AMAR[1], 255, 255)) > 0
-    tercios = [m[:, i * w // 3:(i + 1) * w // 3].mean() for i in range(3)]
-    i = max(range(3), key=tercios.__getitem__)
-    return i - 1 if tercios[i] >= FRAC_COLOR / 2 else None
-
-
 def frac_blanco(img):
     """Fraccion de blanco (pared) en el piso por donde va a pasar."""
     h, w = img.shape[:2]
     x0, y0, x1, y1 = ZONA_PASO
-    hsv = cv2.cvtColor(img[int(y0 * h):int(y1 * h), int(x0 * w):int(x1 * w)], cv2.COLOR_BGR2HSV)
-    return (cv2.inRange(hsv, BLANCO_LO, BLANCO_HI) > 0).mean()
+    zona = img[int(y0 * h):int(y1 * h), int(x0 * w):int(x1 * w)]
+    if zona.ndim == 3:
+        zona = cv2.cvtColor(zona, cv2.COLOR_BGR2GRAY)
+    return (zona >= BLANCO_MIN).mean()
 
 
 def blanco_adelante():
@@ -409,18 +398,16 @@ def api_foto():
     img = (ult_img.copy() if ult_img is not None else None) if corriendo else (foto() if cam is not None else None)
     if img is None:
         return {"img": None}
-    ve = hacia_objetivo(img)
     b = frac_blanco(img)
+    if img.ndim == 2:
+        img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
     h, w = img.shape[:2]
     x0, y0, x1, y1 = ZONA_PASO               # rojo = ve blanco (pared) en el camino, verde = negro
     cv2.rectangle(img, (int(x0 * w), int(y0 * h)), (int(x1 * w) - 1, int(y1 * h) - 1),
                   (0, 0, 255) if b >= BLANCO_MAX else (0, 255, 0), 2)
-    if ve is not None:                   # marca el tercio donde ve el amarillo
-        x0 = (ve + 1) * w // 3
-        cv2.rectangle(img, (x0, int(h * 0.4)), (x0 + w // 3 - 1, h - 1), (0, 255, 255), 2)
     img = cv2.resize(img, (160, 120))
     ok, buf = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 40])
-    return limpio({"img": base64.b64encode(buf).decode(), "amarillo": ve, "blanco": round(b, 2)})
+    return limpio({"img": base64.b64encode(buf).decode(), "blanco": round(b, 2)})
 
 
 def limpio(x):
@@ -439,15 +426,13 @@ ui.expose_api("GET", "/api/tof_cal", api_tof_cal)
 # ---------- Estrategia ----------
 def decidir(izq, frente, der, visitas, usos, saltos):
     """De frente, si no izquierda, si no derecha. Tras un salto: la salida nueva mas lejana.
-    Con 3 visitas a la celda (isla): la salida menos usada; la camara desempata hacia el amarillo."""
+    Con 3 visitas a la celda (isla): la salida menos usada."""
     ops = salidas(izq, frente, der)
     nuevas = [r for r in ops if r != 2 and vecino(pos, (rumbo + r) % 4) not in muros]
     if saltos and nuevas:
         return max(nuevas, key=lambda r: {-1: izq, 0: frente, 1: der}[r])
     if visitas[pos] >= ISLA:
-        img = foto() if cam is not None else None
-        ve = hacia_objetivo(img) if img is not None else None
-        return min(ops, key=lambda r: (usos.get((pos, (rumbo + r) % 4), 0), r != ve, ops.index(r)))
+        return min(ops, key=lambda r: (usos.get((pos, (rumbo + r) % 4), 0), ops.index(r)))
     return ops[0]
 
 

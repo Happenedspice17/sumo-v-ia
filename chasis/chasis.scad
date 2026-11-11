@@ -138,7 +138,7 @@ MASTIL_XY = [0, 10.5];   // al centro, entre el UNO y el OLED
 CAM_Z = 150;             // altura del lente sobre el suelo
 CAM_INCL = 40;           // grados hacia abajo (ve el piso desde 7 cm adelante del eje)
 CAM_FOV = [100, 75];     // lente M12 gran angular (horizontal, vertical)
-CAM_PCB = 32;            // modulo UVC de 32 x 32 mm, agujeros M2 a 28 mm
+CAM_PCB = 32;            // innomaker U20CAM-9281M: medida por confirmar (antes modulo de 32 x 32 mm, agujeros M2 a 28 mm)
 CAM_DZ = 12;             // la placa de la camara va 12 mm arriba de la manga: su parte de atras queda libre
 // OLED en la cara de atras del mastil (solo Q): header acodado de 4 pines hacia ARRIBA (el OLED va de cabeza; en el
 // codigo se gira la pantalla 180 grados), sujeto por un clip impreso. Asi sus cables salen por arriba, sin cruzar los del shield.

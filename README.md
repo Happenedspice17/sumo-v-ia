@@ -73,7 +73,7 @@ flowchart LR
         direction TB
         FSM["Máquina de estados<br/>SENSA → DECIDE → GIRA → AVANZA"] --> MAPA["Mapa por votos<br/>paredes · colores · meta"]
         MAPA --> BFS["Ruta más corta (BFS)"]
-        CAM["Cámara USB · OpenCV<br/>amarillo · blanco/negro"] --> FSM
+        CAM["Cámara OV9281 mono · OpenCV<br/>blanco/negro en el camino"] --> FSM
         WEB["Página web :7000<br/>calibración y diagnóstico"]
     end
     CTRL <== "Bridge RPC (MessagePack)<br/>mover · girar · odo · set_ref · set_tof" ==> FSM
@@ -134,7 +134,7 @@ Cada sensor se ajusta con **mínimos cuadrados**, `real = a·crudo + b`, a parti
 Por tiempo, los giros de "90°" medían **~70°** en pista. Con el **MPU-6050** (opcional, se detecta solo) el giro se cierra por ángulo integrado, con bias medido al encender (200 muestras), rumbo absoluto acumulado (cada giro corrige el error del anterior) y compensación de inercia (`ADELANTO`). En recta sostiene el rumbo con un control proporcional.
 
 ### 7. La cámara como sensor auxiliar, no primario
-La primera versión usaba la cámara para ver paredes y el robot **chocaba constantemente**. Desde arriba veía demasiadas paredes, zapatos y reflejos, y no había forma robusta de priorizar. Ahora la cámara solo (a) busca el amarillo para desempatar y (b) clasifica el piso inmediato como blanco o negro. Si ve blanco, el robot **baja la velocidad** y el ToF frontal confirma. La cámara **nunca bloquea un camino**: un falso positivo cuesta tiempo, no la corrida.
+La primera versión usaba la cámara para ver paredes y el robot **chocaba constantemente**. Desde arriba veía demasiadas paredes, zapatos y reflejos, y no había forma robusta de priorizar. Ahora la cámara solo clasifica el piso inmediato como blanco (pared) o negro. Además, al ser monocromática (OV9281, obturador global), no puede ver el amarillo, así que la meta queda solo en el sensor de color, que fue el componente más confiable. Si ve blanco, el robot **baja la velocidad** y el ToF frontal confirma. La cámara **nunca bloquea un camino**: un falso positivo cuesta tiempo, no la corrida.
 
 ### 8. Página web sin interferir con la corrida
 Cada consulta web eran 5 a 9 llamadas RPC que competían con el robot por el Bridge y por la cámara. Durante una corrida la página **solo muestra datos en caché** (última lectura y última foto), y la OLED no se refresca en movimiento porque un refresco I²C bloquea ~25 ms.
@@ -152,7 +152,7 @@ Pruebas en un laberinto de **2 × 2 m** con paredes de madera pintadas de blanco
 | ToF | ✅ ±15 mm, sin lecturas espurias | Umbrales al punto medio + calibración lineal |
 | Giros por tiempo | ⚠️ ~70° en vez de 90° | MPU-6050 o ajuste de `MS_90` |
 | Avance por tiempo | ⚠️ Inconsistente con la batería | Avance por distancia |
-| Cámara para paredes | ❌ Choques por exceso de información | Relegada a amarillo y blanco/negro |
+| Cámara para paredes | ❌ Choques por exceso de información | Relegada a asistencia blanco/negro |
 | Mano derecha vs. izquierda | Derecha llegó más lejos | Análisis: priorizar "de frente" rompe la garantía del seguidor de pared |
 | Autonomía | ~3 h de pruebas continuas | Batería 2S 18650 |
 
@@ -173,7 +173,7 @@ Pruebas en un laberinto de **2 × 2 m** con paredes de madera pintadas de blanco
 | Color | TCS34725 | I²C 0x29 |
 | Orientación | MPU-6050 (opcional) | I²C 0x68, ±500 °/s |
 | Pantalla | OLED SSD1306 128×64 | I²C 0x3C |
-| Visión | Cámara UVC + hub USB-C (adaptador OTG) | USB |
+| Visión | innomaker U20CAM-9281M: OV9281 monocromática 1 MP, obturador global, 120 fps + hub USB-C (adaptador OTG) | USB 2.0 UVC |
 | Potencia | L298N + 2 motores N20 | PWM D5/D6, dirección D7–D10 |
 | Energía | Batería 2S 18650 (7.4 V) | VIN |
 

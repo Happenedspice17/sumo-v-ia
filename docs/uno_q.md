@@ -68,13 +68,13 @@ Funciona sin cámara: el R3 puede hacerlo solo. Un mapa de 16×16 ocupa ~512 byt
 
 ## 5. Cámara
 
-- Cámara USB UVC de 32×32 mm, lente gran angular M12, agujeros M2 a 28 mm.
+- Cámara innomaker U20CAM-9281M (OV9281, 1 MP monocromática, obturador global, hasta 720p a 120 fps, lente M12 gran angular). Es UVC: Linux la ve sin driver. Las medidas de la placa están por confirmar (el CAD aún usa 32×32 mm, agujeros M2 a 28 mm).
 - No es MIPI-CSI porque el Q necesita la Media Carrier board (más grande, 1.8 V) para usar CSI.
 
 Qué hace hoy (no calcula paredes por cámara):
 
-- Busca el amarillo (`HUE_AMAR`): si lo ve, anticipa la meta. El TCS34725 confirma antes de parar.
-- Revisa el piso del camino (`ZONA_PASO`): blanco (`BLANCO_LO/HI`) = pared, negro = libre. Con blanco el robot va lento y el frontal hace el doble check.
+- Es monocromática: no busca el amarillo (lo detecta el TCS34725). Solo mide cuánto blanco (pared) hay en el piso por donde va a pasar.
+- Revisa el piso del camino (`ZONA_PASO`): blanco (gris ≥ `BLANCO_MIN`) = pared, negro = libre. Con blanco el robot va lento y el frontal hace el doble check.
 - No ve el laberinto completo de antemano: las paredes bloquean la vista.
 - Geometría actual:
 
@@ -87,7 +87,7 @@ Qué hace hoy (no calcula paredes por cámara):
 
 Montaje: marco de 33 × 33 mm, 4 M2 a 28 mm con ±1 mm de juego y tuerca atrás, hueco para el conector USB arriba a la izquierda (visto por atrás) y paso de cables de alimentación abajo al centro.
 
-La Q busca la cámara de `/dev/video0` a `video11`; `video0` y `video1` son internos de la placa. `ZONA_PASO`, `HUE_AMAR` y `BLANCO_LO/HI` se ajustan viendo la imagen en el panel web.
+La Q busca la cámara de `/dev/video0` a `video11`; `video0` y `video1` son internos de la placa. `ZONA_PASO`, `BLANCO_MIN` y `BLANCO_MAX` se ajustan viendo la imagen en el panel web.
 
 ## 6. Sensor de color (TCS34725)
 

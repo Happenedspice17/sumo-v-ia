@@ -218,7 +218,7 @@ VISTAS = {
     "q_iso": ({"PLACA": "unoq"}, (300, -330, 330, 0, 5, 85), [
         ("Arduino UNO Q\n(4 M3×8 a insertos)", (30, -50, UNO_Z + 3), (-250, 150)),
         ("Proto Shield con mini\nprotoboard: bus I2C", (-15, -31, zbb("unoq") + 0.8), (230, 140)),
-        ("Cámara UVC 32 × 32\nlente M12 gran angular", (0, 30, 165), (-260, -60)),
+        ("Cámara OV9281 mono\nlente M12 gran angular", (0, 30, 165), (-260, -60)),
         ("Mástil PTR 10 o 15\n(medida pendiente)", (7.5, 10.5, 120), (-260, 40)),
         ("Hub USB en repisa\n(4 M3×8 a insertos)", (20, 39.5, 96.5), (240, -40)),
         ("OLED de cabeza en el\nclip del mástil", (0, -3, 120), (-240, -20)),
