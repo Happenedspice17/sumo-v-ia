@@ -124,6 +124,10 @@ Con la Q alimentada por VIN, su USB-C no da 5 V al hub: el hub debe recibir ener
 
 En la práctica (pruebas en pista del equipo) el UNO Q no siempre reconocía la cámara aunque tuviera 5 V y estuviera conectada; se resolvió con un adaptador OTG "tonto" de USB-C a USB-A.
 
+### Problema: App Lab no entra a la placa (11-nov)
+
+Con la Q conectada por USB a la PC, App Lab no aparecía por red y al entrar daba `failed to download export: ... localhost:8800 ... actively refused it`. En ese momento la batería se estaba cargando con el switch principal apagado. Sospecha del equipo (sin confirmar): una falla en el GND del robot causaba un falso contacto o un corto que no dejaba entrar a la placa. Regla: desconectar la Q del robot (o la batería y el cargador) antes de programarla por USB, y revisar la continuidad del GND.
+
 ### Ruta PD en el robot
 
 Batería → interruptor → fusible de 3 A → módulo DC-DC con salida USB-C PD SOURCE (entrada desde 6 V o menos, salida 5 V / 3 A) → Q.
