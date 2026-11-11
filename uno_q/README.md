@@ -28,6 +28,7 @@ GND común entre todo. No alimentes el UNO Q con el regulador de 5 V del L298N. 
 
 1. Crea una app nueva llamada `Laberinto`.
 2. Copia `sketch/sketch.ino`, `python/main.py`, `python/requirements.txt` y `assets/index.html` (carpeta `assets/` en la raíz de la app).
+   Hay 2 versiones del sketch: `sketch/` (con MPU-6050; si no lo encuentra al arrancar, va por tiempo igual) y `sketch_sin_mpu/` (sin el código del MPU, giros y rectas solo por tiempo). Copia una de las dos, con su `oled.h`. El Python es el mismo para las dos.
 3. Agrega el brick **WebUI - HTML** (panel Bricks). Sin él no hay página web.
 4. En las librerías del sketch agrega `Adafruit SSD1306`, `Adafruit GFX Library`, `Adafruit TCS34725` y `VL53L0X` (de Pololu).
 5. Pulsa **Run**. App Lab carga el sketch al STM32 y arranca el Python.
