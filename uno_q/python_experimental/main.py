@@ -49,8 +49,8 @@ DY = [1, 0, -1, 0]
 CELDA = 180                              # mm por avance; la posicion solo sirve para contar visitas
 PARED = 120                              # mm: lateral con esto o mas = libre
 PARED_F = 45                             # mm reales (frontal calibrado): menos de esto = pared (= PARED_F del sketch)
-FRENTE_LIBRE = 135                       # mm reales: a la mitad entre pared en su celda (~45) y en la siguiente (~225)
-D_FRENTE_TOF = 45                        # mm reales donde se detiene el sketch con pared enfrente (= D_FRENTE)
+FRENTE_LIBRE = 110                       # mm reales: entre pared en su celda (10 a 45) y en la siguiente (190 a 225)
+D_FRENTE_TOF = 10                        # mm reales donde se detiene el sketch con pared enfrente (= D_FRENTE)
 VOTO_MAX = 5                             # cada lectura vota pared (+1) o libre (-1); tope para que el mapa se corrija
 ISLA = 3                                 # visitas a una celda para decir que rodea una isla
 Y_COLOR = 36                             # mm del eje al sensor de color (adelante)
@@ -219,8 +219,9 @@ def avanzar():
 
 
 def salidas(izq, frente, der):
-    """Salidas libres: primero de frente, luego mano izquierda (0 frente, -1 izq, 1 der); sin ninguna, media vuelta."""
-    return [r for r, ok in ((0, frente >= FRENTE_LIBRE), (-1, izq >= PARED), (1, der >= PARED)) if ok] or [2]
+    """Salidas libres, regla de la mano izquierda pura: izquierda, frente, derecha (-1 izq, 0 frente, 1 der);
+    sin ninguna, media vuelta. Preferir siempre el mismo lado garantiza recorrer todo el muro conexo."""
+    return [r for r, ok in ((-1, izq >= PARED), (0, frente >= FRENTE_LIBRE), (1, der >= PARED)) if ok] or [2]
 
 
 # ---------- Mapa ----------
@@ -516,7 +517,7 @@ def api_lectura():
 
 def que_haria(izq, frente, der, mueve):
     """Simulacion para pruebas: que haria el robot con lo que leen los ToF ahora (no mueve nada)."""
-    if frente < D_FRENTE_TOF - 10:
+    if frente < D_FRENTE_TOF - 5:         # = D_CERCA del sketch
         return "Retrocede: muy pegado a la pared de enfrente", 2
     if mueve and frente < PARED_F:
         return f"Frena: pared a {frente} mm, se detiene a {D_FRENTE_TOF} mm", 0
@@ -653,7 +654,7 @@ ui.expose_api("GET", "/api/cam_dist", api_cam_dist)
 
 # ---------- Estrategia ----------
 def decidir(izq, frente, der, visitas, usos, saltos):
-    """De frente, si no izquierda, si no derecha. Tras un salto: la salida nueva mas lejana.
+    """Mano izquierda: izquierda, si no frente, si no derecha. Tras un salto: la salida nueva mas lejana.
     Con 3 visitas a la celda (isla): la salida menos usada."""
     ops = salidas(izq, frente, der)
     nuevas = [r for r in ops if r != 2 and vecino(pos, (rumbo + r) % 4) not in muros]

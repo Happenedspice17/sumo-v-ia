@@ -78,7 +78,7 @@ Con el hub conectado al USB-C, App Lab se conecta por WiFi (el puerto no puede i
 Es una máquina de estados: `SENSA` → `DECIDE` → `GIRA` → `AVANZA` → `SENSA` (`ESCANEA` en lugar de `SENSA` tras un salto). Todo se decide con el robot quieto; el color se revisa todo el tiempo. La fase sale en la OLED junto al estado y en la web.
 
 1. Lee los 3 ToF, la menor de 3 lecturas de cada uno (5 si en el avance hubo un cambio brusco). Cada lectura vota pared (+1) o libre (−1) en el mapa, con tope ±`VOTO_MAX`: una lectura mala no borra lo que vieron las demás. Por donde pasó queda libre seguro.
-2. Prioridad: de frente (≥ 220 mm, `FRENTE_LIBRE`: a la mitad entre pared en su celda ~130 y en la siguiente ~310); si no, izquierda (lateral ≥ 120 mm); si no, derecha; si no, media vuelta.
+2. Regla de la mano izquierda pura: izquierda (lateral ≥ 120 mm); si no, de frente (≥ 110 mm reales, `FRENTE_LIBRE`, con el frontal calibrado); si no, derecha; si no, media vuelta.
 3. Tras un cambio brusco va a la salida libre que lleve a una celda que no está en el mapa, la de lectura más lejana.
 4. Si ya pasó 3 veces por esa celda (rodea una isla) toma la salida que ha usado menos. La celda sale de los mm que de verdad avanzó.
 5. Antes de cada avance, con una sola foto, la cámara:

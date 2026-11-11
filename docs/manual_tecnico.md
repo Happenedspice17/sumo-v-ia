@@ -20,7 +20,7 @@ author:
 - **Laberinto:** celdas de 180 mm. La meta es el cuadro amarillo; no se supone un tamaño de laberinto fijo.
 - **Robot:** diferencial con dos ruedas motrices y un patín, huella ≤ 120 mm.
 - **Estrategia en dos fases:**
-  1. **Exploración** guiada por los sensores: de frente si se puede, si no izquierda, si no derecha, si no media vuelta. El mapa se va llenando con votos.
+  1. **Exploración** guiada por los sensores: regla de la mano izquierda: izquierda si se puede, si no de frente, si no derecha, si no media vuelta. El mapa se va llenando con votos.
   2. **Ruta corta** en la siguiente corrida: si el mapa ya tiene la meta, va por el camino más corto conocido (BFS). Si algo no cuadra, sigue explorando desde donde quedó.
 
 # 2. Dos cerebros
@@ -203,7 +203,7 @@ Son experimentales porque dependen de que la calibración por filas sea estable 
 # 7. Cómo decide y qué mapa guarda
 
 ::: {.simple}
-**En simple:** el robot decide siempre quieto, en cuatro pasos que se repiten: **mira** (con los láser), **decide** (a dónde ir), **gira** y **avanza** una celda. Prefiere seguir de frente; si no puede, gira a la izquierda; si no, a la derecha; y si está encerrado, da media vuelta. Si pasa tres veces por el mismo lugar (da vueltas a una isla), prueba la salida que menos ha usado.
+**En simple:** el robot decide siempre quieto, en cuatro pasos que se repiten: **mira** (con los láser), **decide** (a dónde ir), **gira** y **avanza** una celda. Sigue la regla de la mano izquierda: si puede, gira a la izquierda; si no, sigue de frente; si no, a la derecha; y si está encerrado, da media vuelta. Si pasa tres veces por el mismo lugar (da vueltas a una isla), prueba la salida que menos ha usado.
 :::
 
 **Máquina de estados** (Python; la fase se ve en la OLED y en la web):
@@ -218,12 +218,14 @@ Son experimentales porque dependen de que la calibración por filas sea estable 
 | `GIRA` | Pide `girar(k)` y espera |
 | `AVANZA` | Pide `mover(180, lento)` y espera; lee mm recorridos y saltos |
 
-**Prioridad de salidas** (todas con lecturas de ToF):
+**Prioridad de salidas: regla de la mano izquierda pura** (todas con lecturas de ToF):
 
-1. **Frente** si el frontal lee ≥ 220 mm (`FRENTE_LIBRE`): está a la mitad entre pared en su celda (~130) y en la siguiente (~310).
-2. **Izquierda** si el lateral lee ≥ 120 mm.
-3. **Derecha**, con el mismo criterio.
+1. **Izquierda** si el lateral lee ≥ 120 mm.
+2. **Frente** si el frontal (calibrado) lee ≥ 110 mm (`FRENTE_LIBRE`): entre la pared de su celda (10 a 45 mm reales) y la de la siguiente (190 a 225).
+3. **Derecha**, con el mismo criterio que la izquierda.
 4. **Media vuelta** si no hay ninguna.
+
+Antes se probó "frente primero, luego izquierda". En pista se atoraba en una zona: preferir el frente rompe la garantía del seguidor de pared, que solo recorre todo el muro conexo si **siempre** prefiere el lado de su mano. Con la mano izquierda pura esa garantía vuelve.
 
 **Reglas que la modifican**
 
@@ -276,7 +278,7 @@ Valores tal como están en `sketch.ino` y `main.py`.
 | `MS_90` | 250 ms | Giro de 90° por tiempo (solo sin MPU-6050) |
 | `VEL_EXPLORA` / `VEL_LENTO` / `VEL_GIRO` / `VEL_MIN` | 140 / 100 / 130 / 80 | PWM de 0 a 255 |
 | `PARED` / `PARED_F` | 120 / 45 mm | Pared lateral / pared al frente (frente en mm reales: requiere el frontal calibrado) |
-| `D_FRENTE` / `D_CERCA` | 45 / 10 mm | Alto al frente / retrocede si baja de 35 mm (mm reales) |
+| `D_FRENTE` / `D_CERCA` | 10 / 5 mm | Alto al frente / retrocede si baja de 5 mm (mm reales, frontal calibrado) |
 | `FRENA_K` | 2 PWM/mm | Frenado proporcional al acercarse |
 | `SALTO` / `TRAS_SALTO` | 120 / 124 mm | Cambio brusco / avance posterior para centrarse en la celda abierta |
 | `D_LADO_MIN` | 90 mm | Solo corrige el centrado si un lateral lee menos |
@@ -284,7 +286,7 @@ Valores tal como están en `sketch.ino` y `main.py`.
 | `KC` / `KD` | 0.8 / 0.3 | Centrado (posición / velocidad de acercamiento) |
 | `KG` | 2.0 PWM/° | Sostener rumbo en recta (con MPU-6050) |
 | `ADELANTO` | 6° | Corta el giro antes por la inercia (si se pasa, subir) |
-| `AJUSTE_DER` | 0 | Corrige si un motor es más fuerte |
+| `AJUSTE_DER` | −10 | Diferencia de PWM en recta; negativo = más fuerza al motor izquierdo (en pista se iba a la izquierda) |
 | `INV_IZQ` / `INV_DER` | true / true | Invierte el sentido del motor por software |
 | `BRILLO_MIN`, `DIST_MAX` | 1.3 / 0.02 | Filtros del sensor de color |
 
@@ -292,7 +294,7 @@ Valores tal como están en `sketch.ino` y `main.py`.
 
 | Parámetro | Valor | Qué controla |
 |---|---|---|
-| `FRENTE_LIBRE` | 135 mm | El frente cuenta como salida (mm reales: a la mitad entre ~45 y ~225) |
+| `FRENTE_LIBRE` | 110 mm | El frente cuenta como salida (mm reales: entre 10-45 y 190-225) |
 | `VOTO_MAX` | 5 | Tope de votos por pared |
 | `ISLA` | 3 visitas | Pasa a la salida menos usada |
 | `Y_COLOR` | 36 mm | Del eje al sensor de color |
@@ -339,7 +341,7 @@ La bitácora completa de cambios, problemas y soluciones está en `historial_cam
 - **Cámara:** primero detectaba paredes para anticipar caminos; después buscó también el amarillo; con la cámara monocromática OV9281 detecta blanco (pared) con umbral automático y corrige el rumbo con el punto de fuga del pasillo; la versión experimental además mide distancias y aberturas.
 - **Avance por distancia:** el frontal mide la celda, para a 130 mm y retrocede si queda muy cerca; sin pared va por tiempo.
 - **Cambios bruscos** de los ToF (`SALTO`): el robot se centra en la celda abierta y la escanea.
-- **Decisión:** pasó de *flood fill* con paredes de la cámara, y luego de reglas de pared, a una máquina de estados `SENSA → DECIDE → GIRA → AVANZA` con prioridad frente, izquierda, derecha.
+- **Decisión:** pasó de *flood fill* con paredes de la cámara, y luego de reglas de pared, a una máquina de estados `SENSA → DECIDE → GIRA → AVANZA` con prioridad frente, izquierda, derecha; después, regla de la mano izquierda pura (izquierda, frente, derecha).
 - **Mapa:** votos ±5 por pared y colores por celda; ruta corta por BFS en la siguiente corrida.
 - **Meta:** el STM32 para solo al confirmar el amarillo, sin esperar a Python.
 - **Giros con MPU-6050** opcional: rumbo absoluto y rumbo sostenido en recta; sin él, por tiempo.
