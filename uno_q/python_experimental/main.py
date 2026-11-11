@@ -1,10 +1,12 @@
 from arduino.app_utils import *
 from arduino.app_bricks.web_ui import WebUI
+import os
+os.environ.setdefault("OPENCV_LOG_LEVEL", "ERROR")   # sin camara, OpenCV llena el log de WARN cada 2 s
 import cv2
+import glob
 import math
 import numpy as np
 import json
-import os
 import threading
 import time
 import base64
@@ -60,6 +62,7 @@ SIG = (60, 240)                          # mm del frontal: tramo de las paredes 
 pos = (0, 0)
 rumbo = 0
 cam = None
+videos = None
 cam_lock = threading.Lock()
 cuenta = [0] * len(COLORES)
 encontrado = False
@@ -257,20 +260,25 @@ def cargar():
 
 # ---------- Vision ----------
 def abrir_camara():
-    global cam
-    import glob
-    print("video:", sorted(glob.glob("/dev/video*")))
-    for i in range(CAM_ID, 12):
-        cam = cv2.VideoCapture(i, cv2.CAP_V4L2)
-        if cam.isOpened() and cam.read()[0]:
+    """Prueba solo los /dev/video que existen; avisa en el log solo si la lista cambia."""
+    global cam, videos
+    devs = sorted(int(d[10:]) for d in glob.glob("/dev/video*") if d[10:].isdigit())
+    if devs != videos:
+        videos = devs
+        print("video:", devs, "(0 y 1 son internos: si no hay mas, la camara no esta conectada)")
+    cam = None
+    for i in devs:
+        if i < CAM_ID:
+            continue
+        c = cv2.VideoCapture(i, cv2.CAP_V4L2)
+        if c.isOpened() and c.read()[0]:
             print("Camara en /dev/video%d" % i)
+            c.set(cv2.CAP_PROP_FRAME_WIDTH, ANCHO)
+            c.set(cv2.CAP_PROP_FRAME_HEIGHT, ALTO)
+            c.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+            cam = c
             break
-        cam.release()
-    cam.set(cv2.CAP_PROP_FRAME_WIDTH, ANCHO)
-    cam.set(cv2.CAP_PROP_FRAME_HEIGHT, ALTO)
-    cam.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-    if not cam.isOpened():
-        cam = None
+        c.release()
     aplica_expo()
     return cam is not None
 
