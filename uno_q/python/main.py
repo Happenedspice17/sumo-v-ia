@@ -532,9 +532,9 @@ def api_tof():
     izq, frente, der = rpc("odo", 6), rpc("odo", 5), rpc("odo", 7)
     mueve = bool(rpc("odo", 2) & 8)
     accion, rel, n = que_haria(izq, frente, der, mueve)
-    return {"izq": izq, "frente": frente, "der": der, "pared": 120, "pared_f": PARED_F,
-            "libres": celdas_libres(), "falta": rpc("odo", 1), "mueve": mueve,
-            "accion": accion, "rel": rel, "modo": modo, "ciego": odo["ciego"], "cam_mm": odo["cam_mm"]}
+    return limpio({"izq": izq, "frente": frente, "der": der, "pared": 120, "pared_f": PARED_F,
+                   "libres": celdas_libres(), "falta": rpc("odo", 1), "mueve": mueve,
+                   "accion": accion, "rel": rel, "modo": modo, "ciego": odo["ciego"], "cam_mm": odo["cam_mm"]})
 
 
 def api_modo(m: str):
@@ -594,7 +594,12 @@ def api_foto():
     ok, buf = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 40])
     vivo = {"cam_mm": round(d) if d else None, "cam_err": error_camara(d), "falta": rpc("odo", 1),
             "frente": rpc("odo", 5), "paredes": rpc("odo", 2)}
-    return {"img": base64.b64encode(buf).decode(), "res": res, "odo": {**odo, **vivo}}
+    return limpio({"img": base64.b64encode(buf).decode(), "res": res, "odo": {**odo, **vivo}})
+
+
+def limpio(x):
+    """Pasa tipos de numpy a tipos de Python para que FastAPI los pueda mandar."""
+    return json.loads(json.dumps(x, default=lambda o: o.item() if hasattr(o, "item") else str(o)))
 
 
 ui = WebUI()
