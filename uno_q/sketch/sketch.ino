@@ -26,18 +26,21 @@ const int AJUSTE_DER = -10;   // PWM de diferencia: negativo = mas fuerza al mot
 const bool INV_IZQ = true;    // true si ese motor gira al reves (en vez de voltear cables)
 const bool INV_DER = true;
 const int PARED = 120;        // mm: lectura menor = hay pared (lados)
-const int PARED_F = 55;       // mm reales (frontal calibrado): menos de esto = pared en su celda (se detiene a 35)
-const int D_FRENTE = 35;      // mm reales: al leer esto al frente se detiene (frontal calibrado; pedido en pista: 30-40)
+// Geometria del chasis (CAD, origen en el eje de las ruedas): frontal 54 mm adelante del eje; laterales a 43 mm del
+// centro y 40 adelante. Celda de 180 con paredes de 12: del centro de la celda a la cara de la pared hay 84 mm.
+const int MEDIA_CELDA = 84;
+const int TOF_F_Y = 54, TOF_L_X = 43, TOF_L_Y = 40;
+const int PARED_F = 55;       // mm reales (frontal calibrado): menos de esto = pared en su celda
+const int D_FRENTE = MEDIA_CELDA - TOF_F_Y;   // 30 mm reales: el frontal lee esto con el eje al centro de la celda
 const int D_CERCA = 5;        // mm: si queda mas de esto por debajo de D_FRENTE, se hace para atras
 const int FRENA_K = 2;        // PWM por mm: con pared al frente baja la velocidad al acercarse
-const int D_LADO = 50;        // mm a una pared lateral con el robot centrado
+const int D_LADO = MEDIA_CELDA - TOF_L_X;     // 41 mm: cada lateral con el robot centrado en el carril
 const float KC = 0.8;         // ganancia de centrado
 const float KD = 0.3;         // ganancia de rumbo: corrige segun que tan rapido se acerca a una pared lateral
-const int D_LADO_MIN = 90;    // mm: solo corrige si un lateral lee menos de esto (se aleja de esa pared)
 const int CELDA = 180;        // mm de centro a centro de celda
 const int RANGO = 1000;       // mm: con el frontal leyendo menos, avanza por distancia; mas lejos, por tiempo
 const int SALTO = 120;        // mm: cambio brusco entre 2 lecturas (50 -> 200, 100 -> 300)
-const int TRAS_SALTO = 124;   // mm tras abrirse un lateral: centro de esa celda (90 + 40 del sensor - 6 de media pared)
+const int TRAS_SALTO = CELDA / 2 + TOF_L_Y - 6;   // 124 mm tras abrirse un lateral: centro de esa celda
 const uint32_t T_CTRL = 10;
 const uint32_t T_COLOR = 30;
 
@@ -111,7 +114,8 @@ uint32_t tGyro;
 // Acelerometro: choques, robot levantado. Giroscopio: giro atorado
 const float CHOQUE_G = 0.6;   // g: golpe horizontal sobre el promedio que cuenta como choque (calibrar con el pico del log)
 const float LEVANTA_G = 0.8;  // g: si la vertical baja de esto 150 ms seguidos, lo levantaron o se volteo
-const int RETRO_MS = 250;     // ms para atras despues de un choque
+const int RETRO_MS = 450;     // ms para atras despues de un choque (a VEL_RETRO)
+const int VEL_RETRO = 110;
 const int ATORADO_MS = 400;   // ms girando sin que el giroscopio vea 2 grados: atorado contra la pared
 float axF = 0, ayF = 0, pico = 0;
 int choque = 0, levantado = 0, atorones = 0;
@@ -129,6 +133,9 @@ int rpcMover(int mm, int lento) {
   return 1;
 }
 
+int eCarril = 0;              // error de centrado actual (mm; 0 = centrado) y si hay pared a los 2 lados
+bool hayCarril = false;
+uint32_t tParalelo = 0;       // desde cuando va centrado y paralelo a las paredes (para corregir la deriva del MPU)
 int eCen;                     // centrado: error anterior, su cambio en mm/s y cuando se midio
 float deCen;
 unsigned long tCen;
@@ -339,11 +346,14 @@ void termina() {
 
 // Centrado con los 2 laterales: e = posicion entre paredes; de = que tan rapido cambia (rumbo torcido)
 float centrado() {
-  bool L = dist[0] < D_LADO_MIN, R = dist[2] < D_LADO_MIN;   // lejos de las 2 paredes: va derecho
+  // centrado en el carril: con las 2 paredes, que lean lo mismo; con una, que lea D_LADO (geometria del chasis)
+  bool L = dist[0] < PARED, R = dist[2] < PARED;   // sin paredes: va derecho (rumbo del MPU)
   int e = 0;
   if (L && R) e = dist[0] - dist[2];
-  else if (L) e = dist[0] - D_LADO_MIN;
-  else if (R) e = D_LADO_MIN - dist[2];
+  else if (L) e = 2 * (dist[0] - D_LADO);
+  else if (R) e = 2 * (D_LADO - dist[2]);
+  eCarril = e;
+  hayCarril = L && R;
   unsigned long now = millis();
   if (!(L || R)) { tCen = 0; deCen = 0; }
   else if (!tCen) { tCen = now; eCen = e; deCen = 0; }
@@ -385,7 +395,7 @@ void control() {
   }
   // Choque (acelerometro): atras RETRO_MS y termina; Python vuelve a leer y se endereza antes de avanzar
   if (tRetro) {
-    if (millis() < tRetro) { motores(-VEL_MIN, -VEL_MIN); return; }
+    if (millis() < tRetro) { motores(-VEL_RETRO, -VEL_RETRO); return; }
     tRetro = 0;
     termina();
     return;
@@ -403,12 +413,27 @@ void control() {
   if (objetivo < 0 && dist[1] < RANGO) objetivo = max(dist[1] - (int)falta(), D_FRENTE);   // aparece pared: sigue por distancia
   long f = falta();
   if (f <= 0 || t > 3 * dur) { termina(); return; }   // 3 * dur: seguro si el frontal deja de bajar
+  if (total - f > CELDA + TRAS_SALTO) { termina(); return; }   // varios saltos seguidos no lo alargan sin fin
   const float zona = CELDA / 4.0f;
   float tope = f < zona ? VEL_MIN + (vmax - VEL_MIN) * f / zona : vmax;
   if (dist[1] < D_FRENTE + 100) tope = min(tope, (float)VEL_MIN + FRENA_K * (dist[1] - D_FRENTE));   // frena al acercarse
   vel = min(vel + 6.0f, tope);
   float corr = centrado();
-  if (mpuOk && signo) corr += constrain(KG * (signo * yaw - ref), -20.0f, 20.0f);   // sostiene el rumbo
+  if (mpuOk && signo) {
+    corr += constrain(KG * (signo * yaw - ref), -20.0f, 20.0f);   // sostiene el rumbo
+    // Con pared a los 2 lados, centrado (|e| < 15 mm) y paralelo (se acerca < 15 mm/s) durante 300 ms: el rumbo real
+    // es el del pasillo. Lo que difiera del deseado es deriva del giroscopio: corrige la mitad de una vez.
+    if (hayCarril && abs(eCarril) < 15 && fabs(deCen) < 15) {
+      if (!tParalelo) tParalelo = millis();
+      else if (millis() - tParalelo > 300) {
+        float d = signo * yaw - ref;
+        if (fabs(d) < 12) ref += 0.5f * d;
+        tParalelo = millis();
+      }
+    } else {
+      tParalelo = 0;
+    }
+  }
   motores(vel - corr, vel + corr);
 }
 
