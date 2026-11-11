@@ -50,12 +50,11 @@
     <div style="font-size:14px;color:#666">Simulación: tapa o acerca un sensor con la mano y mira qué decide. No mueve el robot.</div>
     <div id="tofTxt" style="font-family:monospace;font-size:15px;margin-top:8px;white-space:pre-line"></div>
     <div style="margin-top:14px;border-top:1px solid #ccc;padding-top:10px">
-      <b>Calibrar distancia</b> (con el robot quieto): pon una pared a la distancia medida con el vernier desde la cara del sensor, escribe los mm y aprieta el sensor. Mide 50, 100 y 150 mm (y 250-300 mm con flexómetro para el frontal).
+      <b>Calibrar distancia</b> (con el robot quieto): pon algo plano y blanco a <b>100 mm</b> de la cara del sensor (vernier) y aprieta ese sensor. Promedia 10 lecturas y corrige el desfase; si lo repites, reemplaza la calibración anterior de ese sensor.
       <div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap">
-        <input id="calMm" type="number" value="50" min="1" style="width:80px;font-size:18px;padding:6px"> mm
-        <button style="background:#455a64;padding:10px 14px" onclick="calTof(0)">Izq</button>
-        <button style="background:#455a64;padding:10px 14px" onclick="calTof(1)">Frente</button>
-        <button style="background:#455a64;padding:10px 14px" onclick="calTof(2)">Der</button>
+        <button style="background:#455a64;padding:10px 14px" onclick="calTof(0, 100)">Izq a 100 mm</button>
+        <button style="background:#455a64;padding:10px 14px" onclick="calTof(1, 100)">Frente a 100 mm</button>
+        <button style="background:#455a64;padding:10px 14px" onclick="calTof(2, 100)">Der a 100 mm</button>
       </div>
       <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
         <button style="background:#888;padding:6px 10px;font-size:14px" onclick="calTof(0, 0)">Borrar izq</button>
@@ -213,12 +212,11 @@ async function tof() {
 
 function pintaCal(c) {
   document.getElementById("calTxt").textContent = Object.entries(c).map(([n, v]) =>
-    n + ": real = " + v.a + " × crudo " + (v.b < 0 ? "- " + -v.b : "+ " + v.b) + "   puntos (real: crudo) " +
-    (Object.entries(v.puntos).map(([r, x]) => r + ":" + x).join("  ") || "ninguno")).join("\n");
+    n + ": " + (Object.keys(v.puntos).length ? "a 100 mm leía " + Object.values(v.puntos)[0] + " mm → corrige " +
+    (v.b >= 0 ? "+" : "") + v.b + " mm" : "sin calibrar")).join("\n");
 }
 
 async function calTof(s, mm) {
-  if (mm === undefined) mm = parseInt(document.getElementById("calMm").value) || 0;
   document.getElementById("msg").textContent = mm ? "Midiendo sensor " + ["izq", "frente", "der"][s] + " a " + mm + " mm..." : "Borrando...";
   try { pintaCal(await (await fetch("/api/tof_cal?s=" + s + "&mm=" + mm)).json()); } catch (e) {}
   document.getElementById("msg").textContent = "Listo ✔";

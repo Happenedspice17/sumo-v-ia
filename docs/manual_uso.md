@@ -91,17 +91,16 @@ Se guarda solo y se queda aunque apagues. Recalibra solo si cambias de pista o d
 ## 4.2 Sensores de distancia (una vez, o si mueves un sensor)
 
 1. Abre **Ver sensores ToF** y baja a **Calibrar distancia**. El robot quieto.
-2. Pon algo plano y blanco (un trozo de pared) frente al sensor, a **50 mm** medidos con el vernier desde la cara del sensor.
-3. Escribe `50` y aprieta el sensor (**Izq**, **Frente** o **Der**). Promedia 10 lecturas.
-4. Repite a **100** y **150 mm** con cada sensor. Al frontal agrégale **250** y **300 mm** con flexómetro.
-5. Abajo sale cada sensor con su recta `real = a × crudo + b` y sus puntos. El dibujo de arriba ya muestra la distancia corregida y, debajo, la lectura sin calibrar.
+2. Pon algo plano y blanco (un trozo de pared) frente al sensor, a **100 mm** medidos con el vernier desde la cara del sensor.
+3. Aprieta **Izq a 100 mm**, **Frente a 100 mm** o **Der a 100 mm**. Promedia 10 lecturas y corrige el desfase de ese sensor.
+4. Abajo sale cada sensor: "a 100 mm leía X mm → corrige ±Y mm". El dibujo de arriba ya muestra la distancia corregida y, debajo, la lectura sin calibrar.
 
-- [ ] Izquierdo: 50 / 100 / 150 mm
-- [ ] Frontal: 50 / 100 / 150 / 250 / 300 mm
-- [ ] Derecho: 50 / 100 / 150 mm
+- [ ] Izquierdo a 100 mm
+- [ ] Frontal a 100 mm
+- [ ] Derecho a 100 mm
 
 ::: {.nota}
-Si un punto salió mal, aprieta **Borrar** de ese sensor y repite sus puntos. Después de calibrar, revisa en el dibujo qué lee el robot centrado en una celda: los umbrales (`PARED`, `D_FRENTE`, `FRENTE_LIBRE`) se ajustaron con lecturas sin calibrar.
+Si salió mal, solo repítelo: reemplaza la calibración anterior de ese sensor. **Borrar** la quita. Después de calibrar, revisa en el dibujo qué lee el robot centrado en una celda: los umbrales (`PARED`, `D_FRENTE`, `FRENTE_LIBRE`) se ajustaron con lecturas sin calibrar.
 :::
 
 ## 4.3 Cámara (una vez, o si mueves la cámara)
