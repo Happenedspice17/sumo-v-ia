@@ -67,7 +67,7 @@ Con el hub conectado al USB-C, App Lab se conecta por WiFi (el puerto no puede i
 - En recta se centra en el carril: con 2 paredes, que los laterales lean igual; con una, que lea 41 mm (`D_LADO`). Con las 2 paredes, centrado y paralelo, corrige la deriva del MPU. Las distancias salen de la geometría del chasis (CAD).
 - **Giros y MPU-6050:** gira hasta el ángulo. Al arrancar busca el MPU en 0x68 (OLED `G` abajo si lo encontró; si no, gira por tiempo con `MS_90` como respaldo). Enciende el robot quieto: mide el bias del giroscopio.
   - Antes de avanzar se endereza si se desvió 3° a 45° (`alinear`). Después de cada giro Python verifica el ángulo y lo termina si quedó a más de 10°.
-  - Acelerómetro: un golpe de más de 0.6 g al avanzar es un choque (retrocede y vuelve a leer); girando, 400 ms sin moverse es un atorón (retrocede y sigue); vertical bajo 0.8 g por 150 ms es que lo levantaron (detiene la corrida). `odo` 12 a 15 lo reportan.
+  - Acelerómetro: un golpe de más de 1.5 g al avanzar es choque solo si el frontal dejó de bajar en los 250 ms siguientes (sin pared enfrente, solo un golpe de más de 2.5 g); entonces retrocede y vuelve a leer; girando, 400 ms sin moverse es un atorón (retrocede y sigue); vertical bajo 0.8 g por 150 ms es que lo levantaron (detiene la corrida). `odo` 12 a 15 lo reportan.
   - Con MPU el rumbo es absoluto: cada giro va al ángulo deseado acumulado, así que corrige lo que se pasó o le faltó el anterior. En recta sostiene ese rumbo (`KG`), además del centrado con paredes. El sentido del montaje lo aprende en el primer giro; antes de ese giro no sostiene rumbo.
   - Calibrar `ADELANTO`: si se pasa del giro, súbelo; si le falta, bájalo. `odo(8)` da el desvío en grados.
   - La OLED no se refresca en movimiento (tarda ~25 ms y estorba al control).
@@ -80,7 +80,7 @@ Es una máquina de estados: `SENSA` → `DECIDE` → `GIRA` → `AVANZA` → `SE
 1. Lee los 3 ToF, la menor de 3 lecturas de cada uno (5 si en el avance hubo un cambio brusco). Cada lectura vota pared (+1) o libre (−1) en el mapa, con tope ±`VOTO_MAX`: una lectura mala no borra lo que vieron las demás. Por donde pasó queda libre seguro.
 2. Exploración completa con mano izquierda: de las salidas libres (lateral ≥ 120 mm; frente ≥ 120 mm reales, `FRENTE_LIBRE`, con el frontal calibrado) toma la primera, en orden izquierda, frente, derecha, que lleve a una celda sin ver. Si no hay, regresa por el camino conocido a la celda más cercana con lados sin explorar (`frontera()`). Así entra a una meta al centro con pocas entradas, que la mano izquierda sola rodearía sin entrar.
 3. Tras un cambio brusco escanea con 5 lecturas y decide igual (izquierda primero si es nueva).
-4. La celda sale de los mm que de verdad avanzó.
+4. La celda sale de los mm que de verdad avanzó. En pasillo (pared a ambos lados, de frente) avanza hasta `PASILLO` = 3 celdas de un tirón; si se abre un lateral para en el centro de esa celda.
 5. Antes de cada avance, con una sola foto, la cámara:
    - Revisa el piso del camino con un umbral de gris automático (Otsu): negro → normal; blanco (pared) → va lento y el frontal hace el doble check (el sketch para a 30 mm si de verdad hay pared).
    - Mide el rumbo con el punto de fuga de las bases de las 2 paredes; si va chueco 4° o más, lo corrige (`ajustar`). Con MPU no gira: corrige el rumbo que sostiene el giroscopio. Sin MPU gira en su lugar.
