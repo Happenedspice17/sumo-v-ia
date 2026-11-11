@@ -645,6 +645,18 @@ Etapa menor de documentación. `docs/manual_uso.md` (uso y calibración: baterí
 
 **Otros cambios de la misma etapa.** `D_FRENTE` = 35 mm (pedido: 30 a 40), `PARED_F` = 55, `FRENTE_LIBRE` = 130. Cámara: estiramiento de contraste antes de Otsu y sensibilidad ajustable desde la web.
 
+### Etapa 39. Primera corrida larga con MPU: 3 fallas del log (11-nov)
+
+**Del log de pista** (157 s, sin cámara conectada):
+
+1. **"Avanzo 0 mm" después de girar.** El robot giraba y mandaba avanzar en seguida. El sketch arrancaba el avance con la lectura del frontal de **antes** del giro (la pared que tenía enfrente), creía que ya estaba a 35 mm y no se movía. Python volvía a leer, ya mirando al nuevo lado, y decidía otro giro sobre el anterior. **Cambio:** 0.1 s de espera después de cada giro para que los ToF den una lectura nueva.
+2. **Ida y vuelta entre 2 celdas** (4 medias vueltas seguidas entre (−6,0) y (−5,0)). Al regresar descentrado, el lateral leía 106 mm en el paso por donde había llegado (umbral 120): todo parecía cerrado y daba media vuelta. **Cambio:** un lado por donde el robot ya pasó (voto ≤ −3) cuenta como libre aunque un ToF diga pared. Si de verdad es pared, 2 lecturas más lo corrigen.
+3. **Los 2 laterales en 9999** (sin lectura) varias celdas seguidas: lo más probable es que haya salido del laberinto por la entrada. **Cambio:** si los 2 laterales no ven nada a 2 m (`FUERA`), marca esos lados como pared y regresa.
+
+Además, la cámara ya no se busca en `/dev/video0` y `video1` (son internos) y OpenCV queda en nivel ERROR: se acaban los WARN cada 2 s.
+
+**Pruebas.** Simulación de 30 laberintos con la meta en una isla central, con 15 % de lecturas libres leídas como pared: todos llegan a la meta, y en la mayoría con menos pasos que antes.
+
 ## Pruebas realizadas
 
 La tabla distingue lo medido o probado de lo que solo se deduce de la secuencia de commits (marcado **deducido**). Cuando el repositorio guarda la sucesión de valores pero no el resultado de cada intento, se dice. Las pruebas en pista del equipo están en su propia subsección; la última versión (distancia, saltos, votos, máquina de estados, MPU) aún no se ha probado en pista.

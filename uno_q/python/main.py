@@ -18,6 +18,10 @@ paso("WebUI OK")
 import os
 os.environ.setdefault("OPENCV_LOG_LEVEL", "ERROR")   # sin camara, OpenCV llena el log de WARN cada 2 s
 import cv2
+try:
+    cv2.utils.logging.setLogLevel(cv2.utils.logging.LOG_LEVEL_ERROR)   # sin los WARN de V4L2 cada 2 s
+except AttributeError:
+    pass
 paso("cv2 OK")
 import glob
 import math
@@ -51,11 +55,13 @@ PARED = 120                              # mm: lateral con esto o mas = libre
 PARED_F = 55                             # mm reales (frontal calibrado): menos de esto = pared (= PARED_F del sketch)
 FRENTE_LIBRE = 130                       # mm reales: a la mitad entre pared en su celda (~35-45) y en la siguiente (~215-225)
 D_FRENTE_TOF = 35                        # mm reales donde se detiene el sketch con pared enfrente (= D_FRENTE)
+FUERA = 2000                             # mm: los 2 laterales sin nada a esta distancia = salio del laberinto
+RECORRIDO = -3                           # voto de un paso por donde ya paso (-5) con hasta 2 lecturas en contra
 VOTO_MAX = 5                             # cada lectura vota pared (+1) o libre (-1); tope para que el mapa se corrija
 Y_COLOR = 36                             # mm del eje al sensor de color (adelante)
 
 # ---------- Camara (OV9281 monocromatica, obturador global): asistencia, nunca decide sola ----------
-CAM_ID = 0
+CAM_ID = 2                               # /dev/video0 y video1 son internos de la placa: nunca son la camara
 USAR_CAM = True
 EXPERIMENTAL = False                     # True en python_experimental/: distancias y aberturas por camara
 ANCHO, ALTO = 320, 240
@@ -171,6 +177,8 @@ def girar(rel):
     if rel:
         rpc("girar", rel)
         esperar()
+        time.sleep(0.1)                  # ToF frescos: con la lectura de antes del giro el sketch cree que tiene
+                                         # la pared enfrente y avanza 0 mm (paso en pista)
     rumbo = (rumbo + rel) % 4
 
 
@@ -693,7 +701,16 @@ def decidir(izq, frente, der):
     1. Salidas libres hacia celdas sin ver: la primera en orden izquierda, frente, derecha.
     2. Si todas llevan a celdas ya vistas: va por el camino conocido mas corto a la celda con lados sin explorar.
     Asi entra a una meta en una isla (al centro, con pocas entradas), que la mano izquierda sola rodea sin entrar."""
-    ops = salidas(izq, frente, der)
+    if izq >= FUERA and der >= FUERA:        # nada a 2 m por ningun lado: salio del laberinto
+        p = celda(pos)
+        for r in (-1, 0, 1):
+            p[(rumbo + r) % 4] = VOTO_MAX
+        print("Fuera del laberinto: regreso")
+        return 2
+    # un paso por donde ya paso cuenta como libre aunque un ToF diga pared (robot descentrado o chueco):
+    # sin esto se quedaba yendo y viniendo entre 2 celdas (paso en pista)
+    libres = set(salidas(izq, frente, der)) | {r for r in (-1, 0, 1) if celda(pos)[(rumbo + r) % 4] <= RECORRIDO}
+    ops = [r for r in (-1, 0, 1) if r in libres] or [2]
     nuevas = [r for r in ops if r != 2 and vecino(pos, (rumbo + r) % 4) not in vistas]
     if nuevas:
         return nuevas[0]
