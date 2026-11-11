@@ -125,8 +125,8 @@ def avanzar():
 
 
 def salidas(izq, frente, der):
-    """Salidas libres en orden de la mano derecha (1 der, 0 frente, -1 izq); sin ninguna, media vuelta (2)."""
-    return [r for r, ok in ((1, der >= PARED), (0, frente >= FRENTE_LIBRE), (-1, izq >= PARED)) if ok] or [2]
+    """Salidas libres en orden de la mano izquierda (-1 izq, 0 frente, 1 der); sin ninguna, media vuelta (2)."""
+    return [r for r, ok in ((-1, izq >= PARED), (0, frente >= FRENTE_LIBRE), (1, der >= PARED)) if ok] or [2]
 
 
 # ---------- Vision ----------
@@ -258,7 +258,7 @@ ui.expose_api("GET", "/api/tof", api_tof)
 
 # ---------- Estrategia ----------
 def buscar_color():
-    """Explora hasta el amarillo. En cada paso lee los 3 ToF (la menor de 3 lecturas) y sigue la mano derecha;
+    """Explora hasta el amarillo. En cada paso lee los 3 ToF (la menor de 3 lecturas) y sigue la mano izquierda;
     si ya paso 3 veces por esa celda (rodea una isla) toma la salida que ha usado menos. Un toque a D2 lo detiene."""
     global encontrado, pos, rumbo
     encontrado = False

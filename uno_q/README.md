@@ -57,7 +57,7 @@ Con el hub conectado al USB-C, App Lab se conecta por WiFi (el puerto no puede i
 **Python**, decide en cada paso:
 
 1. Lee los 3 ToF, la menor de 3 lecturas de cada uno.
-2. Mano derecha: derecha libre (lateral ≥ 120 mm) → gira a la derecha y avanza; si no, frente ≥ 150 mm → avanza; si no, izquierda; si no, media vuelta.
+2. Mano izquierda: izquierda libre (lateral ≥ 120 mm) → gira a la izquierda y avanza; si no, frente ≥ 150 mm → avanza; si no, derecha; si no, media vuelta.
 3. Si ya pasó 3 veces por esa celda (rodea una isla) toma la salida que ha usado menos; la cámara desempata hacia el amarillo. La celda sale de los mm que de verdad avanzó.
 4. Si el sensor de color lee amarillo 3 veces seguidas se detiene: llegó a la meta (OLED `META`).
 
