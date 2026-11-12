@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="$lang$">
+<head>
+<meta charset="utf-8">
+<title>$title$</title>
+$for(css)$
+<link rel="stylesheet" href="$css$">
+$endfor$
+</head>
+<body>
+<header class="portada">
+  <div class="banda">
+    <p class="materia">$materia$</p>
+    <h1 class="title">$title$</h1>
+    <p class="subtitle">$subtitle$</p>
+  </div>
+  <div class="datos">
+    <p class="rotulo">Equipo</p>
+$for(author)$
+    <p class="author">$author$</p>
+$endfor$
+    <p class="rotulo">Fecha</p><p>$date$</p>
+    <p class="rotulo">Versión</p><p>$version$</p>
+  </div>
+</header>
+$if(toc)$
+<nav id="TOC" class="indice">
+<h2>Contenido</h2>
+$table-of-contents$
+</nav>
+$endif$
+<main>
+$body$
+</main>
+</body>
+</html>

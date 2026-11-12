@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-175 -112 350 190" width="620" font-family="Inter, sans-serif" font-size="6.2" fill="#1b1f24">
+  <defs>
+    <marker id="f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#15803d"/></marker>
+    <marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#5b6472"/></marker>
+  </defs>
+  <!-- celda de 180 mm y paredes (cara interior a 84 mm del centro) -->
+  <rect x="-90" y="-90" width="180" height="180" fill="none" stroke="#c9ced6" stroke-dasharray="3 2"/>
+  <rect x="-96" y="-96" width="12" height="174" fill="#d9dde3"/>
+  <rect x="84" y="-96" width="12" height="174" fill="#d9dde3"/>
+  <rect x="-96" y="-96" width="192" height="12" fill="#d9dde3"/>
+  <text x="0" y="-101" text-anchor="middle" fill="#5b6472">Pared (cara a 84 mm del centro de la celda)</text>
+  <!-- cuerpo -->
+  <rect x="-60" y="-60" width="120" height="120" rx="30" fill="#e9f6ee" stroke="#15803d" stroke-width="1.4"/>
+  <rect x="40" y="-22.5" width="17" height="45" rx="3" fill="#3b4148"/>
+  <rect x="-57" y="-22.5" width="17" height="45" rx="3" fill="#3b4148"/>
+  <line x1="-60" y1="0" x2="60" y2="0" stroke="#5b6472" stroke-dasharray="2 2"/>
+  <text x="0" y="8" text-anchor="middle" fill="#5b6472">eje de las ruedas (0, 0)</text>
+  <!-- sensor de color -->
+  <circle cx="0" cy="-34" r="4" fill="#fbbf24" stroke="#b45309"/>
+  <text x="0" y="-24" text-anchor="middle" fill="#5b6472">TCS34725 (Y = 34)</text>
+  <!-- ToF frontal -->
+  <rect x="-12.5" y="-56" width="25" height="4" fill="#15803d"/>
+  <line x1="0" y1="-57" x2="0" y2="-83" stroke="#15803d" stroke-width="1.3" marker-end="url(#f)"/>
+  <text x="16" y="-72" fill="#0f5c2c" font-weight="600">Frente 0°</text>
+  <text x="16" y="-65" fill="#5b6472">(0, 54) · lee 30 mm centrado</text>
+  <!-- ToF laterales -->
+  <rect x="-45" y="-52.5" width="4" height="25" fill="#15803d"/>
+  <rect x="41" y="-52.5" width="4" height="25" fill="#15803d"/>
+  <line x1="-46" y1="-40" x2="-83" y2="-40" stroke="#15803d" stroke-width="1.3" marker-end="url(#f)"/>
+  <line x1="46" y1="-40" x2="83" y2="-40" stroke="#15803d" stroke-width="1.3" marker-end="url(#f)"/>
+  <text x="-104" y="-44" text-anchor="end" fill="#0f5c2c" font-weight="600">Izquierda 90°</text>
+  <text x="-104" y="-37" text-anchor="end" fill="#5b6472">(−43, 40)</text>
+  <text x="-104" y="-30" text-anchor="end" fill="#5b6472">lee 41 mm centrado</text>
+  <text x="104" y="-44" fill="#0f5c2c" font-weight="600">Derecha 90°</text>
+  <text x="104" y="-37" fill="#5b6472">(43, 40)</text>
+  <text x="104" y="-30" fill="#5b6472">lee 41 mm centrado</text>
+  <!-- adelante y cotas -->
+  <line x1="130" y1="40" x2="130" y2="5" stroke="#5b6472" marker-end="url(#g)"/>
+  <text x="130" y="48" text-anchor="middle" fill="#5b6472">adelante</text>
+  <line x1="-60" y1="70" x2="60" y2="70" stroke="#5b6472" marker-start="url(#g)" marker-end="url(#g)"/>
+  <text x="0" y="76" text-anchor="middle" fill="#5b6472">huella ≤ 120 mm</text>
+</svg>
