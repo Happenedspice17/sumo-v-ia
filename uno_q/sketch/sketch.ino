@@ -16,7 +16,7 @@
 const uint8_t XSHUT[3] = {A0, A1, A2};   // izq, frente, der
 
 // ---------- Calibracion ----------
-const long MS_CELDA = 600;    // ms por celda de 18 cm (solo si el frontal no ve pared: avanza por tiempo)
+const long MS_CELDA = 700;    // ms por celda de 18 cm (solo si el frontal no ve pared: avanza por tiempo; con 600 hacia 15-16 cm)
 const long MS_90 = 250;       // ms por giro de 90 grados (solo sin MPU-6050)
 const int VEL_EXPLORA = 140;
 const int VEL_LENTO = 100;    // cuando la camara ve blanco (pared) en el camino
@@ -36,11 +36,11 @@ const int D_CERCA = 5;        // mm: si queda mas de esto por debajo de D_FRENTE
 const int FRENA_K = 2;        // PWM por mm: con pared al frente baja la velocidad al acercarse
 const int D_LADO = MEDIA_CELDA - TOF_L_X;     // 41 mm: cada lateral con el robot centrado en el carril
 const float KC = 0.8;         // ganancia de centrado
-const float KD = 0.3;         // ganancia de rumbo: corrige segun que tan rapido se acerca a una pared lateral
+const float KD = 0;           // ganancia de rumbo segun que tan rapido se acerca a una pared (en simulacion 0.3 torcia el rumbo)
 const int CELDA = 180;        // mm de centro a centro de celda
-const int RANGO = 1000;       // mm: con el frontal leyendo menos, avanza por distancia; mas lejos, por tiempo
+const int RANGO = 600;        // mm: con el frontal leyendo menos, avanza por distancia; mas lejos, por tiempo (de lejos, chueco, ve las laterales)
 const int SALTO = 120;        // mm: cambio brusco entre 2 lecturas (50 -> 200, 100 -> 300)
-const int TRAS_SALTO = CELDA / 2 + TOF_L_Y - 6;   // 124 mm tras abrirse un lateral: centro de esa celda
+const int TRAS_SALTO = CELDA / 2 + TOF_L_Y - 20;  // 110 mm tras abrirse un lateral: centro de esa celda (124 del CAD menos lo que tarda en confirmarse)
 const uint32_t T_CTRL = 10;
 const uint32_t T_COLOR = 30;
 
@@ -66,7 +66,7 @@ int crudo[3] = {9999, 9999, 9999};   // lectura sin calibrar
 float tofA[3] = {1, 1, 1}, tofB[3] = {0, 0, 0};   // mm reales = A * crudo + B (los manda Python, calibrados con vernier)
 bool tofOk = false;
 
-enum { NADA, AVANZA, GIRA };
+enum { NADA, AVANZA, GIRA, CENTRA };
 volatile int cmd = NADA;
 volatile int arg = 0;
 volatile bool alin = false;   // el GIRA en curso es una alineacion: no mueve el rumbo deseado
@@ -178,6 +178,17 @@ int rpcAjustar(int g) {
   if (mpuOk && signo) { ref = signo * yaw + g; return 1; }
   arg = g;
   cmd = GIRA;
+  ocupado = 1;
+  return 2;
+}
+
+// Con pared enfrente a menos de lim mm: avanza o retrocede hasta quedar a D_FRENTE + k celdas de ella (centro de celda).
+// 2 = hay que esperar, 0 = no hace falta.
+int rpcCentrar(int lim) {
+  ult = 'C';
+  if (ocupado || dist[1] >= lim) return 0;
+  arg = lim;
+  cmd = CENTRA;
   ocupado = 1;
   return 2;
 }
@@ -295,6 +306,7 @@ void iniciaMov() {
     total = pedido = max((long)arg, 1L);
     dur = max(total * MS_CELDA / CELDA, 50L);
     objetivo = dist[1] < RANGO ? max(dist[1] - (int)total, D_FRENTE) : -1;
+    if (objetivo >= 0 && dist[1] - total < D_FRENTE) total = max(dist[1] - D_FRENTE, 0);   // pared antes: solo cuenta lo que cabe
     saltos = 0;
     choque = 0;
     pico = 0;
@@ -303,6 +315,8 @@ void iniciaMov() {
     dMin = 9999;
     tBaja = millis();
     tCen = 0;
+  } else if (cmd == CENTRA) {
+    objetivo = D_FRENTE + CELDA * (int)lroundf((dist[1] - D_FRENTE) / (float)CELDA);
   } else {
     dirL = arg > 0 ? 1 : -1;
     dirR = -dirL;
@@ -323,6 +337,7 @@ void faltan(long fAntes, long f) {
   total += f - fAntes;
   if (dist[1] < RANGO) {
     objetivo = max(dist[1] - (int)f, D_FRENTE);
+    if (dist[1] - f < D_FRENTE) total -= f - max(dist[1] - D_FRENTE, 0);
   } else {
     objetivo = -1;
     tIni = millis() - (total - f) * MS_CELDA / CELDA;
@@ -372,6 +387,13 @@ float centrado() {
 
 void control() {
   long t = millis() - tIni;
+  if (tipo == CENTRA) {
+    long e = dist[1] - objetivo;
+    if (labs(e) <= 4 || t > 1000) { termina(); return; }
+    int v = labs(e) > 15 ? VEL_MIN : VEL_MIN - 10;
+    motores(e > 0 ? v : -v, e > 0 ? v : -v);
+    return;
+  }
   if (tipo == GIRA) {
     if (!mpuOk) {
       if (t >= dur) termina();
@@ -426,7 +448,11 @@ void control() {
     termina();
     return;
   }
-  if (objetivo < 0 && dist[1] < RANGO) objetivo = max(dist[1] - (int)falta(), D_FRENTE);   // aparece pared: sigue por distancia
+  if (objetivo < 0 && dist[1] < RANGO) {             // aparece pared: sigue por distancia
+    long fa = falta();
+    objetivo = max(dist[1] - (int)fa, D_FRENTE);
+    if (dist[1] - fa < D_FRENTE) total -= fa - max(dist[1] - D_FRENTE, 0);
+  }
   long f = falta();
   if (f <= 0 || t > 3 * dur) { termina(); return; }   // 3 * dur: seguro si el frontal deja de bajar
   if (total - f > pedido + TRAS_SALTO) { termina(); return; }   // varios saltos seguidos no lo alargan sin fin
@@ -700,6 +726,7 @@ void setup() {
   Bridge.provide("girar", rpcGirar);
   Bridge.provide("ajustar", rpcAjustar);
   Bridge.provide("alinear", rpcAlinear);
+  Bridge.provide("centrar", rpcCentrar);
   Bridge.provide("ocupado", rpcOcupado);
   Bridge.provide("color", rpcColor);
   Bridge.provide("arranque", rpcArranque);
