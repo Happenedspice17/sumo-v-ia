@@ -871,6 +871,18 @@ Además, la cámara ya no se busca en `/dev/video0` y `video1` (son internos) y 
 **Cambio.** Con pared a ambos lados y yendo de frente, Python pide hasta `PASILLO` = 3 celdas de un tirón. Si se abre un lateral, para en el centro de esa celda como antes; las celdas intermedias se anotan con pared a los 2 lados. El tope de saltos del sketch ahora es lo pedido + `TRAS_SALTO` (antes, una celda + `TRAS_SALTO`). La simulación sigue en 30/30 con ~9 % menos paradas. `CHOQUE_G` pasa de 0.8 a 1.5 g: en el último log los falsos choques fueron de 0.75 a 1.52 g.
 :::
 
+## Etapa 47. Exploración hacia el centro, sin cámara (12-nov)
+
+::: ficha
+**Del equipo.** Fotos del laberinto desde los 4 lados: 11 × 11 celdas de 18 cm, la meta amarilla al centro, la salida en una esquina (al azar). Las cintas de colores solo hay que leerlas. Por ahora sin cámara.
+
+**Razonamiento.** No se precarga un mapa de las fotos: con la perspectiva no se ubica cada pared con precisión de celda, una pared mal puesta hace chocar al robot y la pista puede cambiar. Lo que sí sirve: la meta está a 5 celdas de cualquier esquina en cada eje. Las fotos confirman que el cuarto central es una isla, así que un seguidor de pared no entraría.
+
+**Cambio.** `USAR_CAM = False`. Entre las salidas a celdas nuevas, la que más acerca al centro (empate: izquierda, frente, derecha); `frontera()` escoge menos pasos + distancia al centro. El lado del centro se deduce en la esquina de salida (sus lados libres apuntan hacia adentro) o con el primer movimiento en cada eje (`ubica()`). Simulación, 40 laberintos de 11 × 11 con isla central y esquina al azar: 40/40, 1173 pasos en total contra 5479 antes (peor caso 93 contra 163).
+
+**Pendiente.** El robot avanza 15-16 cm por celda en vez de 18: falta saber si pasa con pared lejos (más de 1 m: avanza por tiempo, subir `MS_CELDA`) o cerca (lectura del frontal).
+:::
+
 # Pruebas realizadas
 
 ::: corto

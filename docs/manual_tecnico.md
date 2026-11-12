@@ -20,7 +20,7 @@ El robot entra a un laberinto que no conoce y avanza celda por celda, mirando co
 |---|---|
 | Laberinto | Celdas de 180 mm. La meta es el cuadro amarillo; no se supone un tamaño de laberinto fijo |
 | Robot | Diferencial con dos ruedas motrices y un patín, huella ≤ 120 mm |
-| Fase 1: exploración | Guiada por los sensores con la regla de la mano izquierda: izquierda si se puede, si no de frente, si no derecha, si no media vuelta. El mapa se llena con votos |
+| Fase 1: exploración | Guiada por los ToF hacia el centro (donde está la meta): de las salidas a celdas nuevas, la que más acerca al centro; en empate, izquierda, frente, derecha. El mapa se llena con votos. Cámara apagada (`USAR_CAM = False`) |
 | Fase 2: ruta corta | En la siguiente corrida, si el mapa ya tiene la meta, va por el camino más corto conocido (BFS). Si algo no cuadra, sigue explorando desde donde quedó |
 
 ::: tip
@@ -375,8 +375,8 @@ flowchart TD
   B -- Sí --> Z["Fuera del laberinto:<br/>media vuelta"]
   B -- No --> C["Salidas libres en orden<br/>izquierda, frente, derecha"]
   C --> D{"¿Alguna lleva a<br/>celda sin ver?"}
-  D -- Sí --> E["Toma la primera"]
-  D -- No --> F["frontera(): BFS por pasos<br/>conocidos a la celda vista<br/>más cercana con lado sin ver"]
+  D -- Sí --> E["Toma la que más<br/>acerca al centro<br/>(empate: la primera)"]
+  D -- No --> F["frontera(): BFS por pasos<br/>conocidos; celda con lado sin ver<br/>de menos pasos + distancia al centro"]
   F --> G{"¿Hay frontera?"}
   G -- Sí --> H["Primer paso hacia ella"]
   G -- No --> I["Primera salida libre<br/>(o media vuelta)"]
@@ -391,6 +391,8 @@ flowchart TD
 **Salidas libres** (con lecturas de ToF): izquierda si el lateral lee ≥ 120 mm; frente si el frontal (calibrado) lee ≥ 130 mm (`FRENTE_LIBRE`), a la mitad entre la pared de su celda (~35-45 mm reales) y la de la siguiente (~215-225); derecha con el mismo criterio que la izquierda; media vuelta si no hay ninguna.
 
 **Por qué exploración completa.** La meta está al centro y solo tiene 2 entradas: las paredes que la rodean forman una **isla**, separada del muro exterior. Un seguidor de pared solo recorre el muro al que está pegado, así que rodea la isla sin entrar. En simulación (laberintos de 9 × 9 con la meta en una isla central de 3 × 3 con 2 entradas, 30 laberintos), la mano izquierda pura llegó a la meta 0 de 30 veces y la exploración completa 30 de 30.
+
+**Hacia el centro.** El laberinto es de 11 × 11 y el robot sale de una esquina cualquiera, así que el centro queda a `CENTRO` = 5 celdas en x y en y. El lado lo deduce `ubica()`: en la celda de salida cada lado libre apunta hacia adentro (los muros exteriores de la esquina están pegados), y en cuanto se mueve en un eje, ese lado es hacia adentro. Un eje sin lado conocido no cuenta. En simulación (40 laberintos de 11 × 11 con isla central, esquina al azar) llega 40/40 en 1173 pasos en total contra 5479 sin preferir el centro (peor caso 93 contra 163). No se precarga un mapa de las fotos: una pared mal ubicada lo haría chocar y la pista puede cambiar.
 
 ::: tip
 Historia: antes se probó "frente primero, luego izquierda". En pista se atoraba en una zona: preferir el frente rompe la garantía del seguidor de pared, que solo recorre todo el muro conexo si **siempre** prefiere el lado de su mano.
@@ -474,6 +476,8 @@ Valores tal como están en `sketch.ino` y `main.py`. Cambia uno a la vez y prueb
 | `FRENTE_LIBRE` | 120 | mm reales | El frente cuenta como salida (a la mitad entre ~30 y ~210) | Tras calibrar los ToF |
 | `VOTO_MAX` | 5 | votos | Tope de votos por pared | — |
 | `PASILLO` | 3 | celdas | Máximo de un tirón en pasillo (1 = parar en cada celda) | Tieso: 4; pierde posición: 2 |
+| `CENTRO` | 5 | celdas | De la esquina de salida al centro (11 × 11) | Otro tamaño: (lado − 1) / 2 |
+| `USAR_CAM` | False | — | Cámara apagada: solo ToF | `True` para volver a usarla |
 | `Y_COLOR` | 34 | mm | Del eje al sensor de color (CAD: `COLOR_Y`) | Si cambia el chasis |
 | `UMBRAL_MIN` / `UMBRAL_MAX` | 100 / 220 | gris | Límites del umbral de Otsu | — |
 | `ZONA_BORDES` | (0.45, 0.95) | fracción | Filas donde busca las bases de las paredes | — |

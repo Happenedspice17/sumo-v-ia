@@ -33,7 +33,8 @@ El robot **no se mueve solo**. Lo prendes, esperas a que la pantalla diga `LISTO
 |---|---|---|
 | Sketch (STM32) | `sketch/` | Siempre este, con MPU-6050 |
 | Python (Linux) | `python/` | Un solo `main.py` |
-| Cámara experimental | `python/main.py` | Cambia `EXPERIMENTAL = False` a `True`: además mide distancias y ve aberturas |
+| Cámara | `python/main.py` | Hoy apagada (`USAR_CAM = False`, la pantalla dice `SIN CAM`). `True` la enciende; con `EXPERIMENTAL = True` además mide distancias y ve aberturas |
+| Salida | — | Cualquier esquina del laberinto de 11 × 11: el robot deduce solo hacia dónde queda el centro |
 
 ::: tip
 ¿Necesitas la versión vieja sin MPU? Está en el historial de git. Mira el capítulo 9, "Control de versiones".
@@ -218,6 +219,7 @@ Calibra con la batería cargada. Cambia **un número a la vez** en `sketch/sketc
 | Se detiene solo: "me levantaron" | `LEVANTA_G` | 0.8 g | Bájalo a 0.7 |
 | Se ve tieso en pasillos largos | `PASILLO` (main.py) | 3 | Súbelo a 4 |
 | Pierde la posición en pasillos largos | `PASILLO` (main.py) | 3 | Bájalo a 2 (1 = parar en cada celda) |
+| Laberinto de otro tamaño | `CENTRO` (main.py) | 5 | (lado − 1) / 2 |
 | Se queda antes del centro de la celda al abrirse un lado | `TRAS_SALTO` | 124 mm | Súbelo 5 |
 | Se pasa del centro de la celda al abrirse un lado | `TRAS_SALTO` | 124 mm | Bájalo 5 |
 | Se va a la derecha | `AJUSTE_DER` | −10 | Súbelo 5 |

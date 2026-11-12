@@ -58,13 +58,14 @@ FRENTE_LIBRE = 120                       # mm reales: a la mitad entre pared en 
 D_FRENTE_TOF = 30                        # mm reales donde se detiene el sketch con pared enfrente (= D_FRENTE)
 FUERA = 2000                             # mm: los 2 laterales sin nada a esta distancia = salio del laberinto
 RECORRIDO = -3                           # voto de un paso por donde ya paso (-5) con hasta 2 lecturas en contra
+CENTRO = 5                               # celdas de la esquina de salida a la meta (laberinto de 11 x 11)
 PASILLO = 3                              # celdas maximas de un tiron con pared a ambos lados (1 = parar en cada celda)
 VOTO_MAX = 5                             # cada lectura vota pared (+1) o libre (-1); tope para que el mapa se corrija
 Y_COLOR = 34                             # mm del eje al sensor de color (adelante; CAD: COLOR_Y)
 
 # ---------- Camara (OV9281 monocromatica, obturador global): asistencia, nunca decide sola ----------
 CAM_ID = 2                               # /dev/video0 y video1 son internos de la placa: nunca son la camara
-USAR_CAM = True
+USAR_CAM = False                         # apagada por ahora: solo ToF
 EXPERIMENTAL = False                     # True: version experimental, ademas distancias y aberturas por camara
 ANCHO, ALTO = 320, 240
 ARCH_CAM = DATOS + "/camara.json"
@@ -92,6 +93,7 @@ cuenta = [0] * len(COLORES)
 encontrado = False
 # Mapa: celda -> [N, E, S, O] con 1 pared, 0 libre, None sin dato; colores: celda -> color; meta: celda del amarillo
 muros = {}
+signo = [0, 0]                           # hacia donde esta el centro en x, y (0 = aun no se sabe)
 vistas = set()                           # celdas donde el robot ya leyo sus 3 ToF (se guarda con el mapa)
 colores = {}
 meta = None
@@ -748,26 +750,49 @@ ui.expose_api("GET", "/api/cam_dist", api_cam_dist)
 
 
 # ---------- Estrategia ----------
+def ubica(izq, frente, der):
+    """Arranca en una esquina: un lado libre en la salida, o haberse movido en un eje, apunta hacia adentro."""
+    if pos == (0, 0):
+        for rel, d, lim in ((-1, izq, PARED), (0, frente, FRENTE_LIBRE), (1, der, PARED)):
+            h = (rumbo + rel) % 4
+            if d >= lim:
+                signo[0] = signo[0] or DX[h]
+                signo[1] = signo[1] or DY[h]
+    for i in (0, 1):
+        if pos[i] and not signo[i]:
+            signo[i] = 1 if pos[i] > 0 else -1
+
+
+def al_centro(c):
+    """Celdas (sin paredes) de c al centro; un eje sin direccion conocida no cuenta."""
+    return sum(abs(CENTRO * s - v) for v, s in zip(c, signo) if s)
+
+
 def frontera():
-    """Rumbo (0-3) del primer paso hacia la celda vista mas cercana que tiene un lado libre hacia una celda
-    sin ver (BFS por pasos conocidos), o None si ya no queda nada por explorar."""
-    previo, cola = {pos: None}, [pos]
+    """Rumbo (0-3) del primer paso hacia una celda vista con un lado libre hacia una celda sin ver (BFS por pasos
+    conocidos); entre ellas, la de menos pasos + distancia de la celda nueva al centro. None si ya no queda nada."""
+    previo, dist, cola, mejor = {pos: None}, {pos: 0}, [pos], None
     for c in cola:
-        if c != pos and any(muros.get(c, [0] * 4)[h] < 0 and vecino(c, h) not in vistas for h in range(4)):
-            while previo[c][0] != pos:
-                c = previo[c][0]
-            return previo[c][1]
         for h in range(4):
             n = vecino(c, h)
+            if c != pos and muros.get(c, [0] * 4)[h] < 0 and n not in vistas:
+                costo = dist[c] + al_centro(n)
+                if mejor is None or costo < mejor[0]:
+                    mejor = (costo, c)
             if n not in previo and n in vistas and libre(c, h):
-                previo[n] = (c, h)
+                previo[n], dist[n] = (c, h), dist[c] + 1
                 cola.append(n)
-    return None
+    if mejor is None:
+        return None
+    c = mejor[1]
+    while previo[c][0] != pos:
+        c = previo[c][0]
+    return previo[c][1]
 
 
 def decidir(izq, frente, der):
-    """Exploracion completa con mano izquierda (tipo Tremaux / DFS):
-    1. Salidas libres hacia celdas sin ver: la primera en orden izquierda, frente, derecha.
+    """Exploracion completa hacia el centro (tipo Tremaux / DFS):
+    1. Salidas libres hacia celdas sin ver: la que mas acerca al centro (empate: izquierda, frente, derecha).
     2. Si todas llevan a celdas ya vistas: va por el camino conocido mas corto a la celda con lados sin explorar.
     Asi entra a una meta en una isla (al centro, con pocas entradas), que la mano izquierda sola rodea sin entrar."""
     if izq >= FUERA and der >= FUERA:        # nada a 2 m por ningun lado: salio del laberinto
@@ -782,7 +807,7 @@ def decidir(izq, frente, der):
     ops = [r for r in (-1, 0, 1) if r in libres] or [2]
     nuevas = [r for r in ops if r != 2 and vecino(pos, (rumbo + r) % 4) not in vistas]
     if nuevas:
-        return nuevas[0]
+        return min(nuevas, key=lambda r: al_centro(vecino(pos, (rumbo + r) % 4)))
     h = frontera()
     if h is not None:
         rel = {0: 0, 1: 1, 2: 2, 3: -1}[(h - rumbo) % 4]
@@ -805,6 +830,7 @@ def buscar_color():
         if f in ("SENSA", "ESCANEA"):
             lect = tof3(5 if f == "ESCANEA" else 3)
             anota(*lect)
+            ubica(*lect)
             vistas.add(pos)
             f = "DECIDE"
         elif f == "DECIDE":
@@ -942,6 +968,7 @@ def loop():
         return
     global pos, rumbo, encontrado, corriendo, t_ini, t_meta, t_fin
     pos, rumbo, encontrado = (0, 0), 0, False   # cada corrida empieza en la misma celda viendo al mismo lado
+    signo[:] = [0, 0]                    # la esquina de salida puede cambiar
     t = t_ini = time.time()
     t_meta = t_fin = None
     log_col.clear()
