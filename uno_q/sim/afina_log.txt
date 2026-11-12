@@ -1,0 +1,21 @@
+MEJOR gen 0 {'gen': 0, 'mejor': 0.948, 'media': 0.478, 'ok': 1.0, 'choques': 0.25, 't': 93.301, 'n': 41}
+MEJOR gen 1 {'gen': 1, 'mejor': 0.948, 'media': 0.496, 'ok': 1.0, 'choques': 0.25, 't': 93.301, 'n': 53}
+MEJOR gen 2 {'gen': 2, 'mejor': 0.948, 'media': 0.511, 'ok': 1.0, 'choques': 0.25, 't': 93.301, 'n': 65}
+MEJOR gen 3 {'gen': 3, 'mejor': 0.948, 'media': 0.519, 'ok': 1.0, 'choques': 0.25, 't': 93.301, 'n': 77}
+MEJOR gen 4 {'gen': 4, 'mejor': 0.948, 'media': 0.517, 'ok': 1.0, 'choques': 0.25, 't': 93.301, 'n': 89}
+MEJOR gen 5 {'gen': 5, 'mejor': 0.948, 'media': 0.512, 'ok': 1.0, 'choques': 0.25, 't': 93.301, 'n': 101}
+MEJOR gen 6 {'gen': 6, 'mejor': 0.948, 'media': 0.514, 'ok': 1.0, 'choques': 0.25, 't': 93.301, 'n': 113}
+MEJOR gen 7 {'gen': 7, 'mejor': 0.948, 'media': 0.522, 'ok': 1.0, 'choques': 0.25, 't': 93.301, 'n': 125}
+MEJOR gen 8 {'gen': 8, 'mejor': 0.948, 'media': 0.528, 'ok': 1.0, 'choques': 0.25, 't': 93.301, 'n': 137}
+MEJOR VERIFICADO (30 semillas nuevas) actual: {'ok': 0.9, 'choques': 0.26666666666666666, 't': 107.30466666666935, 'score': 0.8410143333333321} afinado: {'ok': 0.9333333333333333, 'choques': 0.6333333333333333, 't': 99.57066666667087, 'score': 0.8708813333333312}
+WCA gen 0 {'gen': 0, 'mejor': 0.14, 'media': -0.232, 'ok': 0.375, 'choques': 3.625, 't': 324.961, 'n': 41}
+WCA gen 1 {'gen': 1, 'mejor': 0.14, 'media': -0.205, 'ok': 0.375, 'choques': 3.625, 't': 324.961, 'n': 53}
+WCA gen 2 {'gen': 2, 'mejor': 0.154, 'media': -0.183, 'ok': 0.375, 'choques': 3.0, 't': 321.841, 'n': 65}
+WCA gen 3 {'gen': 3, 'mejor': 0.308, 'media': -0.158, 'ok': 0.5, 'choques': 2.375, 't': 288.83, 'n': 77}
+WCA gen 4 {'gen': 4, 'mejor': 0.308, 'media': -0.156, 'ok': 0.5, 'choques': 2.375, 't': 288.83, 'n': 89}
+WCA gen 5 {'gen': 5, 'mejor': 0.308, 'media': -0.15, 'ok': 0.5, 'choques': 2.375, 't': 288.83, 'n': 101}
+WCA gen 6 {'gen': 6, 'mejor': 0.308, 'media': -0.136, 'ok': 0.5, 'choques': 2.375, 't': 288.83, 'n': 113}
+WCA gen 7 {'gen': 7, 'mejor': 0.308, 'media': -0.131, 'ok': 0.5, 'choques': 2.375, 't': 288.83, 'n': 125}
+WCA gen 8 {'gen': 8, 'mejor': 0.308, 'media': -0.127, 'ok': 0.5, 'choques': 2.375, 't': 288.83, 'n': 137}
+WCA VERIFICADO (30 semillas nuevas) actual: {'ok': 0.5, 'choques': 5.166666666666667, 't': 269.2093333333342, 'score': 0.2620619999999996} afinado: {'ok': 0.6, 'choques': 3.1666666666666665, 't': 234.3090000000019, 'score': 0.4195121666666657}
+ROBUSTO {'params': {'MS_CELDA': 829, 'VEL_EXPLORA': 143, 'VEL_GIRO': 154, 'VEL_MIN': 93, 'AJUSTE_DER': -15, 'D_FRENTE': 39, 'D_LADO': 44, 'KC': 1.58, 'KG': 2.77, 'PARED_F': 69, 'SALTO': 113, 'CHOQUE_G': 2.05}, 'base': 'WCA', 'resultados': {'MEJOR': {'ok': 0.7333333333333333, 'choques': 0.7, 't': 178.74733333333626, 'score': 0.6299596666666651}, 'WCA': {'ok': 0.6, 'choques': 3.1666666666666665, 't': 234.3090000000019, 'score': 0.4195121666666657}}}
