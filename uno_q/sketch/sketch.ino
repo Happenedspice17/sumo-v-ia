@@ -16,7 +16,8 @@
 const uint8_t XSHUT[3] = {A0, A1, A2};   // izq, frente, der
 
 // ---------- Calibracion ----------
-const long MS_CELDA = 700;    // ms por celda de 18 cm (solo si el frontal no ve pared: avanza por tiempo; con 600 hacia 15-16 cm)
+long msCelda = 700;           // ms por celda de 18 cm (solo si el frontal no ve pared: avanza por tiempo; con 600 hacia 15-16 cm).
+                              // Se calibra desde la web (avance de prueba de 10 cm) y Python lo manda al arrancar: set_ms
 const long MS_90 = 250;       // ms por giro de 90 grados (solo sin MPU-6050)
 const int VEL_EXPLORA = 140;
 const int VEL_LENTO = 100;    // cuando la camara ve blanco (pared) en el camino
@@ -88,6 +89,7 @@ const int AMAR = 4;           // refs[4]: la meta; el sketch para solo, sin espe
 int tipo = NADA;
 int dirL, dirR;
 long dur;
+bool soloTiempo = false;      // avance de prueba: por tiempo aunque vea pared (calibra msCelda)
 long total;                   // mm del avance en curso
 long pedido;                  // mm que pidio Python (tope de saltos)
 int objetivo = -1;            // lectura del frontal donde parar; -1 = no ve pared, va por tiempo
@@ -191,6 +193,18 @@ int rpcCentrar(int lim) {
   cmd = CENTRA;
   ocupado = 1;
   return 2;
+}
+
+// Avance de prueba por tiempo (para calibrar msCelda desde la web): mm a msCelda, sin usar el frontal para medir
+int rpcMoverT(int mm) {
+  if (ocupado) return 0;
+  soloTiempo = true;             // antes de pedir el avance: iniciaMov ya lo ve
+  return rpcMover(mm, 0);
+}
+
+int rpcSetMs(int ms) {
+  if (ms >= 200 && ms <= 2000) msCelda = ms;
+  return msCelda;
 }
 
 int rpcOcupado() { return ocupado; }
@@ -304,8 +318,8 @@ void iniciaMov() {
   if (cmd == AVANZA) {
     dirL = dirR = 1;
     total = pedido = max((long)arg, 1L);
-    dur = max(total * MS_CELDA / CELDA, 50L);
-    objetivo = dist[1] < RANGO ? max(dist[1] - (int)total, D_FRENTE) : -1;
+    dur = max(total * msCelda / CELDA, 50L);
+    objetivo = dist[1] < RANGO && !soloTiempo ? max(dist[1] - (int)total, D_FRENTE) : -1;
     if (objetivo >= 0 && dist[1] - total < D_FRENTE) total = max(dist[1] - D_FRENTE, 0);   // pared antes: solo cuenta lo que cabe
     saltos = 0;
     choque = 0;
@@ -335,25 +349,27 @@ void iniciaMov() {
 // Deja el avance con f mm por recorrer (antes faltaban fAntes): por el frontal o, sin pared a la vista, por tiempo
 void faltan(long fAntes, long f) {
   total += f - fAntes;
-  if (dist[1] < RANGO) {
+  if (dist[1] < RANGO && !soloTiempo) {
     objetivo = max(dist[1] - (int)f, D_FRENTE);
     if (dist[1] - f < D_FRENTE) total -= f - max(dist[1] - D_FRENTE, 0);
   } else {
     objetivo = -1;
-    tIni = millis() - (total - f) * MS_CELDA / CELDA;
-    dur = max(total * MS_CELDA / CELDA, 50L);
+    tIni = millis() - (total - f) * msCelda / CELDA;
+    dur = max(total * msCelda / CELDA, 50L);
   }
 }
 
 // Cambio brusco en un ToF durante un avance. Se abre un lateral: para al centro de esa celda para escanearla.
 // Salta el frontal: vuelve a medir lo que falta desde la nueva lectura.
 void salto(int i, int antes, long f) {
+  if (soloTiempo) return;        // avance de prueba: nada lo alarga
   if (dist[i] > antes) saltos |= 1 << i;
   if (i == 1) faltan(f, f);
   else if (dist[i] > antes && dist[i] >= PARED) faltan(f, TRAS_SALTO);
 }
 
 void termina() {
+  soloTiempo = false;
   if (tipo == AVANZA) hecho = total - falta();
   if (tipo == GIRA && mpuOk && !signo && fabs(yaw - yaw0) > 30) {
     signo = (yaw - yaw0) * dirL > 0 ? 1 : -1;   // primer giro: aprende hacia donde crece el yaw
@@ -448,7 +464,7 @@ void control() {
     termina();
     return;
   }
-  if (objetivo < 0 && dist[1] < RANGO) {             // aparece pared: sigue por distancia
+  if (objetivo < 0 && dist[1] < RANGO && !soloTiempo) {   // aparece pared: sigue por distancia
     long fa = falta();
     objetivo = max(dist[1] - (int)fa, D_FRENTE);
     if (dist[1] - fa < D_FRENTE) total -= fa - max(dist[1] - D_FRENTE, 0);
@@ -727,6 +743,8 @@ void setup() {
   Bridge.provide("ajustar", rpcAjustar);
   Bridge.provide("alinear", rpcAlinear);
   Bridge.provide("centrar", rpcCentrar);
+  Bridge.provide("mover_t", rpcMoverT);
+  Bridge.provide("set_ms", rpcSetMs);
   Bridge.provide("ocupado", rpcOcupado);
   Bridge.provide("color", rpcColor);
   Bridge.provide("arranque", rpcArranque);

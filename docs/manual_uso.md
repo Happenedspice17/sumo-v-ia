@@ -164,6 +164,17 @@ Se guarda solo y se queda aunque apagues. Recalibra solo si cambias de pista o d
 Los umbrales (`PARED`, `D_FRENTE`, `FRENTE_LIBRE`) se ajustaron con lecturas sin calibrar. Después de calibrar, revisa en el dibujo qué lee el robot centrado en una celda. Si salió mal, solo repítelo: reemplaza la calibración anterior de ese sensor. **Borrar** la quita.
 :::
 
+## 4.2b Avance sin encoders (una vez, o si cambia la batería o el piso)
+
+1. En **Ver sensores ToF**, baja a **Calibrar avance**. Pon el robot en el piso con espacio libre adelante y marca dónde está el eje (las ruedas).
+2. Aprieta **Avanzar 10 cm**: avanza por tiempo, sin medir con el frontal.
+3. Mide con regla cuánto avanzó de verdad, escríbelo en **mm reales** y aprieta **Guardar**. Ajusta los ms por celda en proporción y se guarda en el robot.
+4. Repite hasta que avance 100 mm (±5).
+
+::: tip
+Solo se usa cuando el frontal no ve pared a menos de 600 mm. Con pared enfrente, el robot mide con el ToF y se centra con ella (`centrar`).
+:::
+
 ## 4.3 Cámara (una vez, o si mueves la cámara)
 
 1. Abre **Calibrar cámara**, abajo de la imagen.
@@ -208,8 +219,9 @@ Calibra con la batería cargada. Cambia **un número a la vez** en `sketch/sketc
 
 | Si el robot... | Cambia | Valor hoy | Así |
 |---|---|---|---|
-| No llega a la siguiente celda (sin pared enfrente) | `MS_CELDA` | 700 ms | Súbelo 25 |
-| Se pasa de la celda (sin pared enfrente) | `MS_CELDA` | 700 ms | Bájalo 25 |
+| No llega a la siguiente celda (sin pared enfrente) | Web: Calibrar avance | 700 ms | Repite la prueba de 10 cm |
+| Se pasa de la celda (sin pared enfrente) | Web: Calibrar avance | 700 ms | Repite la prueba de 10 cm |
+| Se queda dando vueltas en una zona | `RUIDO` / `CASTIGO` (main.py) | 0.6 / 1.0 | Sube `CASTIGO` a 1.5 |
 | Se pasa del giro | `ADELANTO` | 6° | Súbelo 2 |
 | Le falta giro | `ADELANTO` | 6° | Bájalo 2 |
 | Zigzaguea en recta | `KG` | 2.0 | Bájalo a 1.5 |
@@ -275,7 +287,7 @@ Busca el síntoma en la tabla. La mayoría de los problemas se arreglan con una 
 | Síntoma | Causa probable | Solución |
 |---|---|---|
 | No se mueve | No recibió el toque corto, o no está en `LISTO` | Dale un toque corto a D2 con la pantalla en `LISTO` |
-| Se pasa de la meta | Amarillo mal calibrado, o va por tiempo | Recalibra el amarillo (4.1). Si va por tiempo, baja `MS_CELDA` |
+| Se pasa de la meta | Amarillo mal calibrado, o va por tiempo | Recalibra el amarillo (4.1). Si va por tiempo, recalibra el avance (4.2b) |
 | Gira de más o de menos | `ADELANTO` desajustado | Ajusta `ADELANTO` (capítulo 6) |
 | No sale la `G` abajo en la pantalla | El MPU-6050 no responde | Revisa VCC, GND, SDA, SCL y que AD0 vaya a GND. Sin él gira por tiempo y gira mal |
 | Se detiene a media corrida y el log dice "me levantaron" | Lo moviste o se inclinó | Si no fue eso, baja `LEVANTA_G` |
