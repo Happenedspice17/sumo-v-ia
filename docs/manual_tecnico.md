@@ -7,21 +7,23 @@ author:
   - Víctor Miguel Vázquez
   - Carlos Emiliano Escamilla Garibay
 date: 12 de noviembre de 2026
-version: Revisión B7 · documento 2.0
+version: Revisión B8 · documento 3.0
 ---
 
 # 1. Qué hace el robot
 
 ::: corto
-El robot entra a un laberinto que no conoce y avanza celda por celda, mirando con tres sensores láser dónde hay pared. Busca el cuadro **amarillo** del piso (la meta) y se detiene al verlo. En el camino cuenta los cuadros de colores y dibuja un mapa. En el siguiente intento usa ese mapa para ir directo a la meta por el camino más corto que conoce.
+El robot sale de una esquina del laberinto y llega al cuadro **amarillo** del centro, donde se detiene solo. Avanza celda por celda mirando con tres sensores láser dónde hay pared. Trae el mapa de la pista y se ubica en él con lo que ven los láser, así que no depende de saber cuánto avanzó. En el camino cuenta los cuadros de colores.
 :::
 
 | Aspecto | Valor |
 |---|---|
 | Laberinto | Celdas de 180 mm. La meta es el cuadro amarillo; no se supone un tamaño de laberinto fijo |
 | Robot | Diferencial con dos ruedas motrices y un patín, huella ≤ 120 mm |
-| Fase 1: exploración | Guiada por los ToF hacia el centro (donde está la meta): de las salidas a celdas nuevas, la que más acerca al centro; en empate, izquierda, frente, derecha. El mapa se llena con votos. Cámara apagada (`USAR_CAM = False`) |
-| Fase 2: ruta corta | En la siguiente corrida, si el mapa ya tiene la meta, va por el camino más corto conocido (BFS). Si algo no cuadra, sigue explorando desde donde quedó |
+| Laberinto de la pista | 11 × 11 celdas; el amarillo al centro, dentro de un cuarto con 2 entradas; salida en cualquier esquina |
+| Estrategia (`ESTRATEGIA = "pista"`) | Trae el mapa de la pista y se ubica en él con lo que ven los ToF (autolocalización); va por el camino más corto al amarillo. Si duda o la pista cambió, decide con la brújula (capítulo 9) |
+| Simulación | 200 laberintos con física de motores, ToF con ruido y giroscopio con deriva: 98 % de llegadas en la pista real (capítulo 9.4) |
+| Cámara | Apagada por ahora (`USAR_CAM = False`); el capítulo 7 describe lo que hace al encenderla |
 
 ::: tip
 Este manual es de referencia. Para operar el robot (encender, calibrar, resolver fallas) usa el **Manual de uso**. La bitácora completa de decisiones está en la **Bitácora de diseño**.
@@ -215,7 +217,7 @@ Valores de fábrica (`REFS` en `main.py`, igual a `refs[]` del sketch). Los cali
 # 7. Cámara (opcional)
 
 ::: corto
-La cámara mira el piso por donde va a pasar. Es **monocromática**, y el piso negro con paredes blancas es justo lo que mejor distingue. Antes de cada avance toma **una foto**: revisa si hay blanco (pared) en el camino para ir más despacio y mide si el robot va chueco con el punto de fuga del pasillo. La cámara nunca manda sobre los láser: solo **asiste**. Sin cámara, el robot funciona igual.
+**Hoy está apagada** (`USAR_CAM = False`): el robot decide solo con los ToF. Este capítulo describe lo que hace al encenderla. La cámara mira el piso por donde va a pasar. Es **monocromática**, y el piso negro con paredes blancas es justo lo que mejor distingue. Antes de cada avance toma **una foto**: revisa si hay blanco (pared) en el camino para ir más despacio y mide si el robot va chueco con el punto de fuga del pasillo. La cámara nunca manda sobre los láser: solo **asiste**. Sin cámara, el robot funciona igual.
 :::
 
 **Sensor.** innomaker U20CAM-9281M: OV9281 de 1 MP **monocromático** con **obturador global** (todos los píxeles se exponen al mismo tiempo), hasta 720p a 120 fps, lente M12 gran angular, UVC (Linux la ve sin driver). Se captura a 320 × 240 con OpenCV y V4L2. El obturador global evita la deformación por movimiento (*rolling shutter*), que tuerce las líneas rectas cuando el robot gira. Sin filtro de color (matriz de Bayer), cada píxel recibe toda la luz: más sensibilidad y menos ruido en la luminancia, que es lo único que se usa. Por la misma razón **no puede ver el amarillo**; la meta la confirma el TCS34725.
@@ -302,6 +304,7 @@ stateDiagram-v2
 | **Cambios bruscos** | Si una lectura de un ToF cambia `SALTO` = 120 mm o más y la siguiente lo confirma: si se abre un lateral avanza `TRAS_SALTO` = 110 mm más (124 del CAD menos lo que tarda en confirmarse) y para en el centro de esa celda para escanearla (fase `ESCANEA`); si salta el frontal, recalcula lo que falta. Python lo lee con `odo(3)` |
 | **Pasillo** | Si va de frente con pared a ambos lados, Python pide hasta `PASILLO` = 3 celdas de un tirón. Abrirse un lateral lo detiene en el centro de esa celda, así que las celdas intermedias se anotan con pared a los 2 lados. Hace ~9 % menos paradas en la simulación (30/30 laberintos) |
 | **Centrado en el carril** | Con pared a un lado (lateral < `PARED` = 120 mm) corrige *u = K꜀·e + K_d·ė*, saturado en ±40 PWM y aplicado en diferencial (*PWM_izq = v − u*, *PWM_der = v + u*). Con 2 paredes, *e = d_izq − d_der*; con una, *e = 2·(d − D_LADO)*, `D_LADO` = 41 mm (84 − 43, CAD). Sin paredes va derecho con el rumbo del MPU |
+| **Centrar con la pared** | Tras cada avance, si el frontal ve pared a menos de 600 mm (`CENTRA_F`), Python pide `centrar`: el robot avanza o retrocede a `VEL_MIN` hasta leer `D_FRENTE` + *k* × 180 mm, el centro de su celda (máximo 1 s). En simulación, sin esto llega 58 % contra 90 % |
 | **Deriva con paredes** | Con 2 paredes, centrado (\|e\| < 15 mm) y paralelo (*ė* < 15 mm/s) durante 300 ms, la mitad de lo que difiera el rumbo del MPU del deseado se toma como deriva y se corrige |
 
 ## 8.2 Giros y MPU-6050
@@ -341,10 +344,10 @@ Calibra con el "golpe" que muestra el log (`odo(15)`, en mg). `CHOQUE_G`: si det
 **Limitación reconocida:** sin encoders, la distancia depende del frontal. En tramos largos sin pared a la vista el resultado depende del voltaje de la batería y de la fricción. Lo mitigamos con el avance por distancia, el MPU-6050 para el rumbo y la rampa de arranque. La mejora natural son encoders en cuadratura.
 :::
 
-# 9. Exploración y mapa
+# 9. Cómo decide
 
 ::: corto
-El robot decide siempre quieto, en cuatro fases que se repiten: **mira**, **decide**, **gira** y **avanza**. Prefiere celdas que no ha visto, en orden izquierda, frente, derecha. Si ya no hay ninguna cerca, regresa por el camino conocido al lugar más cercano que le falte explorar. Así entra a la meta del centro aunque esté rodeada de paredes.
+El robot decide siempre quieto, en fases que se repiten: **mira**, **decide**, **gira** y **avanza**. Hoy trae el **mapa de la pista** y se ubica en él comparando lo que ven los ToF con cada lugar posible; con la ubicación segura va por el camino más corto al amarillo. Si no está seguro o la pista cambió, decide con la **brújula**: la salida libre que más apunta al centro. Hay una tercera estrategia (Trémaux con mapa) que se puede elegir con `ESTRATEGIA`.
 :::
 
 ::: figura
@@ -367,9 +370,63 @@ stateDiagram-v2
 |---|---|
 | `SENSA` | Toma 3 lecturas de cada ToF (la menor) y vota las paredes de la celda |
 | `ESCANEA` | Igual, con 5 lecturas, tras un salto |
-| `DECIDE` | Elige la salida (figura 7) |
+| `DECIDE` | Elige la salida según `ESTRATEGIA` (9.1 a 9.3) |
 | `GIRA` | Pide `girar(k)` y espera |
 | `AVANZA` | Pide `mover(180, lento)` (o hasta `PASILLO` celdas) y espera; lee mm recorridos y saltos |
+
+
+| `ESTRATEGIA` | Qué hace | Cuándo |
+|---|---|---|
+| `"pista"` (actual) | Mapa cargado + autolocalización; si duda, brújula | La pista de las fotos, aunque cambien algunas paredes |
+| `"brujula"` | Solo la salida libre que más apunta al centro | Otra pista, o si el mapa cargado no sirve |
+| `"mapa"` | Exploración completa (Trémaux) hacia el centro | Comparar; era la estrategia de las etapas 38 a 49 |
+
+**Salidas libres** (con lecturas de ToF): izquierda si el lateral lee ≥ 120 mm; frente si el frontal (calibrado) lee ≥ 130 mm (`FRENTE_LIBRE`), a la mitad entre la pared de su celda (~35-45 mm reales) y la de la siguiente (~215-225); derecha con el mismo criterio que la izquierda; media vuelta si no hay ninguna.
+
+
+## 9.1 Pista conocida con autolocalización
+
+::: figura
+![](img/pista_mapa.png){width=50%}
+
+**Figura 7. La pista cargada en `main.py`.** Qué mirar: el amarillo (6, 6) está dentro de un cuarto con 2 entradas; el robot puede salir de cualquiera de las 4 esquinas.
+:::
+
+El robot trae el mapa de la pista (`PISTA_H`, `PISTA_V`, `PISTA_META` en `main.py`, sacado de las fotos; imagen en `docs/img/pista_mapa.png`). No sabe de qué esquina sale ni hacia dónde mira: empieza con 16 hipótesis (4 esquinas × 4 rumbos). En cada celda compara cuántas celdas libres ven los ToF a la izquierda, al frente y a la derecha (`(lectura − 41 o 30) / 180`) con las de cada hipótesis en el mapa, y las pesa (Bayes: igual 0.7, por 1 celda 0.12, más 0.02). Al avanzar mueve cada hipótesis *k* celdas, o *k* ± 1, porque la odometría no es exacta, sin atravesar paredes. Así la odometría solo sugiere y las paredes deciden dónde está. Con la hipótesis principal en 60 % o más (`CONFIANZA`) va por el camino más corto del mapa al amarillo. Si los ToF dicen pared donde el mapa dice paso (2 veces), corrige el mapa y busca otro camino. Si lo que ve no cuadra con ninguna hipótesis 2 lecturas seguidas (`MALA`), concluye que la pista no es la misma (`PERDIDAS_MAX` = 1) y sigue solo con la brújula. Sin certeza, también decide la brújula.
+
+
+::: figura
+```mermaid
+flowchart LR
+  A(["Arranque:<br/>16 hipótesis<br/>(4 esquinas × 4 rumbos)"]) --> B["Lee los 3 ToF:<br/>celdas libres<br/>izq / frente / der"]
+  B --> C["Pesa cada hipótesis<br/>(Bayes)"]
+  C --> D{"¿La mejor<br/>≥ 60 %?"}
+  D -- Sí --> E["Camino más corto<br/>del mapa al amarillo"]
+  D -- No --> F["Brújula"]
+  E --> G["Avanza k celdas"]
+  F --> G
+  G --> H["Mueve hipótesis<br/>k o k ± 1"]
+  H --> B
+```
+**Figura 8. Autolocalización (localización de Markov).** Qué mirar: la odometría solo propone *k* ± 1 celdas; lo que ven los ToF decide cuál hipótesis sobrevive.
+:::
+
+| Caso (200 corridas) | Pista (mapa cargado) | Brújula |
+|---|---|---|
+| Pista real | **98 %, 23 s** | 96 %, 39 s |
+| Odometría mala | **82 %** | 71 % |
+| Entrada de arriba del cuarto cerrada | **92 %, 25 s** | 74 %, 56 s |
+| 6 paredes cambiadas | **92 %** | 92 % |
+| 15 paredes cambiadas | 83 % | 86 % |
+| Otro laberinto (el mapa no sirve) | 84 % | 86 % |
+
+
+## 9.2 Brújula (respaldo)
+
+Sin encoders la posición se desfasa (tiempo, choques), y con el mapa desfasado la exploración da vueltas: cree nuevas celdas que ya vio y busca fronteras que no existen. La brújula no usa el mapa de paredes: entre las salidas libres que ven los ToF **ahora**, toma la que apunta más al centro (rumbo del giroscopio, que sí es confiable, y la posición aproximada), menos `CASTIGO` = 1.0 por cada vez que ya tomó esa salida desde esa celda aproximada, más azar (`RUIDO` = 0.6, rompe ciclos). Un desfase de 1-2 celdas casi no cambia hacia dónde queda el centro. Simulación, 200 laberintos: con la odometría actual 86 % contra 87 % del mapa; con odometría mala (sin `centrar` ni la corrección del sketch) 60 % contra 46 %. El seguidor de pared que cambia de mano cada 10-25 decisiones llegó 20-47 %. `ESTRATEGIA = "mapa"` vuelve a Trémaux con el mapa.
+
+
+## 9.3 Mapa: exploración completa hacia el centro
 
 ::: figura
 ```mermaid
@@ -388,29 +445,14 @@ flowchart TD
   I --> J
   Z --> J
 ```
-**Figura 7. Decisión de exploración (Trémaux / DFS).** Qué mirar: la rama "sin ver" es la que garantiza recorrer todo; `frontera()` evita que el robot rodee una isla para siempre.
+**Figura 9. Decisión con `ESTRATEGIA = "mapa"` (Trémaux / DFS).** Qué mirar: la rama "sin ver" es la que garantiza recorrer todo; `frontera()` evita que el robot rodee una isla para siempre.
 :::
-
-**Salidas libres** (con lecturas de ToF): izquierda si el lateral lee ≥ 120 mm; frente si el frontal (calibrado) lee ≥ 130 mm (`FRENTE_LIBRE`), a la mitad entre la pared de su celda (~35-45 mm reales) y la de la siguiente (~215-225); derecha con el mismo criterio que la izquierda; media vuelta si no hay ninguna.
 
 **Por qué exploración completa.** La meta está al centro y solo tiene 2 entradas: las paredes que la rodean forman una **isla**, separada del muro exterior. Un seguidor de pared solo recorre el muro al que está pegado, así que rodea la isla sin entrar. En simulación (laberintos de 9 × 9 con la meta en una isla central de 3 × 3 con 2 entradas, 30 laberintos), la mano izquierda pura llegó a la meta 0 de 30 veces y la exploración completa 30 de 30.
 
-**Pista conocida con autolocalización (estrategia actual, `ESTRATEGIA = "pista"`).** El robot trae el mapa de la pista (`PISTA_H`, `PISTA_V`, `PISTA_META` en `main.py`, sacado de las fotos; imagen en `docs/img/pista_mapa.png`). No sabe de qué esquina sale ni hacia dónde mira: empieza con 16 hipótesis (4 esquinas × 4 rumbos). En cada celda compara cuántas celdas libres ven los ToF a la izquierda, al frente y a la derecha (`(lectura − 41 o 30) / 180`) con las de cada hipótesis en el mapa, y las pesa (Bayes: igual 0.7, por 1 celda 0.12, más 0.02). Al avanzar mueve cada hipótesis *k* celdas, o *k* ± 1, porque la odometría no es exacta, sin atravesar paredes. Así la odometría solo sugiere y las paredes deciden dónde está. Con la hipótesis principal en 60 % o más (`CONFIANZA`) va por el camino más corto del mapa al amarillo. Si los ToF dicen pared donde el mapa dice paso (2 veces), corrige el mapa y busca otro camino. Si lo que ve no cuadra con ninguna hipótesis 2 lecturas seguidas (`MALA`), concluye que la pista no es la misma (`PERDIDAS_MAX` = 1) y sigue solo con la brújula. Sin certeza, también decide la brújula.
-
-| Caso (200 corridas) | Pista (mapa cargado) | Brújula |
-|---|---|---|
-| Pista real | **98 %, 23 s** | 96 %, 39 s |
-| Odometría mala | **82 %** | 71 % |
-| Entrada de arriba del cuarto cerrada | **92 %, 25 s** | 74 %, 56 s |
-| 6 paredes cambiadas | **92 %** | 92 % |
-| 15 paredes cambiadas | 83 % | 86 % |
-| Otro laberinto (el mapa no sirve) | 84 % | 86 % |
-
-**Brújula (respaldo; `ESTRATEGIA = "brujula"` para usarla sola).** Sin encoders la posición se desfasa (tiempo, choques), y con el mapa desfasado la exploración da vueltas: cree nuevas celdas que ya vio y busca fronteras que no existen. La brújula no usa el mapa de paredes: entre las salidas libres que ven los ToF **ahora**, toma la que apunta más al centro (rumbo del giroscopio, que sí es confiable, y la posición aproximada), menos `CASTIGO` = 1.0 por cada vez que ya tomó esa salida desde esa celda aproximada, más azar (`RUIDO` = 0.6, rompe ciclos). Un desfase de 1-2 celdas casi no cambia hacia dónde queda el centro. Simulación, 200 laberintos: con la odometría actual 86 % contra 87 % del mapa; con odometría mala (sin `centrar` ni la corrección del sketch) 60 % contra 46 %. El seguidor de pared que cambia de mano cada 10-25 decisiones llegó 20-47 %. `ESTRATEGIA = "mapa"` vuelve a Trémaux con el mapa.
-
 **Se va por lo que se abre** (solo con `"mapa"`). Si el avance paró porque se abrió un lateral (`ESCANEA`) y esa salida lleva a una celda sin ver, la toma, aunque otra acerque más al centro (en simulación 87 % contra 90 % sin esta regla: igual dentro del ruido; se ve más natural).
 
-**Hacia el centro.** El laberinto es de 11 × 11 y el robot sale de una esquina cualquiera, así que el centro queda a `CENTRO` = 5 celdas en x y en y. El lado lo deduce `ubica()`: en la celda de salida cada lado libre apunta hacia adentro (los muros exteriores de la esquina están pegados), y en cuanto se mueve en un eje, ese lado es hacia adentro. Un eje sin lado conocido no cuenta. En simulación (40 laberintos de 11 × 11 con isla central, esquina al azar) llega 40/40 en 1173 pasos en total contra 5479 sin preferir el centro (peor caso 93 contra 163). No se precarga un mapa de las fotos: una pared mal ubicada lo haría chocar y la pista puede cambiar.
+**Hacia el centro.** El laberinto es de 11 × 11 y el robot sale de una esquina cualquiera, así que el centro queda a `CENTRO` = 5 celdas en x y en y. El lado lo deduce `ubica()`: en la celda de salida cada lado libre apunta hacia adentro (los muros exteriores de la esquina están pegados), y en cuanto se mueve en un eje, ese lado es hacia adentro. Un eje sin lado conocido no cuenta. En simulación (40 laberintos de 11 × 11 con isla central, esquina al azar) llega 40/40 en 1173 pasos en total contra 5479 sin preferir el centro (peor caso 93 contra 163). En la etapa 47 se decidió no precargar el mapa de las fotos (una pared mal ubicada lo haría chocar); la etapa 52 lo retomó con autolocalización, que detecta y corrige esas paredes (9.1).
 
 ::: tip
 Historia: antes se probó "frente primero, luego izquierda". En pista se atoraba en una zona: preferir el frente rompe la garantía del seguidor de pared, que solo recorre todo el muro conexo si **siempre** prefiere el lado de su mano.
@@ -426,6 +468,11 @@ Historia: antes se probó "frente primero, luego izquierda". En pista se atoraba
 | Persistencia | Al terminar la corrida se guarda `/app/datos/mapa.json` (paredes, colores y meta), con escritura atómica. Tolera un archivo roto o vacío. Un toque largo (más de 2 s) borra mapa y conteo |
 | Ruta corta | Con la meta en el mapa, la siguiente corrida calcula por BFS el camino más corto sobre pasos conocidos como libres (OLED `RAPIDO`). Si al avanzar no queda en la celda esperada, abandona la ruta y sigue explorando |
 | Corrida | El botón corto inicia una corrida nueva (siempre en la misma celda y mirando al mismo lado); otro toque la detiene |
+
+
+::: cuidado
+La ruta corta de la siguiente corrida (`RAPIDO`) usa la meta guardada en coordenadas relativas a la salida. Si cambias de esquina de salida, borra el mapa (D2 más de 2 s) antes de correr.
+:::
 
 ## 9.4 Simulación 2D: qué reglas sirven
 
@@ -544,7 +591,7 @@ Valores tal como están en `sketch.ino` y `main.py`. Cambia uno a la vez y prueb
 # 12. Evolución del diseño
 
 ::: corto
-De un robot por tiempo con *flood fill* en un mapa fijo de 16 × 16 se pasó a un robot que mide con los ToF, decide con una máquina de estados y explora todo el laberinto. La bitácora completa está en la **Bitácora de diseño**.
+De un robot por tiempo con *flood fill* en un mapa fijo de 16 × 16 se pasó a un robot que mide con los ToF, decide con una máquina de estados, trae el mapa de la pista y se ubica en él. Cada regla se eligió con un simulador 2D de 200 laberintos. La bitácora completa está en la **Bitácora de diseño**.
 :::
 
 | Tema | Cambio desde la V1 |
@@ -554,7 +601,8 @@ De un robot por tiempo con *flood fill* en un mapa fijo de 16 × 16 se pasó a u
 | Cámara | Primero detectaba paredes; después buscó también el amarillo; con la OV9281 monocromática detecta blanco con umbral automático y corrige el rumbo con el punto de fuga; la experimental además mide distancias y aberturas |
 | Avance | El frontal mide la celda, para a 30 mm reales y retrocede si queda muy cerca; sin pared va por tiempo |
 | Cambios bruscos | `SALTO` en los ToF: el robot se centra en la celda abierta y la escanea |
-| Decisión | De *flood fill* con paredes de la cámara, a reglas de pared, a la máquina de estados `SENSA → DECIDE → GIRA → AVANZA` con prioridad frente; luego mano izquierda pura; hoy exploración completa |
+| Decisión | De *flood fill* con paredes de la cámara, a reglas de pared, a la máquina de estados `SENSA → DECIDE → GIRA → AVANZA` con prioridad frente; luego mano izquierda pura; exploración completa hacia el centro; hoy, mapa de la pista con autolocalización y brújula de respaldo |
+| Simulación 2D | 200 laberintos con física, ruido y deriva: encontró un bug real del sketch (reportaba 180 mm sin moverse) y eligió `centrar`, `KD` = 0, `RANGO` = 600 y `TRAS_SALTO` = 110 |
 | Mapa | Votos ±5 por pared y colores por celda; ruta corta por BFS en la siguiente corrida |
 | Meta | El STM32 para solo al confirmar el amarillo, sin esperar a Python |
 | Giros | MPU-6050: rumbo absoluto y rumbo sostenido en recta; sin él, por tiempo |
@@ -575,7 +623,8 @@ Hoy hay un solo sketch (con MPU-6050) y un solo Python. Las versiones retiradas 
 | B4 | 11-nov | Exploración completa (meta al centro), calibración de ToF a 100 mm, control desde la web, cronómetro |
 | B5 | 11-nov | MPU completo: alinear, giros verificados, choques, giro atorado, robot levantado |
 | B6 | 11-nov | Se retira `sketch_sin_mpu/` del repositorio: el robot lleva MPU-6050. Queda un solo sketch, `sketch/` |
-| **B7** | **11-nov** | **Se retira `python_experimental/` (era el mismo `main.py` con `EXPERIMENTAL = True`). Queda un solo Python** |
+| B7 | 11-nov | Se retira `python_experimental/` (era el mismo `main.py` con `EXPERIMENTAL = True`). Queda un solo Python |
+| **B8** | **12-nov** | **Hacia el centro desde cualquier esquina; cámara apagada; simulación 2D y sus reglas (`centrar`, `KD` = 0, `RANGO` = 600, `TRAS_SALTO` = 110); brújula; mapa de la pista con autolocalización (`ESTRATEGIA = "pista"`)** |
 
 **Recuperar la versión sin MPU.** La última versión de `uno_q/sketch_sin_mpu/` está en el commit `2e01996`:
 
@@ -614,3 +663,7 @@ También puedes abrir el commit `2e01996` en GitHub; ahí está además `uno_q/p
 | **ToF** | *Time of Flight*: mide distancia por el tiempo que tarda la luz en ir y volver |
 | **Trémaux** | Método clásico para recorrer un laberinto marcando los caminos ya visitados; aquí, la exploración que prefiere celdas sin ver |
 | **Voto** | Cada lectura suma +1 (pared) o −1 (libre) a un lado de la celda, con tope ±5 |
+| **Autolocalización** | Saber en qué celda y hacia dónde está el robot comparando lo que ven sus sensores con un mapa conocido |
+| **Brújula** | Estrategia de respaldo: toma la salida libre que más apunta al centro, sin usar el mapa de paredes |
+| **Hipótesis** | Una posible ubicación (celda y rumbo) del robot, con su probabilidad |
+| **Localización de Markov** | Autolocalización que pesa cada hipótesis con la regla de Bayes después de cada lectura y la mueve con cada avance |

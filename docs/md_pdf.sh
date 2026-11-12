@@ -12,3 +12,4 @@ gen() {
 gen manual_uso "Robot de laberinto · Manual de uso" "-c md_pdf_uso.css"
 gen manual_tecnico "Robot de laberinto · Manual técnico"
 gen historial_cambios "Robot de laberinto · Bitácora de diseño"
+gen manual_jueces "Robot de laberinto · Manual para jueces" "-c md_pdf_jueces.css"

@@ -1,0 +1,36 @@
+/* Manual para jueces: 10 páginas carta, impresión a doble cara y engargolado.
+   Márgenes laterales iguales (20 mm) para que el espiral no tape texto en ninguna cara. */
+@page { margin: 15mm 20mm 16mm 20mm; }
+body { --fs: 9.8pt; line-height: 1.45; }
+nav.indice { display: none; }
+
+/* Portada con render del CAD */
+header.portada { height: 240mm; }
+header.portada .banda { padding: 30mm 14mm 12mm; }
+header.portada h1.title { font-size: 38pt; }
+header.portada .subtitle { font-size: 13pt; }
+header.portada img.foto { display: block; width: 88%; margin: 8mm auto 6mm; }
+
+/* Cada capítulo en su página; el primero va después de la portada */
+h1 { font-size: 18pt; margin-bottom: 3mm; }
+h2 { margin-top: 4mm; }
+table { font-size: 8.9pt; margin: 2.5mm 0 3mm; }
+td, th { padding: 4px 7px; }
+.corto, .tip, .cuidado, .ajuste { margin: 2.5mm 0 3mm; padding: 7px 12px 6px; }
+.figura { margin: 2.5mm 0 3.5mm; }
+.figura div.mermaid svg { max-height: 62mm; }
+blockquote { margin: 2mm 0; }
+
+/* Cifras clave */
+.cifras { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3mm; margin: 4mm 0 5mm; }
+.cifra { background: var(--acento2); border-radius: 6px; padding: 10px 12px; font-size: 9pt; color: var(--gris); break-inside: avoid; }
+.cifra p { margin: 0; }
+.cifra strong { display: block; font-size: 21pt; line-height: 1.1; color: var(--acento3); margin-bottom: 2px; }
+
+/* Cierre */
+.final { margin-top: 5mm; padding: 9px 13px; border-radius: 6px; background: var(--acento); color: #fff; text-align: center; break-inside: avoid; }
+.final p { margin: 2px 0; }
+.figura.alta div.mermaid svg { max-height: 82mm; }
+.dos { display: grid; grid-template-columns: 0.85fr 1fr; gap: 5mm; align-items: center; }
+.dos .figura { margin: 0; }
+.dos .figura div.mermaid svg { max-height: 80mm; }

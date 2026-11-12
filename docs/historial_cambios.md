@@ -7,13 +7,13 @@ author:
   - Víctor Miguel Vázquez
   - Carlos Emiliano Escamilla Garibay
 date: 12 de noviembre de 2026
-version: Revisión B7 · documento 2.0
+version: Revisión B8 · documento 3.0
 ---
 
 # Cómo leer esta bitácora
 
 ::: corto
-La bitácora cuenta cómo se construyó el robot del 19 de octubre al 11 de noviembre de 2026: 46 etapas, de la primera versión con encoders a la exploración completa con MPU-6050. Hubo dos iteraciones sobre el mismo chasis: A (ATmega328p, respaldo) y B (Arduino UNO Q, la actual).
+La bitácora cuenta cómo se construyó el robot del 19 de octubre al 12 de noviembre de 2026: 52 etapas, de la primera versión con encoders a un robot que trae el mapa de la pista y se ubica solo, con reglas elegidas en un simulador. Hubo dos iteraciones sobre el mismo chasis: A (ATmega328p, respaldo) y B (Arduino UNO Q, la actual).
 :::
 
 Este documento cuenta cómo se construyó el robot de laberinto de Microcontroladores 2, del 19 de octubre al 11 de noviembre de 2026, a partir del historial de commits del repositorio, de los análisis de la última sesión de trabajo (11-nov), que no quedaron en commits, y de las respuestas del equipo sobre sus pruebas en pista. El robot recorre un laberinto de celdas de 18 cm, encuentra una marca amarilla (la meta), cuenta marcas de color en el piso y en una segunda corrida debe ir por el camino más corto que conoce.
@@ -32,7 +32,7 @@ Una regla de honestidad atraviesa todo el documento: cuando un motivo o una prue
 # Línea de tiempo
 
 ::: corto
-Una fila por etapa: fecha, cambio clave y por qué. La figura agrupa las 46 etapas en cinco fases.
+Una fila por etapa: fecha, cambio clave y por qué. La figura agrupa las 52 etapas en seis fases.
 :::
 
 ::: figura
@@ -49,8 +49,10 @@ timeline
     Etapas 26 – 35 : Avance por distancia : Mapa con votos : Máquina de estados : MPU-6050 : Cámara OV9281
   section 11 nov · Exploración y MPU
     Etapas 36 – 46 : Exploración completa : MPU completo : Un sketch y un Python : Choques confirmados y pasillos
+  section 12 nov · Simulación y pista
+    Etapas 47 – 52 : Hacia el centro : Simulador 2D : Brújula : Autolocalización en la pista
 ```
-**Figura 1. Etapas del proyecto.** Qué mirar: casi la mitad de las etapas ocurre el 11-nov, cuando el robot pasa de reglas por tiempo a medir con los ToF y el MPU.
+**Figura 1. Etapas del proyecto.** Qué mirar: casi la mitad de las etapas ocurre el 11-nov, cuando el robot pasa de reglas por tiempo a medir con los ToF y el MPU; el 12-nov el simulador decide las reglas y el robot aprende a ubicarse en la pista.
 :::
 
 
@@ -91,11 +93,28 @@ timeline
 | 11-nov | 33 | Dos versiones del sketch: con y sin MPU-6050 | Poder correr sin el MPU |
 | 11-nov | 34 | Cámara monocromática OV9281: solo blanco y negro | La cámara real no ve colores |
 | 11-nov | 35 | Cámara: exposición fija, Otsu, rumbo por punto de fuga; experimental: distancia y aberturas | Desviación en recta y esquinas sin ver |
+| 11-nov | 36 | Umbrales del frontal en milímetros reales | El frontal leía unos 87 mm de más |
+| 11-nov | 37 | Mano izquierda pura, compensación de motores y alto a 10 mm | "Frente primero" se atoraba en una zona |
+| 11-nov | 38 | Exploración completa tipo Trémaux | La mano izquierda rodea la isla central (0/30 en simulación) |
+| 11-nov | 39 | Correcciones tras la primera corrida larga con MPU | 3 fallas vistas en el log |
+| 11-nov | 40 | Cronómetro, registro de colores y alineación con MPU | Medir la corrida y enderezar antes de avanzar (deducido) |
+| 11-nov | 41 | MPU completo: choques, atorones, giros verificados, robot levantado | Usar también el acelerómetro (deducido) |
+| 11-nov | 42 | Un solo sketch, con MPU-6050 | No confundir versiones |
+| 11-nov | 43 | Un solo Python (`EXPERIMENTAL`) | `python_experimental/` era el mismo `main.py` |
+| 11-nov | 44 | Centrado en el carril con la geometría del chasis | Con una pared quedaba 49 mm fuera del centro |
+| 11-nov | 45 | Choques confirmados: golpe + el frontal dejó de bajar | Un golpe solo no distingue choque de vibración |
+| 11-nov | 46 | Pasillos de un tirón; golpe a 1.5 g | El robot se veía tieso; falsos golpes de hasta 1.52 g |
+| 12-nov | 47 | Hacia el centro desde cualquier esquina; cámara apagada | Salida en una esquina al azar de un 11 × 11 |
+| 12-nov | 48 | Simulación 2D de 200 laberintos; bug del avance, `centrar`, `KD` = 0 | El código anterior llegaba 26 % |
+| 12-nov | 49 | Se va por el lado que se abre | Se ciclaba en una zona de paredes cortas |
+| 12-nov | 50 | Brújula; calibrar el avance desde la web | Sin encoders la posición se desfasa |
+| 12-nov | 51 | La pista real en el simulador | Probar sobre el laberinto de las fotos |
+| 12-nov | 52 | Mapa cargado con autolocalización | Depender menos de la odometría y notar cambios |
 
 # Etapas
 
 ::: corto
-Cada etapa sigue el mismo formato: qué cambió, el problema, la solución, las pruebas o evidencia, el razonamiento, el resultado y los commits. Las últimas etapas (36 a 46) vienen de la sesión del 11-nov y de las respuestas del equipo.
+Cada etapa sigue el mismo formato: qué cambió, el problema, la solución, las pruebas o evidencia, el razonamiento, el resultado y los commits. Las últimas etapas (36 a 52) vienen de las sesiones del 11 y 12-nov y de las respuestas del equipo.
 :::
 
 ## Etapa 1. Primera versión: UNO Q con encoders (19-oct)
@@ -1199,3 +1218,5 @@ Términos que se repiten en la bitácora. El glosario completo está en el Manua
 | **ToF** | *Time of Flight*: sensor láser de distancia (VL53L0X) |
 | **Trémaux** | Método clásico para recorrer un laberinto marcando los caminos ya visitados |
 | **Voto** | Cada lectura suma +1 (pared) o −1 (libre) a un lado de la celda, con tope ±5 |
+| **Autolocalización** | Saber en qué celda y hacia dónde está el robot comparando lo que ven sus sensores con un mapa conocido |
+| **Brújula** | Estrategia de respaldo: la salida libre que más apunta al centro, sin mapa de paredes |
