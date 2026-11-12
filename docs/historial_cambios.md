@@ -930,7 +930,7 @@ Además, la cámara ya no se busca en `/dev/video0` y `video1` (son internos) y 
 ::: ficha
 **Del equipo.** Hacer un mapa digital 2D de la pista con las fotos (11 × 11 celdas de 18 cm) y simular sobre él.
 
-**Cómo.** Se rectificó la foto más cenital (homografía de las 4 esquinas del piso) a una cuadrícula de 11 × 11 y se leyó cada tramo de pared a mano (la detección automática por brillo fallaba por la inclinación de las paredes). Queda en `uno_q/sim/pista.py` (editable) y en `docs/img/pista_mapa.png` / `pista_foto.jpg` (mapa sobre la foto). Todas las celdas son alcanzables; el cuarto del amarillo tiene 2 entradas (arriba a la derecha y abajo al centro, vista desde la foto) y el amarillo queda en la celda (6, 6), una celda abajo a la derecha del centro geométrico. **Pendiente: que el equipo lo verifique.**
+**Cómo.** Se rectificó la foto más cenital (homografía de las 4 esquinas del piso) a una cuadrícula de 11 × 11 y se leyó cada tramo de pared a mano (la detección automática por brillo fallaba por la inclinación de las paredes). Queda en `uno_q/python/main.py` (`PISTA_H`, `PISTA_V`, `PISTA_META`; editable) y en `docs/img/pista_mapa.png` / `pista_foto.jpg` (mapa sobre la foto). Todas las celdas son alcanzables; el cuarto del amarillo tiene 2 entradas (arriba a la derecha y abajo al centro, vista desde la foto) y el amarillo queda en la celda (6, 6), una celda abajo a la derecha del centro geométrico. **Pendiente: que el equipo lo verifique.**
 
 **Simulación** (`PISTA=1`, 100 corridas por esquina, con ruido):
 
@@ -940,6 +940,25 @@ Además, la cámara ya no se busca en `/dev/video0` y `video1` (son internos) y 
 | Abajo a la derecha | 99 %, 36 s | 75 %, 87 s |
 | Arriba a la izquierda | 95 %, 36 s | 79 %, 35 s |
 | Arriba a la derecha (la isla grande) | 94 %, 88 s | 72 %, 134 s |
+:::
+
+## Etapa 52. Mapa cargado con autolocalización (12-nov)
+
+::: ficha
+**Del equipo.** Que el robot traiga el mapa y se dé cuenta en el momento si algo cambió (una entrada cerrada) o si no llegó a donde creía, para depender menos de la odometría.
+
+**Cambio.** `ESTRATEGIA = "pista"`: localización de Markov sobre (celda, rumbo inicial) con las celdas libres que ven los 3 ToF; la odometría solo sugiere el avance (*k* ± 1). Camino más corto al amarillo con la pista como la cree; si los ToF contradicen el mapa 2 veces, lo corrige; si nada cuadra, concluye que es otra pista y sigue con la brújula. El mapa queda en `main.py` (`PISTA_H`, `PISTA_V`, `PISTA_META`) y el simulador usa el mismo.
+
+| Caso (200 corridas) | Pista (mapa cargado) | Brújula |
+|---|---|---|
+| Pista real | **98 %, 23 s** | 96 %, 39 s |
+| Odometría mala | **82 %** | 71 % |
+| Entrada de arriba del cuarto cerrada | **92 %, 25 s** | 74 %, 56 s |
+| 6 paredes cambiadas | **92 %** | 92 % |
+| 15 paredes cambiadas | 83 % | 86 % |
+| Otro laberinto (el mapa no sirve) | 84 % | 86 % |
+
+Primer intento sin detectar "otra pista": 42 % en laberintos distintos; con la regla de perdido, 84 %.
 :::
 
 # Pruebas realizadas
