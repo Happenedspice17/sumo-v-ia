@@ -925,6 +925,23 @@ Además, la cámara ya no se busca en `/dev/video0` y `video1` (son internos) y 
 **Cambio.** `ESTRATEGIA = "brujula"` (con `"mapa"` vuelve Trémaux). Sketch: `MS_CELDA` pasa a la variable `msCelda`; nuevos RPC `mover_t` (avance de prueba por tiempo) y `set_ms`. Web: **Calibrar avance**: avanza 10 cm, mides con regla, guardas; se guarda en `/app/datos/avance.json` y se manda al arrancar.
 :::
 
+## Etapa 51. La pista real en el simulador (12-nov)
+
+::: ficha
+**Del equipo.** Hacer un mapa digital 2D de la pista con las fotos (11 × 11 celdas de 18 cm) y simular sobre él.
+
+**Cómo.** Se rectificó la foto más cenital (homografía de las 4 esquinas del piso) a una cuadrícula de 11 × 11 y se leyó cada tramo de pared a mano (la detección automática por brillo fallaba por la inclinación de las paredes). Queda en `uno_q/sim/pista.py` (editable) y en `docs/img/pista_mapa.png` / `pista_foto.jpg` (mapa sobre la foto). Todas las celdas son alcanzables; el cuarto del amarillo tiene 2 entradas (arriba a la derecha y abajo al centro, vista desde la foto) y el amarillo queda en la celda (6, 6), una celda abajo a la derecha del centro geométrico. **Pendiente: que el equipo lo verifique.**
+
+**Simulación** (`PISTA=1`, 100 corridas por esquina, con ruido):
+
+| Salida (vista desde la foto) | Brújula | Mapa (Trémaux) |
+|---|---|---|
+| Abajo a la izquierda | 98 %, 41 s | 73 %, 115 s |
+| Abajo a la derecha | 99 %, 36 s | 75 %, 87 s |
+| Arriba a la izquierda | 95 %, 36 s | 79 %, 35 s |
+| Arriba a la derecha (la isla grande) | 94 %, 88 s | 72 %, 134 s |
+:::
+
 # Pruebas realizadas
 
 ::: corto
