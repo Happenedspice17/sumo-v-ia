@@ -56,10 +56,8 @@ def laberinto(seed, bucles=0.06):
 
 def pista_real():
     """La pista de las fotos (pista.py), con y hacia arriba como el simulador. Devuelve (W, meta)."""
-    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-    import pista
-    W = {(x, N - 1 - y): p for (x, y), p in pista.celdas().items()}
-    return W, (pista.META[0], N - 1 - pista.META[1])
+    W = {(x, N - 1 - y): p for (x, y), p in G["pista_celdas"]().items()}
+    return W, (G["PISTA_META"][0], N - 1 - G["PISTA_META"][1])
 
 
 class Mapa:
@@ -135,7 +133,7 @@ BASE = dict(
     PARED_S=120, PARED_F=55, D_FRENTE=30, D_CERCA=5, FRENA_K=2, D_LADO=41, KC=0.8, KD=0.0, RANGO=600,
     SALTO=120, N_SALTO=2, TRAS_SALTO=110, KG=2.0, ADELANTO=6, DERIVA_CORR=True,
     CHOQUE="confirma", CHOQUE_G=1.5, CHOQUE_FUERTE=2.5, CONFIRMA_MS=250, RETRO_MS=450, VEL_RETRO=110, ATORADO_MS=400,
-    MPU=True, ALINEAR=True, CARRIL=True, FIX_HECHO=True, ALIN_SENSA=False, STALL=False, ESQUIVA=True, CENTRA_F=600, ABRE=True, EST="brujula", CONOCE=False, PISTA=False, ESQ=-1, MANO_N=25, RUIDO=0.6, PEN=1.0,
+    MPU=True, ALINEAR=True, CARRIL=True, FIX_HECHO=True, ALIN_SENSA=False, STALL=False, ESQUIVA=True, CENTRA_F=600, ABRE=True, EST="brujula", CONOCE=False, PISTA=False, ESQ=-1, CIERRA=False, CAMBIOS=0, MANO_N=25, RUIDO=0.6, PEN=1.0,
     # python
     PARED=120, FRENTE_LIBRE=120, VOTO_MAX=5, PASILLO=3, MUESTRAS=3, AGREGA="min", CENTRO_ON=True,
     # fisica
@@ -448,6 +446,26 @@ def decide_alt(P, g, lect, rb, est):
 def corrida(P, seed):
     if P["PISTA"]:
         W, meta = pista_real()
+        W = {c: list(p) for c, p in W.items()}
+        rr = random.Random(seed + 99)
+        def pon(c, h, v):
+            W[c][h] = v; n = (c[0] + DX[h], c[1] + DY[h])
+            if n in W: W[n][(h + 2) % 4] = v
+        if P["CIERRA"]:                                          # cierra la entrada de arriba del cuarto (en la foto)
+            pon((7, N - 1 - 5), 0, True)
+        hechos = 0
+        while hechos < P["CAMBIOS"]:                             # mueve paredes internas al azar (la pista "cambio")
+            c = (rr.randrange(1, N - 1), rr.randrange(1, N - 1)); h = rr.randrange(4)
+            W2 = {k: list(v) for k, v in W.items()}
+            pon(c, h, not W[c][h])
+            vis, st = {meta}, [meta]                              # que la meta siga alcanzable desde las 4 esquinas
+            while st:
+                a = st.pop()
+                for hh in range(4):
+                    b = (a[0] + DX[hh], a[1] + DY[hh])
+                    if not W[a][hh] and b not in vis: vis.add(b); st.append(b)
+            if all(e in vis for e in [(0, 0), (N - 1, 0), (0, N - 1), (N - 1, N - 1)]): hechos += 1
+            else: W.clear(); W.update(W2)
     else:
         W, meta = laberinto(seed), (N // 2, N // 2)
     rb = Robot(P, W, seed)
@@ -456,9 +474,9 @@ def corrida(P, seed):
     for k in ("PARED", "FRENTE_LIBRE", "VOTO_MAX", "PASILLO"):
         g[k] = P[k]
     g["CENTRO"] = 5 if P["CENTRO_ON"] else 0
-    g["ESTRATEGIA"] = "mapa" if P["EST"] == "mapa" else "brujula"
+    g["ESTRATEGIA"] = P["EST"] if P["EST"] in ("mapa", "pista") else "brujula"
     g["RUIDO"], g["CASTIGO"] = P["RUIDO"], P["PEN"]
-    g["usos"].clear(); random.seed(seed)
+    g["usos"].clear(); random.seed(seed); g["loc_inicia"]()
     if P["CONOCE"]:                                              # el usuario eligio la esquina en el menu
         esq = rb.celda_real(); v = (1 if esq[0] == 0 else -1, 1 if esq[1] == 0 else -1)
         for _ in range(rb.h0): v = (-v[1], v[0])
@@ -518,6 +536,7 @@ def corrida(P, seed):
                 rb.ref -= gg; rb.alinear(45)
         if P["CENTRA_F"]: rb.centra_frente(P["CENTRA_F"])
         k = round(hecho / C)
+        g["loc_mueve"](k)
         for i in range(k):
             pos = g["pos"]; cel = g["celda"]
             if i:
