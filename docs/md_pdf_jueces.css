@@ -1,0 +1,19 @@
+/* Manual para jueces: corto, sin portada de página completa ni índice */
+@page { margin: 13mm 15mm 15mm 15mm; }
+body { --fs: 9.6pt; line-height: 1.42; }
+header.portada { height: auto; display: flex; flex-direction: row; align-items: stretch; break-after: auto; margin-bottom: 4mm; }
+header.portada .banda { flex: 1; padding: 6mm 8mm; }
+header.portada h1.title { font-size: 22pt; }
+header.portada .subtitle { font-size: 11pt; margin-top: 1mm; }
+header.portada .materia { margin-bottom: 2mm; font-size: 8pt; }
+header.portada .datos { margin: 0 0 0 5mm; padding: 1mm 0 0 4mm; }
+header.portada .datos p { font-size: 8.5pt; margin: 0; }
+header.portada .datos .rotulo { margin-top: 1.5mm; font-size: 6.5pt; }
+nav.indice { display: none; }
+section.level1 { break-before: auto; }
+h1 { font-size: 13.5pt; margin: 4mm 0 2mm; padding-bottom: 1mm; border-bottom-width: 2px; }
+table { font-size: 8.6pt; margin: 2mm 0 3mm; }
+.corto, .tip, .cuidado { margin: 2mm 0 2.5mm; padding: 6px 11px 5px; }
+.figura { margin: 2mm 0 3mm; }
+.figura div.mermaid svg { max-height: 42mm; }
+ul { margin: 1mm 0; }
