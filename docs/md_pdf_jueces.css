@@ -31,3 +31,6 @@ blockquote { margin: 2mm 0; }
 .final { margin-top: 5mm; padding: 9px 13px; border-radius: 6px; background: var(--acento); color: #fff; text-align: center; break-inside: avoid; }
 .final p { margin: 2px 0; }
 .figura.alta div.mermaid svg { max-height: 82mm; }
+.dos { display: grid; grid-template-columns: 0.85fr 1fr; gap: 5mm; align-items: center; }
+.dos .figura { margin: 0; }
+.dos .figura div.mermaid svg { max-height: 80mm; }

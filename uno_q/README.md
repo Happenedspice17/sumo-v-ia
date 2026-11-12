@@ -2,7 +2,7 @@
 
 **Robot de laberinto · Microcontroladores 2**
 Manuel Harari López · Víctor Miguel Vázquez · Carlos Emiliano Escamilla Garibay
-12 de noviembre de 2026 · Revisión B7
+12 de noviembre de 2026 · Revisión B8
 
 > Versión actual del robot. Documentación completa: [manual técnico](../docs/pdf/manual_tecnico.pdf) · [manual de uso](../docs/pdf/manual_uso.pdf) · [bitácora](../docs/pdf/historial_cambios.pdf)
 
@@ -120,7 +120,7 @@ Con el hub conectado al USB-C, App Lab se conecta por WiFi (el puerto no puede i
 
 ## ⚙️ Funcionamiento
 
-> **En corto:** el sketch ejecuta cada movimiento y frena solo; Python decide quieto con una máquina de estados `SENSA → DECIDE → GIRA → AVANZA` y explora todo el laberinto antes de ir por la ruta corta.
+> **En corto:** el sketch ejecuta cada movimiento y frena solo; Python decide quieto con una máquina de estados `SENSA → DECIDE → GIRA → AVANZA`. Trae el mapa de la pista, se ubica en él con los ToF y va por el camino más corto al amarillo; si duda, decide con la brújula. La cámara está apagada (`USAR_CAM = False`).
 
 ### Sketch (STM32): solo mueve el robot
 
@@ -162,9 +162,13 @@ stateDiagram-v2
 
 1. Lee los 3 ToF, la menor de 3 lecturas de cada uno (5 si en el avance hubo un cambio brusco). Cada lectura vota pared (+1) o libre (−1) en el mapa, con tope ±`VOTO_MAX`: una lectura mala no borra lo que vieron las demás. Por donde pasó queda libre seguro.
 2. **Pista conocida** (`ESTRATEGIA = "pista"`, la de ahora): trae el mapa de las fotos y se ubica comparando lo que ven los ToF con él (16 hipótesis de salida; la odometría solo sugiere). Va por el camino más corto al amarillo; si algo cambió corrige el mapa; si nada cuadra, sigue con la brújula. Respaldo: exploración con **brújula** (`ESTRATEGIA = "brujula"`): no usa el mapa de paredes porque sin encoders la posición se desfasa; entre las salidas libres que ven los ToF toma la que apunta más al centro (giroscopio + posición aproximada), con castigo por salida repetida y algo de azar. Con `"mapa"`, exploración completa hacia el centro: de las salidas libres (lateral ≥ 120 mm; frente ≥ 120 mm reales, `FRENTE_LIBRE`, con el frontal calibrado) que llevan a una celda sin ver, toma la que más acerca al centro (empate: izquierda, frente, derecha). Sale de cualquier esquina de un 11 × 11: el centro está a `CENTRO` = 5 celdas y el lado lo deduce de las salidas libres en la esquina o de su primer movimiento (`ubica()`). Si no hay celdas nuevas, regresa por el camino conocido a la celda con lados sin explorar de menos pasos + distancia al centro (`frontera()`). Cámara apagada (`USAR_CAM = False`). Simulación 2D de las reglas: `sim/` (ver manual técnico 9.4). Así entra a una meta al centro con pocas entradas, que la mano izquierda sola rodearía sin entrar.
+   <p align="center"><img src="../docs/img/pista_mapa.png" width="360" alt="Mapa de la pista de 11 × 11 con el amarillo en (6, 6)"></p>
+
+   *Figura 4. La pista cargada en `main.py` (`PISTA_H`, `PISTA_V`, `PISTA_META`). Qué mirar: el amarillo está en un cuarto con 2 entradas.*
+
 3. Tras un cambio brusco escanea con 5 lecturas y decide igual (izquierda primero si es nueva).
 4. La celda sale de los mm que de verdad avanzó. En pasillo (pared a ambos lados, de frente) avanza hasta `PASILLO` = 3 celdas de un tirón; si se abre un lateral para en el centro de esa celda.
-5. Antes de cada avance, con una sola foto, la cámara:
+5. Con la cámara encendida (`USAR_CAM = True`; hoy está apagada), antes de cada avance, con una sola foto:
    - Revisa el piso del camino con un umbral de gris automático (Otsu): negro → normal; blanco (pared) → va lento y el frontal hace el doble check (el sketch para a 30 mm si de verdad hay pared).
    - Mide el rumbo con el punto de fuga de las bases de las 2 paredes; si va chueco 4° o más, lo corrige (`ajustar`). Con MPU no gira: corrige el rumbo que sostiene el giroscopio. Sin MPU gira en su lugar.
    - Experimental: distancia a la pared en 5 columnas (como 5 ToF virtuales) y aberturas laterales en la celda siguiente (va lento y anota un voto débil de libre).

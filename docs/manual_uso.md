@@ -7,7 +7,7 @@ author:
   - Víctor Miguel Vázquez
   - Carlos Emiliano Escamilla Garibay
 date: 12 de noviembre de 2026
-version: Revisión B7 · documento 2.0
+version: Revisión B8 · documento 3.0
 ---
 
 # 1. Antes de empezar
@@ -23,7 +23,7 @@ El robot **no se mueve solo**. Lo prendes, esperas a que la pantalla diga `LISTO
 - [ ] Sensores limpios
 - [ ] MPU-6050 firme y plano (2 tornillos o cinta doble cara), cables amarrados
 - [ ] Cámara y hub USB conectados, con el cargador del hub
-- [ ] Robot en la esquina de inicio, mirando hacia adelante, y quieto
+- [ ] Robot quieto en una esquina del laberinto (cualquiera: se ubica solo)
 - [ ] Laberinto nuevo: borra el mapa antes de empezar (capítulo 3)
 :::
 
@@ -98,13 +98,13 @@ Un toque corto arranca o detiene. Mantenerlo más de 2 s borra el mapa. Presiona
 | **Presionado al prender** | Modo prueba de sensores: la pantalla muestra `CALIBRACION` con r, g, b, color y distancias |
 
 ::: tip
-La primera corrida explora y mapea hasta encontrar el amarillo. Las siguientes van directo por la ruta corta si ya conocen la meta. Borra con D2 antes de cada laberinto nuevo.
+El robot trae el mapa de la pista: se ubica solo y va al amarillo por el camino más corto. Si duda, decide con la brújula. Borra con D2 antes de cada laberinto nuevo y cada vez que cambies de esquina de salida.
 :::
 
 # 4. Cómo calibrar desde la página web
 
 ::: corto
-Todo se calibra desde el celular: colores, sensores de distancia y cámara. No necesitas cables ni reprogramar. Lo que calibras se guarda en el robot y se carga solo en cada arranque. Sigue el orden: primero distancia, luego cámara (usa el frontal como regla).
+Todo se calibra desde el celular: colores, sensores de distancia, avance y cámara (la cámara hoy está apagada: 4.3 solo si la enciendes). No necesitas cables ni reprogramar. Lo que calibras se guarda en el robot y se carga solo en cada arranque. Sigue el orden: primero distancia, luego cámara (usa el frontal como regla).
 :::
 
 1. Prende el robot normal y espera a que suba `PY`.
@@ -197,7 +197,7 @@ No tienes que medir la inclinación de la cámara: estos pasos miden todo con el
 # 5. Cómo revisar la cámara
 
 ::: corto
-La página muestra lo que ve la cámara. En un pasillo libre, el camino debe salir **verde**. Si sale rojo, ajusta la exposición. Durante una corrida verás la última foto que tomó el robot, no video en vivo.
+Solo si encendiste la cámara (`USAR_CAM = True`). La página muestra lo que ve. En un pasillo libre, el camino debe salir **verde**. Si sale rojo, ajusta la exposición. Durante una corrida verás la última foto que tomó el robot, no video en vivo.
 :::
 
 | Marca en la imagen | Qué significa |
@@ -250,13 +250,13 @@ Para ver por qué gira o avanza, usa **Ver sensores ToF** en la página: dibuja 
 # 7. Cómo correr el laberinto
 
 ::: corto
-La primera corrida explora hasta el amarillo. La segunda, desde la misma posición, va directo por la ruta corta. No borres el mapa entre intentos del mismo laberinto.
+Pon el robot en cualquier esquina y dale un toque corto. Con la pista cargada se ubica solo comparando lo que ven sus sensores con el mapa, y va al amarillo por el camino más corto. Si repites desde la misma esquina, la segunda corrida usa la meta guardada (`RAPIDO`).
 :::
 
 1. **Mantén D2 por 2 s** y suelta (borra las pruebas).
-2. Pon el robot en la **esquina de inicio**, mirando hacia adelante.
-3. Dale un **toque corto**. Explora hasta el amarillo y se detiene solo en `META`.
-4. Regrésalo al inicio, en la misma posición, y dale **toque corto** otra vez: ahora va directo por la ruta corta (`RAPIDO`).
+2. Pon el robot quieto en **una esquina**, en cualquier orientación.
+3. Dale un **toque corto**. Busca el amarillo y se detiene solo en `META`.
+4. Para repetir, regrésalo **a la misma esquina y posición** y dale **toque corto**: va directo por la ruta guardada (`RAPIDO`).
 
 ::: figura
 ```mermaid
@@ -272,6 +272,12 @@ stateDiagram-v2
   META --> LISTO: regrésalo al inicio
 ```
 **Figura 4. Estados de una corrida.** Qué mirar: el robot elige `EXPLORA` o `RAPIDO` solo, según si el mapa guardado ya tiene la meta.
+:::
+
+::: figura
+![](img/pista_mapa.png){width=46%}
+
+**Figura 5. La pista que trae el robot.** Qué mirar: si las paredes de tu pista no coinciden con este mapa, el robot lo nota y sigue con la brújula; si cambió mucho, avisa al equipo para actualizar `PISTA_H` y `PISTA_V`.
 :::
 
 ::: cuidado
@@ -305,11 +311,14 @@ Busca el síntoma en la tabla. La mayoría de los problemas se arreglan con una 
 | La página no abre | Otra red o IP equivocada | Usa el mismo WiFi que la placa y la IP que muestra App Lab con `:7000` |
 | Se pierde o el mapa está mal | Mapa viejo o con errores | Mantén D2 por 2 s para borrar y empieza de nuevo |
 | Pantalla negra | Arranque en curso o batería baja | Espera; si sigue, revisa la batería |
+| Las primeras celdas va hacia un lado raro | Todavía no sabe en qué esquina está: decide con la brújula | Es normal; en pocas celdas se ubica y toma el camino corto |
+| Nunca se ubica y da vueltas | La pista no es la del mapa cargado | Usa `ESTRATEGIA = "brujula"` en `main.py`, o actualiza `PISTA_H` / `PISTA_V` |
+| La segunda corrida va a un lugar equivocado | Cambiaste de esquina y usó la meta guardada | Borra el mapa (D2 más de 2 s) al cambiar de esquina |
 
 # 9. Control de versiones
 
 ::: corto
-Hoy hay un solo sketch (con MPU-6050) y un solo Python. La cámara experimental es una bandera dentro de `main.py`.
+Hoy hay un solo sketch (con MPU-6050) y un solo Python. La estrategia (`ESTRATEGIA`) y la cámara (`USAR_CAM`, `EXPERIMENTAL`) son banderas dentro de `main.py`.
 :::
 
 | Revisión | Qué cambió para quien lo usa |
@@ -318,7 +327,8 @@ Hoy hay un solo sketch (con MPU-6050) y un solo Python. La cámara experimental 
 | B4 | La web inicia, detiene y borra el mapa; cronómetro y colores vistos |
 | B5 | El MPU se usa completo: se endereza antes de avanzar, verifica giros, se recupera de choques y se detiene si lo levantan |
 | B6 | Queda un solo sketch, `sketch/` (con MPU-6050). `sketch_sin_mpu/` se quitó del repositorio |
-| **B7** | **Queda un solo Python. La versión experimental de la cámara es `EXPERIMENTAL = True` en `main.py`** |
+| B7 | Queda un solo Python. La versión experimental de la cámara es `EXPERIMENTAL = True` en `main.py` |
+| **B8** | **Sale de cualquier esquina y se ubica solo con el mapa de la pista; cámara apagada; avance calibrable en la web** |
 
 ::: tip
 Si algún día hace falta la versión sin MPU, está en el commit `2e01996` del repositorio (carpeta `uno_q/sketch_sin_mpu/`). El detalle está en el manual técnico, capítulo "Control de versiones".
