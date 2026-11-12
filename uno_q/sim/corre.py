@@ -13,7 +13,7 @@ def parse(args, base):
         k, v = a.split("="); P[k] = type(S.BASE[k])(v) if not isinstance(S.BASE[k], bool) else v == "1"
     return P
 if __name__ == "__main__":
-    n = int(os.environ.get("NS", 200)); base = parse(os.environ.get("BASEP", "").split(), S.BASE) if os.environ.get("BASEP") else dict(S.BASE)
+    n = int(os.environ.get("NS", 1000)); base = parse(os.environ.get("BASEP", "").split(), S.BASE) if os.environ.get("BASEP") else dict(S.BASE)
     for line in sys.stdin:
         line = line.strip()
         if not line: continue

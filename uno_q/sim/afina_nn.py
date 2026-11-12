@@ -146,7 +146,7 @@ if __name__ == "__main__":
     G = int(sys.argv[1]) if len(sys.argv) > 1 else 8
     N0 = int(sys.argv[2]) if len(sys.argv) > 2 else 48
     NG = int(sys.argv[3]) if len(sys.argv) > 3 else 16
-    rnd = random.Random(1); out = {}; ESCN = ("MEJOR", PEOR); VER = range(1000, 1200)
+    rnd = random.Random(1); out = {}; ESCN = ("MEJOR", PEOR); VER = range(1000, 2000)
     for e in ESCN:
         x, d = evoluciona(e, G, N0, NG, range(100, 108), rnd)
         n = len(d["pred"]); d["R2"] = round(1 - float(np.sum((np.array(d["pred"]) - np.array(d["real"])) ** 2) / np.sum(np.array(d["real"]) ** 2)), 2)
@@ -156,7 +156,7 @@ if __name__ == "__main__":
         d["params"] = {k: (round(v) if RNG[k][2] else round(v, 2)) for k, v in zip(K, x)}; d["x_mejor"] = [round(v, 3) for v in x]
         d["nuevo"] = resumen(a_x(d["params"]), e, VER); d["actual"] = resumen(base_x(), e, VER)
         out[e] = d
-        print(e, "VERIFICADO (200 semillas nuevas) actual:", d["actual"], "afinado:", d["nuevo"], flush=True)
+        print(e, "VERIFICADO (1000 semillas nuevas) actual:", d["actual"], "afinado:", d["nuevo"], flush=True)
     cand = {"MEJOR": a_x(out["MEJOR"]["params"]), PEOR: a_x(out[PEOR]["params"])}
     rob = []
     for n_, c in cand.items():
