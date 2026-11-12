@@ -156,7 +156,7 @@ if __name__ == "__main__":
         d["params"] = {k: (round(v) if RNG[k][2] else round(v, 2)) for k, v in zip(K, x)}; d["x_mejor"] = [round(v, 3) for v in x]
         d["nuevo"] = resumen(a_x(d["params"]), e, VER); d["actual"] = resumen(base_x(), e, VER)
         out[e] = d
-        print(e, "VERIFICADO (30 semillas nuevas) actual:", d["actual"], "afinado:", d["nuevo"], flush=True)
+        print(e, "VERIFICADO (200 semillas nuevas) actual:", d["actual"], "afinado:", d["nuevo"], flush=True)
     cand = {"MEJOR": a_x(out["MEJOR"]["params"]), PEOR: a_x(out[PEOR]["params"])}
     rob = []
     for n_, c in cand.items():
