@@ -84,6 +84,8 @@ Linux llama funciones que expone el STM32 por el Bridge (RPC MessagePack, enruta
 | `girar(k)` | Gira en sitio *k* × 90°; el signo indica el sentido (2 = media vuelta) |
 | `ajustar(g)` | Corrige el rumbo *g* grados (derecha +) con lo que mide la cámara. Con MPU y sentido conocido no gira: mueve el rumbo deseado y la recta lo sostiene (devuelve 1). Si no, gira en su lugar (devuelve 2: hay que esperar) |
 | `centrar(lim)` | Con pared enfrente a menos de *lim* mm: avanza o retrocede a `VEL_MIN` hasta que el frontal lea `D_FRENTE` + *k* × 180 (centro de la celda), máximo 1 s. Python lo pide tras cada avance con `CENTRA_F` = 600. Devuelve 2 si hay que esperar |
+| `mover_t(mm)` | Avance de prueba por tiempo (sin medir con el frontal ni alargarse por saltos): calibra `msCelda` desde la web |
+| `set_ms(ms)` | Fija `msCelda` (200-2000) |
 | `alinear(lim)` | Con MPU: gira en su lugar hasta el rumbo deseado si se desvió 3° o más (`ALIN_MIN`) y no más de *lim* (45 antes de avanzar; 180 para terminar un giro fallido). Devuelve 2 si hay que esperar. Sin MPU devuelve 0 |
 | `ocupado()` | 1 mientras hay un movimiento activo |
 | `odo(i)` | Lecturas (tabla siguiente) |
@@ -393,7 +395,9 @@ flowchart TD
 
 **Por qué exploración completa.** La meta está al centro y solo tiene 2 entradas: las paredes que la rodean forman una **isla**, separada del muro exterior. Un seguidor de pared solo recorre el muro al que está pegado, así que rodea la isla sin entrar. En simulación (laberintos de 9 × 9 con la meta en una isla central de 3 × 3 con 2 entradas, 30 laberintos), la mano izquierda pura llegó a la meta 0 de 30 veces y la exploración completa 30 de 30.
 
-**Se va por lo que se abre.** Si el avance paró porque se abrió un lateral (`ESCANEA`) y esa salida lleva a una celda sin ver, la toma, aunque otra acerque más al centro (en simulación 87 % contra 90 % sin esta regla: igual dentro del ruido; se ve más natural).
+**Brújula (estrategia actual, `ESTRATEGIA = "brujula"`).** Sin encoders la posición se desfasa (tiempo, choques), y con el mapa desfasado la exploración da vueltas: cree nuevas celdas que ya vio y busca fronteras que no existen. La brújula no usa el mapa de paredes: entre las salidas libres que ven los ToF **ahora**, toma la que apunta más al centro (rumbo del giroscopio, que sí es confiable, y la posición aproximada), menos `CASTIGO` = 1.0 por cada vez que ya tomó esa salida desde esa celda aproximada, más azar (`RUIDO` = 0.6, rompe ciclos). Un desfase de 1-2 celdas casi no cambia hacia dónde queda el centro. Simulación, 200 laberintos: con la odometría actual 86 % contra 87 % del mapa; con odometría mala (sin `centrar` ni la corrección del sketch) 60 % contra 46 %. El seguidor de pared que cambia de mano cada 10-25 decisiones llegó 20-47 %. `ESTRATEGIA = "mapa"` vuelve a Trémaux con el mapa.
+
+**Se va por lo que se abre** (solo con `"mapa"`). Si el avance paró porque se abrió un lateral (`ESCANEA`) y esa salida lleva a una celda sin ver, la toma, aunque otra acerque más al centro (en simulación 87 % contra 90 % sin esta regla: igual dentro del ruido; se ve más natural).
 
 **Hacia el centro.** El laberinto es de 11 × 11 y el robot sale de una esquina cualquiera, así que el centro queda a `CENTRO` = 5 celdas en x y en y. El lado lo deduce `ubica()`: en la celda de salida cada lado libre apunta hacia adentro (los muros exteriores de la esquina están pegados), y en cuanto se mueve en un eje, ese lado es hacia adentro. Un eje sin lado conocido no cuenta. En simulación (40 laberintos de 11 × 11 con isla central, esquina al azar) llega 40/40 en 1173 pasos en total contra 5479 sin preferir el centro (peor caso 93 contra 163). No se precarga un mapa de las fotos: una pared mal ubicada lo haría chocar y la pista puede cambiar.
 
@@ -471,7 +475,7 @@ Valores tal como están en `sketch.ino` y `main.py`. Cambia uno a la vez y prueb
 |---|---|---|---|---|
 | `CELDA` | 180 | mm | Avance de una celda | Si cambia el laberinto |
 | `RANGO` | 600 | mm | Con el frontal por debajo avanza por distancia; más lejos, por tiempo (de lejos, un poco chueco, el frontal ve las paredes laterales) | — |
-| `MS_CELDA` | 700 | ms | Tiempo por celda cuando no hay pared a la vista | No llega o se pasa sin pared enfrente (±25) |
+| `msCelda` | 700 | ms | Tiempo por celda cuando no hay pared a la vista. Variable: la manda Python al arrancar (`set_ms`), calibrada en la web | Web: Calibrar avance |
 | `MS_90` | 250 | ms | Giro de 90° por tiempo (solo si el MPU no responde) | Solo sin MPU |
 | `VEL_EXPLORA` | 140 | PWM | Velocidad normal de avance (0–255) | — |
 | `VEL_LENTO` | 100 | PWM | Velocidad cuando la cámara ve blanco | — |
@@ -508,6 +512,8 @@ Valores tal como están en `sketch.ino` y `main.py`. Cambia uno a la vez y prueb
 | `FRENTE_LIBRE` | 120 | mm reales | El frente cuenta como salida (a la mitad entre ~30 y ~210) | Tras calibrar los ToF |
 | `VOTO_MAX` | 5 | votos | Tope de votos por pared | — |
 | `PASILLO` | 3 | celdas | Máximo de un tirón en pasillo (1 = parar en cada celda) | Tieso: 4; pierde posición: 2 |
+| `ESTRATEGIA` | "brujula" | — | Exploración sin mapa de paredes (o `"mapa"`: Trémaux) | — |
+| `RUIDO` / `CASTIGO` | 0.6 / 1.0 | — | Brújula: azar y castigo por salida repetida | Da vueltas en una zona: `CASTIGO` 1.5 |
 | `CENTRA_F` | 600 | mm | Tras avanzar, con pared enfrente a menos de esto se centra con ella (`centrar`) | 0 = apagado |
 | `CENTRO` | 5 | celdas | De la esquina de salida al centro (11 × 11) | Otro tamaño: (lado − 1) / 2 |
 | `USAR_CAM` | False | — | Cámara apagada: solo ToF | `True` para volver a usarla |

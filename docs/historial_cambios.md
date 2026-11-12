@@ -907,6 +907,24 @@ Además, la cámara ya no se busca en `/dev/video0` y `video1` (son internos) y 
 **Cambio.** Si el avance paró por abrirse un lateral y esa salida lleva a una celda sin ver, la toma. Simulación: 87 % contra 90 % (igual dentro del ruido). Hay que cargar la versión actual: corrige el bug y centra con la pared.
 :::
 
+## Etapa 50. Brújula en vez de mapa; calibrar avance en la web (12-nov)
+
+::: ficha
+**Del equipo.** En Python la posición se desfasa, y en cada golpe también: no hay encoders y no se van a poder poner. Solo hay que llegar al centro (amarillo) con la menor información posible. Además, un botón en la web para calibrar el avance a unos 10 cm.
+
+**Razonamiento.** Lo que se desfasa es la posición, no el rumbo: el giroscopio sí es confiable. Con el mapa desfasado, Trémaux da vueltas (celdas "nuevas" que ya vio, fronteras que no existen). Una regla que solo use lo que ven los ToF en la celda actual y hacia dónde queda el centro tolera errores de 1-2 celdas.
+
+**Simulación** (200 laberintos, `uno_q/sim/`):
+
+| Estrategia | Odometría actual | Odometría mala |
+|---|---|---|
+| Mapa (Trémaux + centro) | 87 % | 46 % |
+| **Brújula** (centro + castigo + azar) | **86 %** | **60 %** |
+| Seguidor de pared que cambia de mano | 20-47 % | 27 % |
+
+**Cambio.** `ESTRATEGIA = "brujula"` (con `"mapa"` vuelve Trémaux). Sketch: `MS_CELDA` pasa a la variable `msCelda`; nuevos RPC `mover_t` (avance de prueba por tiempo) y `set_ms`. Web: **Calibrar avance**: avanza 10 cm, mides con regla, guardas; se guarda en `/app/datos/avance.json` y se manda al arrancar.
+:::
+
 # Pruebas realizadas
 
 ::: corto

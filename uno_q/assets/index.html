@@ -74,6 +74,15 @@
       </div>
       <div id="calTxt" style="font-family:monospace;font-size:14px;margin-top:8px;white-space:pre-line"></div>
     </div>
+    <div style="margin-top:14px;border-top:1px solid #ccc;padding-top:10px">
+      <b>Calibrar avance</b> (sin encoders, por tiempo): pon el robot en el piso con espacio libre adelante y marca dónde está el eje. Aprieta <b>Avanzar 10 cm</b>, mide con regla cuánto avanzó de verdad y guárdalo: ajusta los ms por celda y se guarda en el robot.
+      <div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap">
+        <button style="background:#455a64;padding:10px 14px" onclick="avPrueba()">Avanzar 10 cm</button>
+        <input id="avMm" type="number" min="10" max="400" placeholder="mm reales" style="width:110px;font-size:18px;padding:6px">
+        <button style="background:#2e7d32;padding:10px 14px" onclick="avGuarda()">Guardar</button>
+      </div>
+      <div id="avTxt" style="font-family:monospace;font-size:14px;margin-top:8px"></div>
+    </div>
   </div>
 </div>
 <div class="paso">
@@ -238,6 +247,24 @@ function pintaCal(c) {
   document.getElementById("calTxt").textContent = Object.entries(c).map(([n, v]) =>
     n + ": " + (Object.keys(v.puntos).length ? "a 100 mm leía " + Object.values(v.puntos)[0] + " mm → corrige " +
     (v.b >= 0 ? "+" : "") + v.b + " mm" : "sin calibrar")).join("\n");
+}
+
+async function avPrueba() {
+  document.getElementById("msg").textContent = "Avanzando 10 cm...";
+  try {
+    const r = await (await fetch("/api/avance_prueba")).json();
+    document.getElementById("avTxt").textContent = r.ok ? "Avanzó con " + r.ms + " ms por celda. Mide y guarda." : "No se pudo (¿está corriendo?)";
+  } catch (e) {}
+  document.getElementById("msg").textContent = "Listo ✔";
+}
+
+async function avGuarda() {
+  const mm = parseInt(document.getElementById("avMm").value);
+  if (!(mm > 0)) return;
+  try {
+    const r = await (await fetch("/api/avance_cal?mm=" + mm)).json();
+    document.getElementById("avTxt").textContent = "Guardado: " + r.ms + " ms por celda (prueba otra vez hasta que avance 100 mm)";
+  } catch (e) {}
 }
 
 async function calTof(s, mm) {

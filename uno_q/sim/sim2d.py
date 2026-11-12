@@ -127,7 +127,7 @@ BASE = dict(
     PARED_S=120, PARED_F=55, D_FRENTE=30, D_CERCA=5, FRENA_K=2, D_LADO=41, KC=0.8, KD=0.0, RANGO=600,
     SALTO=120, N_SALTO=2, TRAS_SALTO=110, KG=2.0, ADELANTO=6, DERIVA_CORR=True,
     CHOQUE="confirma", CHOQUE_G=1.5, CHOQUE_FUERTE=2.5, CONFIRMA_MS=250, RETRO_MS=450, VEL_RETRO=110, ATORADO_MS=400,
-    MPU=True, ALINEAR=True, CARRIL=True, FIX_HECHO=True, ALIN_SENSA=False, STALL=False, ESQUIVA=True, CENTRA_F=600, ABRE=True,
+    MPU=True, ALINEAR=True, CARRIL=True, FIX_HECHO=True, ALIN_SENSA=False, STALL=False, ESQUIVA=True, CENTRA_F=600, ABRE=True, EST="brujula", MANO_N=25, RUIDO=0.6, PEN=1.0,
     # python
     PARED=120, FRENTE_LIBRE=120, VOTO_MAX=5, PASILLO=3, MUESTRAS=3, AGREGA="min", CENTRO_ON=True,
     # fisica
@@ -410,6 +410,32 @@ class Robot:
         return abs(cx - m) < 55 and abs(cy - m) < 55
 
 
+def decide_alt(P, g, lect, rb, est):
+    """Estrategias sin mapa de paredes: solo ToF de esta celda + rumbo del giroscopio + posicion aproximada."""
+    izq, fr, der = lect
+    libres = [r for r, ok in ((-1, izq >= P["PARED"]), (0, fr >= P["FRENTE_LIBRE"]), (1, der >= P["PARED"])) if ok]
+    if not libres: return 2
+    est["n"] += 1
+    if P["EST"] == "mano_cambia":
+        mano = -1 if (est["n"] // P["MANO_N"]) % 2 == 0 else 1
+        for r in (mano, 0, -mano):
+            if r in libres: return r
+    # brujula: hacia el centro con la posicion aproximada; castiga salidas ya tomadas desde esa celda aproximada
+    pos, rumbo, signo = g["pos"], g["rumbo"], g["signo"]
+    cx = 5 * signo[0] - pos[0] if signo[0] else 0
+    cy = 5 * signo[1] - pos[1] if signo[1] else 0
+    nrm = math.hypot(cx, cy) or 1
+    mejor, rm = None, None
+    for r in libres:
+        h = (rumbo + r) % 4
+        u = est["usos"].get((pos, h), 0)
+        sc = (g["DX"][h] * cx + g["DY"][h] * cy) / nrm - P["PEN"] * u + rb.r.gauss(0, P["RUIDO"])
+        if mejor is None or sc > mejor: mejor, rm = sc, r
+    h = (rumbo + rm) % 4
+    est["usos"][(pos, h)] = est["usos"].get((pos, h), 0) + 1
+    return rm
+
+
 def corrida(P, seed):
     W = laberinto(seed)
     rb = Robot(P, W, seed)
@@ -417,6 +443,9 @@ def corrida(P, seed):
     for k in ("PARED", "FRENTE_LIBRE", "VOTO_MAX", "PASILLO"):
         g[k] = P[k]
     g["CENTRO"] = 5 if P["CENTRO_ON"] else 0
+    g["ESTRATEGIA"] = "mapa" if P["EST"] == "mapa" else "brujula"
+    g["RUIDO"], g["CASTIGO"] = P["RUIDO"], P["PEN"]
+    g["usos"].clear(); random.seed(seed)
     g["muros"].clear(); g["vistas"].clear(); g["pos"], g["rumbo"] = (0, 0), 0; g["signo"][:] = [0, 0]
     # marco: celda real -> celda de Python (rumbo inicial h0 = +y de Python)
     h0 = rb.h0; c0 = rb.celda_real()
@@ -424,7 +453,7 @@ def corrida(P, seed):
         dx, dy = c[0] - c0[0], c[1] - c0[1]
         for _ in range(h0): dx, dy = -dy, dx                     # rota al marco del robot
         return (dx, dy)
-    desfase = 0; decisiones = 0; abre = []
+    desfase = 0; decisiones = 0; abre = []; est = {"n": 0, "usos": {}}
     def tof3(n):
         d = [9999] * 3; lst = [[], [], []]
         for _ in range(n):
@@ -441,7 +470,7 @@ def corrida(P, seed):
         rb.t += 0.25                                              # rpc, decidir, prints
         g["anota"](*lect); g["ubica"](*lect); g["vistas"].add(g["pos"])
         if a_python(rb.celda_real()) != g["pos"]: desfase += 1
-        rel = g["decidir"](*lect, abre=abre if P["ABRE"] else [])
+        rel = decide_alt(P, g, lect, rb, est) if P["EST"] == "mano_cambia" else g["decidir"](*lect, abre=abre if P["ABRE"] else [])
         decisiones += 1
         # girar + verifica_giro (con MPU)
         if rel:
