@@ -1,0 +1,5 @@
+{
+  "private": true,
+  "description": "Dependencias para generar los PDF (sh md_pdf.sh)",
+  "dependencies": { "mermaid": "11.4.1" }
+}

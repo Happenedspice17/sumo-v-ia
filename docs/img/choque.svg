@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" width="640" font-family="Inter, sans-serif" font-size="11" fill="#1b1f24">
+  <!-- ejes: x = 60 + t*0.8 (t en ms, 0..700), y = 250 - g*70 (g 0..3) -->
+  <rect x="60" y="40" width="120" height="210" fill="#f3f4f6"/>
+  <text x="120" y="56" text-anchor="middle" fill="#5b6472">arranque:</text>
+  <text x="120" y="70" text-anchor="middle" fill="#5b6472">se ignora (150 ms)</text>
+  <rect x="300" y="40" width="200" height="210" fill="#e9f6ee"/>
+  <text x="400" y="56" text-anchor="middle" fill="#0f5c2c" font-weight="600">ventana de confirmación 250 ms</text>
+  <text x="400" y="70" text-anchor="middle" fill="#0f5c2c">¿el frontal bajó 10 mm?</text>
+  <line x1="60" y1="145" x2="620" y2="145" stroke="#15803d" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <text x="616" y="139" text-anchor="end" fill="#0f5c2c" font-weight="600">CHOQUE_G = 1.5 g (sospecha)</text>
+  <line x1="60" y1="75" x2="620" y2="75" stroke="#b45309" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <text x="616" y="91" text-anchor="end" fill="#b45309" font-weight="600">CHOQUE_FUERTE = 2.5 g (sin pared a la vista)</text>
+  <polyline fill="none" stroke="#1b1f24" stroke-width="1.6" points="60,250 76,215 92,185 108,200 124,190 140,205 156,195 172,210 188,212 204,205 220,215 236,208 252,213 268,207 284,212 292,200 300,118 308,190 316,214 332,210 348,216 364,211 380,214 396,212 412,215 428,213 444,216 460,214 476,215 492,214 508,216 524,213 540,215 556,214 572,215 588,213 604,214 620,214"/>
+  <circle cx="300" cy="118" r="4" fill="#15803d"/>
+  <text x="306" y="112" fill="#0f5c2c">golpe 1.9 g</text>
+  <line x1="60" y1="250" x2="620" y2="250" stroke="#5b6472"/>
+  <line x1="60" y1="40" x2="60" y2="250" stroke="#5b6472"/>
+  <g fill="#5b6472" text-anchor="middle">
+    <text x="60" y="266">0</text><text x="180" y="266">150</text><text x="300" y="266">300</text><text x="500" y="266">550</text><text x="620" y="266">700 ms</text>
+  </g>
+  <g fill="#5b6472" text-anchor="end">
+    <text x="54" y="254">0</text><text x="54" y="184">1</text><text x="54" y="114">2</text><text x="54" y="44">3 g</text>
+  </g>
+  <text x="340" y="290" text-anchor="middle" fill="#5b6472">tiempo desde el inicio del avance (señal ilustrativa, no medida)</text>
+</svg>
