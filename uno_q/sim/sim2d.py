@@ -133,7 +133,7 @@ BASE = dict(
     PARED_S=120, PARED_F=55, D_FRENTE=30, D_CERCA=5, FRENA_K=2, D_LADO=41, KC=0.8, KD=0.0, RANGO=600,
     SALTO=120, N_SALTO=2, TRAS_SALTO=110, KG=2.0, ADELANTO=6, DERIVA_CORR=True,
     CHOQUE="confirma", CHOQUE_G=1.5, CHOQUE_FUERTE=2.5, CONFIRMA_MS=250, RETRO_MS=450, VEL_RETRO=110, ATORADO_MS=400,
-    MPU=True, ALINEAR=True, CARRIL=True, FIX_HECHO=True, ALIN_SENSA=False, STALL=False, ESQUIVA=True, CENTRA_F=600, ABRE=True, EST="brujula", CONOCE=False, PISTA=False, ESQ=-1, CIERRA=False, CAMBIOS=0, MANO_N=25, RUIDO=0.6, PEN=1.0,
+    MPU=True, ALINEAR=True, CARRIL=True, FIX_HECHO=True, ALIN_SENSA=False, STALL=False, ESQUIVA=True, CENTRA_F=600, ABRE=True, EST="brujula", CONOCE=False, PISTA=False, ESQ=-1, AMAR_W=135, AMAR_H=150, AMAR_DX=-40, AMAR_DY=-10, AMAR_MARGEN=25, CIERRA=False, CAMBIOS=0, MANO_N=25, RUIDO=0.6, PEN=1.0,
     # python
     PARED=120, FRENTE_LIBRE=120, VOTO_MAX=5, PASILLO=3, MUESTRAS=3, AGREGA="min", CENTRO_ON=True,
     # fisica
@@ -414,7 +414,10 @@ class Robot:
     def en_meta(s):
         cx, cy = s.x + 34 * math.sin(s.th), s.y + 34 * math.cos(s.th)
         mx, my = getattr(s, "meta", (N // 2, N // 2))
-        return abs(cx - (mx + .5) * C) < 55 and abs(cy - (my + .5) * C) < 55
+        P = s.P
+        dx, dy = (P["AMAR_DX"], P["AMAR_DY"]) if P["PISTA"] else (0, 0)
+        return (abs(cx - (mx + .5) * C - dx) < P["AMAR_W"] / 2 - P["AMAR_MARGEN"] and
+                abs(cy - (my + .5) * C - dy) < P["AMAR_H"] / 2 - P["AMAR_MARGEN"])
 
 
 def decide_alt(P, g, lect, rb, est):
