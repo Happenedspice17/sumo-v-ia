@@ -127,7 +127,7 @@ BASE = dict(
     PARED_S=120, PARED_F=55, D_FRENTE=30, D_CERCA=5, FRENA_K=2, D_LADO=41, KC=0.8, KD=0.0, RANGO=600,
     SALTO=120, N_SALTO=2, TRAS_SALTO=110, KG=2.0, ADELANTO=6, DERIVA_CORR=True,
     CHOQUE="confirma", CHOQUE_G=1.5, CHOQUE_FUERTE=2.5, CONFIRMA_MS=250, RETRO_MS=450, VEL_RETRO=110, ATORADO_MS=400,
-    MPU=True, ALINEAR=True, CARRIL=True, FIX_HECHO=True, ALIN_SENSA=False, STALL=False, ESQUIVA=True, CENTRA_F=600,
+    MPU=True, ALINEAR=True, CARRIL=True, FIX_HECHO=True, ALIN_SENSA=False, STALL=False, ESQUIVA=True, CENTRA_F=600, ABRE=True,
     # python
     PARED=120, FRENTE_LIBRE=120, VOTO_MAX=5, PASILLO=3, MUESTRAS=3, AGREGA="min", CENTRO_ON=True,
     # fisica
@@ -424,7 +424,7 @@ def corrida(P, seed):
         dx, dy = c[0] - c0[0], c[1] - c0[1]
         for _ in range(h0): dx, dy = -dy, dx                     # rota al marco del robot
         return (dx, dy)
-    desfase = 0; decisiones = 0
+    desfase = 0; decisiones = 0; abre = []
     def tof3(n):
         d = [9999] * 3; lst = [[], [], []]
         for _ in range(n):
@@ -441,7 +441,7 @@ def corrida(P, seed):
         rb.t += 0.25                                              # rpc, decidir, prints
         g["anota"](*lect); g["ubica"](*lect); g["vistas"].add(g["pos"])
         if a_python(rb.celda_real()) != g["pos"]: desfase += 1
-        rel = g["decidir"](*lect)
+        rel = g["decidir"](*lect, abre=abre if P["ABRE"] else [])
         decisiones += 1
         # girar + verifica_giro (con MPU)
         if rel:
@@ -459,6 +459,7 @@ def corrida(P, seed):
         n = P["PASILLO"] if rel == 0 and lect[0] < P["PARED"] and lect[2] < P["PARED"] else 1
         if P["ALINEAR"]: rb.alinear(45)
         hecho, saltos, choque = rb.mover(int(C * n))
+        abre = [r for r, b in ((-1, 1), (1, 4)) if saltos & b]
         if rb.en_meta(): continue
         if choque:                                                # vuelve_al_carril
             izq, _, der = tof3(2)

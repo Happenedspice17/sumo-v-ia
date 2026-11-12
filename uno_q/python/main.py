@@ -797,7 +797,7 @@ def frontera():
     return previo[c][1]
 
 
-def decidir(izq, frente, der):
+def decidir(izq, frente, der, abre=()):
     """Exploracion completa hacia el centro (tipo Tremaux / DFS):
     1. Salidas libres hacia celdas sin ver: la que mas acerca al centro (empate: izquierda, frente, derecha).
     2. Si todas llevan a celdas ya vistas: va por el camino conocido mas corto a la celda con lados sin explorar.
@@ -814,7 +814,8 @@ def decidir(izq, frente, der):
     ops = [r for r in (-1, 0, 1) if r in libres] or [2]
     nuevas = [r for r in ops if r != 2 and vecino(pos, (rumbo + r) % 4) not in vistas]
     if nuevas:
-        return min(nuevas, key=lambda r: al_centro(vecino(pos, (rumbo + r) % 4)))
+        tomar = [r for r in nuevas if r in abre]   # se acaba de abrir a un lado (paro ahi por eso): se va por ahi
+        return min(tomar or nuevas, key=lambda r: al_centro(vecino(pos, (rumbo + r) % 4)))
     h = frontera()
     if h is not None:
         rel = {0: 0, 1: 1, 2: 2, 3: -1}[(h - rumbo) % 4]
@@ -829,7 +830,7 @@ def buscar_color():
     global encontrado
     encontrado = False
     estado(1)
-    f = "SENSA"
+    f, abre = "SENSA", []
     while not encontrado:
         if detener():
             return False
@@ -841,7 +842,7 @@ def buscar_color():
             vistas.add(pos)
             f = "DECIDE"
         elif f == "DECIDE":
-            rel = decidir(*lect)
+            rel = decidir(*lect, abre=abre)
             print("ToF izq {} frente {} der {} en {}:".format(*lect, pos),
                   {1: "derecha", 0: "frente", -1: "izquierda", 2: "media vuelta"}[rel])
             f = "GIRA"
@@ -852,6 +853,7 @@ def buscar_color():
             # pasillo (pared a ambos lados y sin girar): varias celdas de un tiron; para si se abre un lateral
             n = PASILLO if rel == 0 and lect[0] < PARED and lect[2] < PARED else 1
             saltos = avanzar(n)
+            abre = [r for r, b in ((-1, 1), (1, 4)) if saltos & b]   # bits de odo(3): 1 izq, 2 frente, 4 der
             f = "ESCANEA" if saltos else "SENSA"
     return True
 
