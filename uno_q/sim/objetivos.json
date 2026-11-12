@@ -1,0 +1,250 @@
+{
+ "n": 100,
+ "tol": 0.08,
+ "factores": {
+  "Bateria: caida de velocidad al final": {
+   "param": "SAG",
+   "unidad": "fraccion",
+   "niveles": [
+    {
+     "valor": 0,
+     "ok": 0.81
+    },
+    {
+     "valor": 0.1,
+     "ok": 0.83
+    },
+    {
+     "valor": 0.2,
+     "ok": 0.75
+    },
+    {
+     "valor": 0.25,
+     "ok": 0.79
+    }
+   ],
+   "max_ok": 0.25
+  },
+  "ToF: sesgo por sensor": {
+   "param": "TOF_OFF",
+   "unidad": "mm",
+   "niveles": [
+    {
+     "valor": 0,
+     "ok": 0.81
+    },
+    {
+     "valor": 3,
+     "ok": 0.83
+    },
+    {
+     "valor": 6,
+     "ok": 0.65
+    },
+    {
+     "valor": 8,
+     "ok": 0.52
+    }
+   ],
+   "max_ok": 3
+  },
+  "ToF: error de escala": {
+   "param": "TOF_ESC",
+   "unidad": "fraccion",
+   "niveles": [
+    {
+     "valor": 0,
+     "ok": 0.81
+    },
+    {
+     "valor": 0.02,
+     "ok": 0.78
+    },
+    {
+     "valor": 0.05,
+     "ok": 0.65
+    }
+   ],
+   "max_ok": 0.02
+  },
+  "ToF: lecturas malas": {
+   "param": "TOF_FALLA",
+   "unidad": "fraccion",
+   "niveles": [
+    {
+     "valor": 0,
+     "ok": 0.75
+    },
+    {
+     "valor": 0.01,
+     "ok": 0.81
+    },
+    {
+     "valor": 0.03,
+     "ok": 0.76
+    },
+    {
+     "valor": 0.05,
+     "ok": 0.67
+    }
+   ],
+   "max_ok": 0.03
+  },
+  "Motores: asimetria izq/der": {
+   "param": "ASIM",
+   "unidad": "fraccion",
+   "niveles": [
+    {
+     "valor": 0.03,
+     "ok": 0.81
+    },
+    {
+     "valor": 0.05,
+     "ok": 0.81
+    },
+    {
+     "valor": 0.08,
+     "ok": 0.79
+    },
+    {
+     "valor": 0.12,
+     "ok": 0.72
+    }
+   ],
+   "max_ok": 0.08
+  },
+  "Motores: variacion de K_V": {
+   "param": "KV_SIG",
+   "unidad": "fraccion",
+   "niveles": [
+    {
+     "valor": 0,
+     "ok": 0.81
+    },
+    {
+     "valor": 0.05,
+     "ok": 0.83
+    },
+    {
+     "valor": 0.1,
+     "ok": 0.81
+    },
+    {
+     "valor": 0.15,
+     "ok": 0.75
+    }
+   ],
+   "max_ok": 0.15
+  },
+  "Motores: zona muerta": {
+   "param": "DEAD_SIG",
+   "unidad": "PWM",
+   "niveles": [
+    {
+     "valor": 0,
+     "ok": 0.81
+    },
+    {
+     "valor": 4,
+     "ok": 0.8
+    },
+    {
+     "valor": 8,
+     "ok": 0.81
+    },
+    {
+     "valor": 12,
+     "ok": 0.82
+    }
+   ],
+   "max_ok": 12
+  },
+  "Giroscopio: deriva": {
+   "param": "GYRO_BIAS",
+   "unidad": "grados/s",
+   "niveles": [
+    {
+     "valor": 0.03,
+     "ok": 0.81
+    },
+    {
+     "valor": 0.05,
+     "ok": 0.83
+    },
+    {
+     "valor": 0.08,
+     "ok": 0.73
+    },
+    {
+     "valor": 0.12,
+     "ok": 0.61
+    }
+   ],
+   "max_ok": 0.05
+  }
+ },
+ "ablacion": {
+  "Bateria: caida de velocidad al final": {
+   "ok": 0.42,
+   "choques": 4.56,
+   "mejora": 0.04999999999999999
+  },
+  "ToF: sesgo por sensor": {
+   "ok": 0.52,
+   "choques": 4.74,
+   "mejora": 0.15000000000000002
+  },
+  "ToF: error de escala": {
+   "ok": 0.4,
+   "choques": 5.84,
+   "mejora": 0.030000000000000027
+  },
+  "ToF: lecturas malas": {
+   "ok": 0.41,
+   "choques": 5.43,
+   "mejora": 0.03999999999999998
+  },
+  "Motores: asimetria izq/der": {
+   "ok": 0.33,
+   "choques": 5.57,
+   "mejora": -0.03999999999999998
+  },
+  "Motores: variacion de K_V": {
+   "ok": 0.37,
+   "choques": 5.85,
+   "mejora": 0.0
+  },
+  "Motores: zona muerta": {
+   "ok": 0.38,
+   "choques": 5.42,
+   "mejora": 0.010000000000000009
+  },
+  "Giroscopio: deriva": {
+   "ok": 0.41,
+   "choques": 4.72,
+   "mejora": 0.03999999999999998
+  }
+ },
+ "ideal": [
+  0.81,
+  0.26
+ ],
+ "wca": [
+  0.37,
+  5.64
+ ],
+ "especificacion": {
+  "valores": {
+   "SAG": 0.2,
+   "TOF_OFF": 0,
+   "TOF_ESC": 0,
+   "TOF_FALLA": 0.01,
+   "ASIM": 0.05,
+   "KV_SIG": 0.1,
+   "DEAD_SIG": 8,
+   "GYRO_BIAS": 0.03
+  },
+  "ok": 0.78,
+  "choques": 1.1
+ }
+}

@@ -1,0 +1,11 @@
+ideal (0.81, 0.26) wca (0.37, 5.64)
+Bateria: caida de velocidad al final [(0, 0.81), (0.1, 0.83), (0.2, 0.75), (0.25, 0.79)] max 0.25 | WCA sin el: 0.42
+ToF: sesgo por sensor [(0, 0.81), (3, 0.83), (6, 0.65), (8, 0.52)] max 3 | WCA sin el: 0.52
+ToF: error de escala [(0, 0.81), (0.02, 0.78), (0.05, 0.65)] max 0.02 | WCA sin el: 0.4
+ToF: lecturas malas [(0, 0.75), (0.01, 0.81), (0.03, 0.76), (0.05, 0.67)] max 0.03 | WCA sin el: 0.41
+Motores: asimetria izq/der [(0.03, 0.81), (0.05, 0.81), (0.08, 0.79), (0.12, 0.72)] max 0.08 | WCA sin el: 0.33
+Motores: variacion de K_V [(0, 0.81), (0.05, 0.83), (0.1, 0.81), (0.15, 0.75)] max 0.15 | WCA sin el: 0.37
+Motores: zona muerta [(0, 0.81), (4, 0.8), (8, 0.81), (12, 0.82)] max 12 | WCA sin el: 0.38
+Giroscopio: deriva [(0.03, 0.81), (0.05, 0.83), (0.08, 0.73), (0.12, 0.61)] max 0.05 | WCA sin el: 0.41
+espec {'SAG': 0.25, 'TOF_OFF': 3, 'TOF_ESC': 0.02, 'TOF_FALLA': 0.03, 'ASIM': 0.08, 'KV_SIG': 0.15, 'DEAD_SIG': 12, 'GYRO_BIAS': 0.05} (0.58, 2.5)
+espec {'SAG': 0.2, 'TOF_OFF': 0, 'TOF_ESC': 0, 'TOF_FALLA': 0.01, 'ASIM': 0.05, 'KV_SIG': 0.1, 'DEAD_SIG': 8, 'GYRO_BIAS': 0.03} (0.78, 1.1)

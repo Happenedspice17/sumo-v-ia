@@ -3,135 +3,243 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Calibrar colores</title>
+<title>Laberinto · Panel</title>
 <style>
-  body { font-family: system-ui, sans-serif; margin: 0; padding: 16px; background: #f4f4f4; color: #222; }
-  h1 { font-size: 22px; margin: 0 0 12px; }
-  .ahora { display: flex; gap: 16px; align-items: center; background: #fff; border-radius: 12px; padding: 16px; }
-  #muestra { width: 90px; height: 90px; border-radius: 12px; border: 2px solid #ccc; }
-  #color { font-size: 36px; font-weight: 700; }
-  #nums { font-family: monospace; color: #555; }
-  p { margin: 16px 0 8px; }
-  .botones { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
-  button { font-size: 18px; padding: 16px 8px; border: 0; border-radius: 12px; color: #fff; cursor: pointer; }
-  button small { display: block; font-size: 12px; opacity: .85; font-family: monospace; }
-  .paso { background: #fff; border-radius: 12px; padding: 16px; margin-top: 16px; font-size: 20px; }
-  .paso #pasoBtn { width: 100%; font-size: 24px; margin: 12px 0; }
-  .nav { display: flex; gap: 10px; }
-  .nav button { flex: 1; background: #888; font-size: 16px; padding: 10px; }
-  #msg { margin-top: 12px; font-weight: 600; color: #0a7a2f; min-height: 1.2em; }
+  :root {
+    --bg: #0a1020; --bg2: #0e1730; --panel: #121c36; --panel2: #18233f; --line: #26345a;
+    --txt: #e9efff; --mut: #8d9dc4; --acc: #4f8cff; --acc2: #7c5cff;
+    --ok: #2fd27a; --warn: #f6b026; --bad: #ff5d6c; --shadow: 0 8px 28px rgba(0,0,0,.35);
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: light) {
+    :root { --bg: #eef2fa; --bg2: #e4eaf7; --panel: #fff; --panel2: #f3f6fc; --line: #d5ddef;
+            --txt: #17203a; --mut: #5d6d93; --shadow: 0 6px 22px rgba(30,50,100,.12); color-scheme: light; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--txt);
+         background: radial-gradient(1200px 600px at 10% -10%, var(--bg2), transparent), var(--bg); min-height: 100vh; }
+  .top { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+         padding: 12px 20px; background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: blur(10px);
+         border-bottom: 1px solid var(--line); }
+  .brand { font-weight: 800; font-size: 20px; letter-spacing: .2px; display: flex; align-items: center; gap: 10px; }
+  .brand i { font-style: normal; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 11px;
+             background: linear-gradient(135deg, var(--acc), var(--acc2)); box-shadow: 0 4px 14px rgba(79,140,255,.45); }
+  .sp { flex: 1; }
+  .pill { padding: 6px 14px; border-radius: 999px; font-weight: 700; font-size: 13px; border: 1px solid var(--line);
+          background: var(--panel); color: var(--mut); display: flex; align-items: center; gap: 8px; }
+  .pill::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--mut); }
+  .pill.on { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 50%, var(--line)); }
+  .pill.on::before { background: var(--ok); box-shadow: 0 0 0 0 var(--ok); animation: lat 1.4s infinite; }
+  @keyframes lat { 70% { box-shadow: 0 0 0 9px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+  .timer { font: 700 22px ui-monospace, "SF Mono", Menlo, monospace; font-variant-numeric: tabular-nums; }
+  main { max-width: 1280px; margin: 0 auto; padding: 18px 20px 60px; display: grid; gap: 16px;
+         grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); align-items: start; }
+  .wide { grid-column: 1 / -1; }
+  .cols { grid-column: 1 / -1; columns: 340px; column-gap: 16px; }
+  .cols > .card { break-inside: avoid; margin-bottom: 16px; }
+  .card { background: linear-gradient(180deg, var(--panel), var(--panel2)); border: 1px solid var(--line);
+          border-radius: 18px; padding: 18px; box-shadow: var(--shadow); }
+  .card h2 { margin: 0 0 12px; font-size: 13px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--mut);
+             display: flex; align-items: center; gap: 8px; }
+  .card h2::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; }
+  .kpi { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
+  .kpi small { display: block; color: var(--mut); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+  .kpi b { display: block; font-size: 22px; margin-top: 4px; font-variant-numeric: tabular-nums; word-break: break-word; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .row > .grow { flex: 1; }
+  button { font: inherit; font-weight: 700; font-size: 15px; padding: 12px 16px; border: 0; border-radius: 12px; cursor: pointer;
+           color: #fff; background: linear-gradient(135deg, #3a4a72, #2c3a5e); transition: transform .08s, filter .15s, box-shadow .15s;
+           box-shadow: 0 3px 10px rgba(0,0,0,.25); }
+  button:hover { filter: brightness(1.12); }
+  button:active { transform: translateY(1px) scale(.99); }
+  button small { display: block; font-size: 11px; font-weight: 500; opacity: .85; font-family: ui-monospace, monospace; margin-top: 2px; }
+  .b-ok { background: linear-gradient(135deg, #25b868, #178a4c); }
+  .b-bad { background: linear-gradient(135deg, #ee5565, #bf2f43); }
+  .b-brn { background: linear-gradient(135deg, #8a6552, #65463a); }
+  .b-acc { background: linear-gradient(135deg, var(--acc), var(--acc2)); }
+  .b-sm { padding: 7px 12px; font-size: 13px; background: var(--panel); color: var(--mut); border: 1px solid var(--line); box-shadow: none; }
+  input[type=number] { font: inherit; font-size: 16px; padding: 9px 11px; border-radius: 10px; border: 1px solid var(--line);
+                       background: var(--bg); color: var(--txt); width: 100px; }
+  input:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+  .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13.5px; white-space: pre-line; color: var(--mut); line-height: 1.55; }
+  .note { font-size: 13px; color: var(--mut); line-height: 1.5; }
+  .sep { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 14px; }
+  #muestra { width: 84px; height: 84px; border-radius: 16px; border: 2px solid var(--line); flex: none; box-shadow: inset 0 0 0 3px rgba(255,255,255,.06); }
+  #color { font-size: 34px; font-weight: 800; letter-spacing: .5px; }
+  .botones { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+  .botones button { padding: 14px 8px; }
+  #pasoTxt { font-size: 16px; line-height: 1.5; }
+  #pasoBtn { width: 100%; font-size: 18px; margin: 12px 0; padding: 16px; }
+  .nav { display: flex; gap: 10px; } .nav button { flex: 1; }
+  #msg { margin-top: 2px; font-weight: 700; color: var(--ok); min-height: 1.2em; font-size: 14px; }
+  #tofSvg { width: 100%; max-width: 440px; display: block; margin: 8px auto 0; background: #070c18; border-radius: 14px; border: 1px solid var(--line); }
+  #cam:not([src]) { display: none; }
+  #cam { width: 100%; max-width: 360px; image-rendering: pixelated; background: #000; border-radius: 12px; margin-top: 10px; border: 1px solid var(--line); }
+  details > summary { cursor: pointer; font-weight: 700; padding: 6px 0; }
+  .acc-txt { font-size: 18px; font-weight: 700; margin-top: 12px; }
+  /* tabla de perfiles y barras de tolerancia */
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { padding: 7px 9px; text-align: right; border-bottom: 1px solid var(--line); }
+  th:first-child, td:first-child { text-align: left; font-family: ui-monospace, monospace; }
+  th { color: var(--mut); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+  td.dif { color: var(--acc); font-weight: 700; }
+  .tol { display: grid; grid-template-columns: minmax(150px, 1.3fr) 1.6fr 1fr; gap: 10px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .dots { display: flex; gap: 6px; flex-wrap: wrap; }
+  .dot { padding: 4px 9px; border-radius: 8px; font: 700 12px ui-monospace, monospace; border: 1px solid transparent; }
+  .dot.si { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); border-color: color-mix(in srgb, var(--ok) 45%, transparent); }
+  .dot.no { background: color-mix(in srgb, var(--bad) 16%, transparent); color: var(--bad); border-color: color-mix(in srgb, var(--bad) 45%, transparent); }
+  .bar { height: 10px; border-radius: 6px; background: var(--line); overflow: hidden; } .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--acc), var(--acc2)); }
+  .big { font-size: 30px; font-weight: 800; } .ok { color: var(--ok); } .bad { color: var(--bad); }
+  @media (max-width: 560px) { main { padding: 12px; } .tol { grid-template-columns: 1fr; } .timer { font-size: 18px; } }
 </style>
 </head>
 <body>
-<div class="paso" style="margin-top:0">
-  <div><b>Corrida</b> <span id="ctlTxt" style="color:#555"></span></div>
-  <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
-    <button style="background:#2e7d32;flex:1" onclick="control('corre')">▶ Iniciar</button>
-    <button style="background:#c62828;flex:1" onclick="control('alto')">■ Detener</button>
-    <button style="background:#6d4c41;flex:1" onclick="if (confirm('¿Borrar el mapa y el conteo? (laberinto nuevo)')) control('borra')">Borrar mapa</button>
+<header class="top">
+  <div class="brand"><i>🤖</i> Laberinto <span style="color:var(--mut);font-weight:500">· Panel</span></div>
+  <div class="sp"></div>
+  <div class="pill" id="pill">quieto</div>
+  <div class="timer" id="ctlT">⏱ —</div>
+</header>
+<main>
+
+<section class="card wide">
+  <h2>Corrida <span id="ctlTxt" style="text-transform:none;letter-spacing:0"></span></h2>
+  <div class="row">
+    <button class="b-ok grow" onclick="control('corre')">▶ Iniciar</button>
+    <button class="b-bad grow" onclick="control('alto')">■ Detener</button>
+    <button class="b-brn grow" onclick="if (confirm('¿Borrar el mapa y el conteo? (laberinto nuevo)')) control('borra')">Borrar mapa</button>
   </div>
-  <div id="ctlT" style="font-size:22px;font-weight:700;margin-top:8px;font-family:monospace">⏱ —</div>
-  <div id="ctlLog" style="font-family:monospace;font-size:14px;margin-top:4px;white-space:pre-line;color:#333"></div>
-  <div style="font-size:14px;color:#666;margin-top:6px">Igual que el botón D2: pon el robot en la celda de inicio, viendo al mismo lado, antes de Iniciar.</div>
-</div>
-<h1>Calibrar colores</h1>
-<div class="ahora">
-  <div id="muestra"></div>
-  <div>
-    <div>El robot ve:</div>
-    <div id="color">...</div>
-    <div id="nums"></div>
+  <div class="kpis" style="margin-top:14px">
+    <div class="kpi"><small>Fase</small><b id="kFase">—</b></div>
+    <div class="kpi"><small>Celda</small><b id="kPos">—</b></div>
+    <div class="kpi"><small>Mapa</small><b id="kMapa">—</b></div>
+    <div class="kpi"><small>Meta</small><b id="kMeta">—</b></div>
   </div>
-</div>
-<div class="paso">
-  <button id="tofBtn" style="background:#37474f;width:100%" onclick="verTof()">Ver sensores ToF</button>
+  <div id="ctlLog" class="mono" style="margin-top:12px"></div>
+  <div class="note" style="margin-top:8px">Igual que el botón D2: pon el robot en la celda de inicio, viendo al mismo lado, antes de Iniciar.</div>
+</section>
+
+<div class="cols">
+<section class="card">
+  <h2>Color</h2>
+  <div class="row" style="gap:16px">
+    <div id="muestra"></div>
+    <div><div class="note">El robot ve</div><div id="color">...</div><div id="nums" class="mono"></div></div>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Dónde está</h2>
+  <div id="odo" class="mono">...</div>
+</section>
+
+<section class="card">
+  <h2>Sensores ToF</h2>
+  <button id="tofBtn" class="b-acc" style="width:100%" onclick="verTof()">Ver sensores ToF</button>
   <div id="tofPanel" style="display:none;margin-top:12px">
-    <svg id="tofSvg" viewBox="-200 -230 400 330" style="width:100%;max-width:420px;display:block;margin:auto;background:#111;border-radius:10px">
+    <svg id="tofSvg" viewBox="-200 -230 400 330">
       <rect x="-60" y="-60" width="120" height="120" rx="28" fill="#ffb300"/>
       <text x="0" y="8" text-anchor="middle" font-size="22" fill="#111">robot</text>
-      <line id="lF" x1="0" y1="-54" x2="0" y2="-54" stroke-width="10"/>
-      <line id="lI" x1="-43" y1="-40" x2="-43" y2="-40" stroke-width="10"/>
-      <line id="lD" x1="43" y1="-40" x2="43" y2="-40" stroke-width="10"/>
+      <line id="lF" x1="0" y1="-54" x2="0" y2="-54" stroke-width="10" stroke-linecap="round"/>
+      <line id="lI" x1="-43" y1="-40" x2="-43" y2="-40" stroke-width="10" stroke-linecap="round"/>
+      <line id="lD" x1="43" y1="-40" x2="43" y2="-40" stroke-width="10" stroke-linecap="round"/>
       <g id="flecha" style="transition:transform .2s"><path d="M0,-40 L22,-5 L8,-5 L8,35 L-8,35 L-8,-5 L-22,-5 Z" fill="#1e88e5" stroke="#fff" stroke-width="2"/></g>
       <text id="tF" x="12" y="-200" font-size="20" fill="#fff"></text>
       <text id="tI" x="-195" y="-50" font-size="20" fill="#fff"></text>
       <text id="tD" x="195" y="-50" font-size="20" fill="#fff" text-anchor="end"></text>
     </svg>
-    <div style="margin-top:10px;font-size:20px">Qué haría: <b id="accion">...</b></div>
-    <div style="font-size:14px;color:#666">Simulación: tapa o acerca un sensor con la mano y mira qué decide. No mueve el robot.</div>
-    <div id="tofTxt" style="font-family:monospace;font-size:15px;margin-top:8px;white-space:pre-line"></div>
-    <div style="margin-top:14px;border-top:1px solid #ccc;padding-top:10px">
-      <b>Calibrar distancia</b> (con el robot quieto): pon algo plano y blanco a <b>100 mm</b> de la cara del sensor (vernier) y aprieta ese sensor. Promedia 10 lecturas y corrige el desfase; si lo repites, reemplaza la calibración anterior de ese sensor.
-      <div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap">
-        <button style="background:#455a64;padding:10px 14px" onclick="calTof(0, 100)">Izq a 100 mm</button>
-        <button style="background:#455a64;padding:10px 14px" onclick="calTof(1, 100)">Frente a 100 mm</button>
-        <button style="background:#455a64;padding:10px 14px" onclick="calTof(2, 100)">Der a 100 mm</button>
+    <div class="acc-txt">Qué haría: <span id="accion">...</span></div>
+    <div class="note">Simulación: tapa o acerca un sensor con la mano y mira qué decide. No mueve el robot.</div>
+    <div id="tofTxt" class="mono" style="margin-top:8px"></div>
+    <div class="sep">
+      <b>Calibrar distancia</b> <span class="note">(robot quieto): pon algo plano y blanco a <b>100 mm</b> de la cara del sensor (vernier) y aprieta ese sensor. Promedia 10 lecturas y corrige el desfase; si lo repites, reemplaza la calibración anterior.</span>
+      <div class="row" style="margin-top:10px">
+        <button onclick="calTof(0, 100)">Izq a 100 mm</button>
+        <button onclick="calTof(1, 100)">Frente a 100 mm</button>
+        <button onclick="calTof(2, 100)">Der a 100 mm</button>
       </div>
-      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
-        <button style="background:#888;padding:6px 10px;font-size:14px" onclick="calTof(0, 0)">Borrar izq</button>
-        <button style="background:#888;padding:6px 10px;font-size:14px" onclick="calTof(1, 0)">Borrar frente</button>
-        <button style="background:#888;padding:6px 10px;font-size:14px" onclick="calTof(2, 0)">Borrar der</button>
+      <div class="row" style="margin-top:8px">
+        <button class="b-sm" onclick="calTof(0, 0)">Borrar izq</button>
+        <button class="b-sm" onclick="calTof(1, 0)">Borrar frente</button>
+        <button class="b-sm" onclick="calTof(2, 0)">Borrar der</button>
       </div>
-      <div id="calTxt" style="font-family:monospace;font-size:14px;margin-top:8px;white-space:pre-line"></div>
+      <div id="calTxt" class="mono" style="margin-top:8px"></div>
     </div>
-    <div style="margin-top:14px;border-top:1px solid #ccc;padding-top:10px">
-      <b>Calibrar avance</b> (sin encoders, por tiempo): pon el robot en el piso con espacio libre adelante y marca dónde está el eje. Aprieta <b>Avanzar 10 cm</b>, mide con regla cuánto avanzó de verdad y guárdalo: ajusta los ms por celda y se guarda en el robot.
-      <div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap">
-        <button style="background:#455a64;padding:10px 14px" onclick="avPrueba()">Avanzar 10 cm</button>
-        <input id="avMm" type="number" min="10" max="400" placeholder="mm reales" style="width:110px;font-size:18px;padding:6px">
-        <button style="background:#2e7d32;padding:10px 14px" onclick="avGuarda()">Guardar</button>
+    <div class="sep">
+      <b>Calibrar avance</b> <span class="note">(sin encoders, por tiempo): pon el robot en el piso con espacio libre adelante y marca dónde está el eje. Aprieta <b>Avanzar 10 cm</b>, mide con regla cuánto avanzó de verdad y guárdalo.</span>
+      <div class="row" style="margin-top:10px">
+        <button onclick="avPrueba()">Avanzar 10 cm</button>
+        <input id="avMm" type="number" min="10" max="400" placeholder="mm reales">
+        <button class="b-ok" onclick="avGuarda()">Guardar</button>
       </div>
-      <div id="avTxt" style="font-family:monospace;font-size:14px;margin-top:8px"></div>
+      <div id="avTxt" class="mono" style="margin-top:8px"></div>
     </div>
   </div>
-</div>
-<div class="paso">
-  <div><b>Dónde está</b> (odometría)</div>
-  <div id="odo" style="font-family:monospace;font-size:15px;margin-top:6px;white-space:pre-line">...</div>
-</div>
-<div class="paso">
-  <div>Explora todo con mano izquierda: va a celdas sin ver (izquierda, frente, derecha); si no hay, regresa por el camino conocido a la celda más cercana con lados sin explorar. Con los 3 ToF (la menor de 3 lecturas). Tras un cambio brusco en un ToF escanea con 5 lecturas. Mapea paredes y colores; para al leer amarillo y la siguiente corrida va directo.</div>
-</div>
-<div class="paso">
-  <div>Cámara monocromática: camino rojo = blanco/pared (va lento), verde = negro; azul = bases de las paredes y punto de fuga (rumbo); línea blanca = "derecho"<span id="camExpTxt"></span>:</div>
-  <img id="cam" alt="sin cámara" style="width:100%;max-width:320px;image-rendering:pixelated;background:#000;border-radius:8px;margin-top:8px">
-  <div id="camTxt" style="font-family:monospace;font-size:14px;margin-top:6px;white-space:pre-line"></div>
-  <details style="margin-top:8px"><summary><b>Calibrar cámara</b></summary>
-    <div style="margin-top:8px">1. Exposición fija (0 = automática; unidades de 100 µs: 100 = 10 ms; la más baja es 1) y ganancia (-1 = no la toca; 0 = la más baja). Baja hasta que el piso salga negro y las paredes blancas, sin manchas.</div>
-    <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap">
-      Exp <input id="camExpo" type="number" value="50" min="0" style="width:70px;font-size:18px;padding:6px">
-      Gan <input id="camGain" type="number" value="-1" min="-1" style="width:70px;font-size:18px;padding:6px">
-      <button style="background:#455a64;padding:10px 14px" onclick="camApi('cam_expo?v=' + (parseInt(document.getElementById('camExpo').value) || 0) + '&g=' + (parseInt(document.getElementById('camGain').value) || 0))">Aplicar</button>
+</section>
+
+<section class="card">
+  <h2>Cámara</h2>
+  <div class="note">Camino rojo = blanco/pared (va lento), verde = negro; azul = bases de las paredes y punto de fuga (rumbo); línea blanca = "derecho"<span id="camExpTxt"></span>.</div>
+  <img id="cam" alt="sin cámara">
+  <div id="camTxt" class="mono" style="margin-top:8px"></div>
+  <details class="sep"><summary>Calibrar cámara</summary>
+    <div class="note" style="margin-top:8px">1. Exposición fija (0 = automática; unidades de 100 µs: 100 = 10 ms; la más baja es 1) y ganancia (-1 = no la toca; 0 = la más baja). Baja hasta que el piso salga negro y las paredes blancas, sin manchas.</div>
+    <div class="row" style="margin-top:8px">
+      Exp <input id="camExpo" type="number" value="50" min="0" style="width:80px">
+      Gan <input id="camGain" type="number" value="-1" min="-1" style="width:80px">
+      <button onclick="camApi('cam_expo?v=' + (parseInt(document.getElementById('camExpo').value) || 0) + '&g=' + (parseInt(document.getElementById('camGain').value) || 0))">Aplicar</button>
     </div>
-    <div style="margin-top:10px">Sensibilidad al blanco (0 = normal; súbela de 10 en 10 si no ve la pared como blanco; negativa si ve blanco donde hay piso negro):</div>
-    <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
-      <input id="camSens" type="number" value="0" min="-80" max="80" style="width:70px;font-size:18px;padding:6px">
-      <button style="background:#455a64;padding:10px 14px" onclick="camApi('cam_sens?v=' + (parseInt(document.getElementById('camSens').value) || 0))">Aplicar</button>
+    <div class="note" style="margin-top:12px">Sensibilidad al blanco (0 = normal; súbela de 10 en 10 si no ve la pared como blanco; negativa si ve blanco donde hay piso negro):</div>
+    <div class="row" style="margin-top:8px">
+      <input id="camSens" type="number" value="0" min="-80" max="80" style="width:80px">
+      <button onclick="camApi('cam_sens?v=' + (parseInt(document.getElementById('camSens').value) || 0))">Aplicar</button>
     </div>
-    <div style="margin-top:10px">2. Rumbo: pon el robot derecho y centrado en un pasillo largo y aprieta:</div>
-    <button style="background:#455a64;padding:10px 14px;margin-top:6px" onclick="camApi('cam_cero')">Está derecho</button>
-    <div style="margin-top:10px">3. Gíralo a mano unos grados a la <b>derecha</b> (transportador), escríbelos y aprieta:</div>
-    <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
-      <input id="camGiro" type="number" value="15" min="1" style="width:80px;font-size:18px;padding:6px"> °
-      <button style="background:#455a64;padding:10px 14px" onclick="camApi('cam_giro?g=' + (parseInt(document.getElementById('camGiro').value) || 0))">Fijar escala</button>
+    <div class="note" style="margin-top:12px">2. Rumbo: pon el robot derecho y centrado en un pasillo largo y aprieta:</div>
+    <button style="margin-top:8px" onclick="camApi('cam_cero')">Está derecho</button>
+    <div class="note" style="margin-top:12px">3. Gíralo a mano unos grados a la <b>derecha</b> (transportador), escríbelos y aprieta:</div>
+    <div class="row" style="margin-top:8px">
+      <input id="camGiro" type="number" value="15" min="1" style="width:80px"> °
+      <button onclick="camApi('cam_giro?g=' + (parseInt(document.getElementById('camGiro').value) || 0))">Fijar escala</button>
     </div>
-    <div id="camDistBox" style="display:none;margin-top:10px">4. <b>Experimental</b>, distancia por cámara: pon el robot frente a una pared y aprieta en varias distancias (100 a 600 mm). Usa el ToF frontal como regla.
-      <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">
-        <button style="background:#455a64;padding:10px 14px" onclick="camApi('cam_dist')">Agregar punto</button>
-        <button style="background:#888;padding:6px 10px;font-size:14px" onclick="camApi('cam_dist?borrar=1')">Borrar puntos</button>
+    <div id="camDistBox" style="display:none;margin-top:12px" class="note">4. <b>Experimental</b>, distancia por cámara: pon el robot frente a una pared y aprieta en varias distancias (100 a 600 mm). Usa el ToF frontal como regla.
+      <div class="row" style="margin-top:8px">
+        <button onclick="camApi('cam_dist')">Agregar punto</button>
+        <button class="b-sm" onclick="camApi('cam_dist?borrar=1')">Borrar puntos</button>
       </div>
     </div>
-    <div id="camCal" style="font-family:monospace;font-size:14px;margin-top:8px;white-space:pre-line"></div>
+    <div id="camCal" class="mono" style="margin-top:8px"></div>
   </details>
-</div>
-<div class="paso">
+</section>
+
+<section class="card">
+  <h2>Calibrar colores</h2>
   <div id="pasoTxt"></div>
   <button id="pasoBtn" onclick="pasoGuardar()"></button>
-  <div class="nav"><button onclick="ir(-1)">◀ Atrás</button><button onclick="ir(1)">Saltar ▶</button></div>
+  <div class="nav"><button class="b-sm" onclick="ir(-1)">◀ Atrás</button><button class="b-sm" onclick="ir(1)">Saltar ▶</button></div>
+  <div class="note" style="margin:14px 0 8px">O guarda uno suelto:</div>
+  <div class="botones" id="botones"></div>
+</section>
+
 </div>
-<p>O guarda uno suelto:</p>
-<div class="botones" id="botones"></div>
-<div id="msg"></div>
+
+<section class="card wide" id="cObj">
+  <h2>Objetivos de calibración</h2>
+  <div class="note" id="objIntro"></div>
+  <div id="objTol" style="margin-top:10px"></div>
+  <div class="sep"><b>Parámetros del sketch</b> <span class="note">(perfil actual contra los afinados con la red neuronal)</span>
+    <div style="overflow-x:auto;margin-top:8px"><table id="objPar"></table></div>
+    <div class="note" id="objParNota" style="margin-top:8px"></div>
+  </div>
+</section>
+
+<section class="card wide">
+  <h2>Estrategia</h2>
+  <div class="note">Explora todo con mano izquierda: va a celdas sin ver (izquierda, frente, derecha); si no hay, regresa por el camino conocido a la celda más cercana con lados sin explorar. Con los 3 ToF (la menor de 3 lecturas). Tras un cambio brusco en un ToF escanea con 5 lecturas. Mapea paredes y colores; para al leer amarillo y la siguiente corrida va directo.</div>
+  <div id="msg" style="margin-top:10px"></div>
+</section>
+
+</main>
 <script>
 const fondo = { PISO: "#777", ROJO: "#c62828", VERDE: "#2e7d32", AZUL: "#1565c0", AMAR: "#c79100" };
 let hechos = false, paso = 0, nombres = [];
@@ -163,6 +271,10 @@ function pinta(d) {
   if (d.odo) {
     const o = d.odo;
     document.getElementById("ctlTxt").textContent = o.corriendo ? "· corriendo (" + (o.fase || "...") + ")" : "· quieto";
+    const pl = document.getElementById("pill");
+    pl.className = "pill" + (o.corriendo ? " on" : ""); pl.textContent = o.corriendo ? "corriendo" : "quieto";
+    document.getElementById("kFase").textContent = o.fase || "—"; document.getElementById("kPos").textContent = o.pos || "—";
+    document.getElementById("kMapa").textContent = (o.celdas || 0) + " celdas"; document.getElementById("kMeta").textContent = o.meta || "sin encontrar";
     document.getElementById("ctlT").textContent = "⏱ " + (o.tiempo == null ? "—" : o.tiempo.toFixed(1) + " s") +
       (o.t_meta != null ? "   amarillo a los " + o.t_meta.toFixed(1) + " s" : o.tiempo != null && !o.corriendo ? "   sin amarillo" : "");
     document.getElementById("ctlLog").textContent = (o.log || []).length ? "Colores vistos:\n" +
@@ -312,6 +424,34 @@ async function camara() {
   setTimeout(camara, 500);
 }
 camara();
+
+const OBJ = {"n": 100, "tol": 0.08, "factores": {"Bateria: caida de velocidad al final": {"param": "SAG", "unidad": "fraccion", "niveles": [{"valor": 0, "ok": 0.81}, {"valor": 0.1, "ok": 0.83}, {"valor": 0.2, "ok": 0.75}, {"valor": 0.25, "ok": 0.79}], "max_ok": 0.25}, "ToF: sesgo por sensor": {"param": "TOF_OFF", "unidad": "mm", "niveles": [{"valor": 0, "ok": 0.81}, {"valor": 3, "ok": 0.83}, {"valor": 6, "ok": 0.65}, {"valor": 8, "ok": 0.52}], "max_ok": 3}, "ToF: error de escala": {"param": "TOF_ESC", "unidad": "fraccion", "niveles": [{"valor": 0, "ok": 0.81}, {"valor": 0.02, "ok": 0.78}, {"valor": 0.05, "ok": 0.65}], "max_ok": 0.02}, "ToF: lecturas malas": {"param": "TOF_FALLA", "unidad": "fraccion", "niveles": [{"valor": 0, "ok": 0.75}, {"valor": 0.01, "ok": 0.81}, {"valor": 0.03, "ok": 0.76}, {"valor": 0.05, "ok": 0.67}], "max_ok": 0.03}, "Motores: asimetria izq/der": {"param": "ASIM", "unidad": "fraccion", "niveles": [{"valor": 0.03, "ok": 0.81}, {"valor": 0.05, "ok": 0.81}, {"valor": 0.08, "ok": 0.79}, {"valor": 0.12, "ok": 0.72}], "max_ok": 0.08}, "Motores: variacion de K_V": {"param": "KV_SIG", "unidad": "fraccion", "niveles": [{"valor": 0, "ok": 0.81}, {"valor": 0.05, "ok": 0.83}, {"valor": 0.1, "ok": 0.81}, {"valor": 0.15, "ok": 0.75}], "max_ok": 0.15}, "Motores: zona muerta": {"param": "DEAD_SIG", "unidad": "PWM", "niveles": [{"valor": 0, "ok": 0.81}, {"valor": 4, "ok": 0.8}, {"valor": 8, "ok": 0.81}, {"valor": 12, "ok": 0.82}], "max_ok": 12}, "Giroscopio: deriva": {"param": "GYRO_BIAS", "unidad": "grados/s", "niveles": [{"valor": 0.03, "ok": 0.81}, {"valor": 0.05, "ok": 0.83}, {"valor": 0.08, "ok": 0.73}, {"valor": 0.12, "ok": 0.61}], "max_ok": 0.05}}, "ablacion": {"Bateria: caida de velocidad al final": {"ok": 0.42, "choques": 4.56, "mejora": 0.04999999999999999}, "ToF: sesgo por sensor": {"ok": 0.52, "choques": 4.74, "mejora": 0.15000000000000002}, "ToF: error de escala": {"ok": 0.4, "choques": 5.84, "mejora": 0.030000000000000027}, "ToF: lecturas malas": {"ok": 0.41, "choques": 5.43, "mejora": 0.03999999999999998}, "Motores: asimetria izq/der": {"ok": 0.33, "choques": 5.57, "mejora": -0.03999999999999998}, "Motores: variacion de K_V": {"ok": 0.37, "choques": 5.85, "mejora": 0.0}, "Motores: zona muerta": {"ok": 0.38, "choques": 5.42, "mejora": 0.010000000000000009}, "Giroscopio: deriva": {"ok": 0.41, "choques": 4.72, "mejora": 0.03999999999999998}}, "ideal": [0.81, 0.26], "wca": [0.37, 5.64], "especificacion": {"valores": {"SAG": 0.2, "TOF_OFF": 0, "TOF_ESC": 0, "TOF_FALLA": 0.01, "ASIM": 0.05, "KV_SIG": 0.1, "DEAD_SIG": 8, "GYRO_BIAS": 0.03}, "ok": 0.78, "choques": 1.1}, "perfiles": {"actual": {"MS_CELDA": 700, "VEL_EXPLORA": 140, "VEL_GIRO": 130, "VEL_MIN": 80, "AJUSTE_DER": -10, "D_FRENTE": 30, "D_LADO": 41, "KC": 0.8, "KG": 2, "PARED_F": 55, "SALTO": 120, "CHOQUE_G": 1.5}, "WCA": {"MS_CELDA": 829, "VEL_EXPLORA": 143, "VEL_GIRO": 154, "VEL_MIN": 93, "AJUSTE_DER": -15, "D_FRENTE": 39, "D_LADO": 44, "KC": 1.58, "KG": 2.77, "PARED_F": 69, "SALTO": 113, "CHOQUE_G": 2.05}, "MEJOR": {"MS_CELDA": 582, "VEL_EXPLORA": 176, "VEL_GIRO": 176, "VEL_MIN": 67, "AJUSTE_DER": -12, "D_FRENTE": 37, "D_LADO": 43, "KC": 1.03, "KG": 1.5, "PARED_F": 45, "SALTO": 106, "CHOQUE_G": 1.3}}, "nota": "Con 800 semillas el perfil actual ya rinde igual que los afinados (80 % en el mejor caso); el de batería baja solo reduce choques de 5.8 a 4.6. Úsalo solo si el voltaje cae. Lo que más sube el éxito es la calibración física de la tabla de arriba."};
+const pct = (x) => Math.round(x * 100) + " %";
+const fmt = (v, u) => (u === "fraccion" ? pct(v) : v + " " + u);
+function pintaObj() {
+  const f = OBJ.factores;
+  if (!f) { document.getElementById("cObj").style.display = "none"; return; }
+  document.getElementById("objIntro").innerHTML = "Éxito en el simulador (laberintos de 11×11, " + OBJ.n + " semillas por punto): <b>ideal " + pct(OBJ.ideal[0]) +
+    "</b> · peor caso <b>" + pct(OBJ.wca[0]) + "</b>. Cada fila prueba un factor solo, de ideal a peor caso: verde = el robot aún pierde menos de " + Math.round(OBJ.tol * 100) +
+    " puntos contra el ideal, rojo = ya falla. La barra dice cuánto sube el éxito del peor caso si ese factor se corrige.";
+  const mx = Math.max(0.01, ...Object.values(OBJ.ablacion).map((a) => a.mejora));
+  document.getElementById("objTol").innerHTML = Object.entries(f).map(([n, v]) => {
+    const a = OBJ.ablacion[n], lim = OBJ.ideal[0] - OBJ.tol;
+    const dots = v.niveles.map((l) => `<span class="dot ${l.ok >= lim ? "si" : "no"}" title="éxito ${pct(l.ok)}">${fmt(l.valor, v.unidad)}</span>`).join("");
+    const w = Math.max(0, a.mejora) / mx * 100;
+    return `<div class="tol"><div><b>${n}</b><div class="note">máx. tolerable: ${v.max_ok === null ? "ninguno" : fmt(v.max_ok, v.unidad)}</div></div>
+      <div class="dots">${dots}</div>
+      <div><div class="bar"><i style="width:${w}%"></i></div><div class="note">${a.mejora > 0 ? "+" + Math.round(a.mejora * 100) : Math.round(a.mejora * 100)} pts en el peor caso</div></div></div>`;
+  }).join("");
+  const e = OBJ.especificacion;
+  if (e) document.getElementById("objTol").innerHTML += `<div class="note" style="margin-top:12px">Especificación combinada (todos a la vez): ` +
+    Object.entries(e.valores).map(([k, v]) => k + " ≤ " + v).join(" · ") + ` → éxito <b class="${e.ok >= OBJ.ideal[0] - OBJ.tol ? "ok" : "bad"}">${pct(e.ok)}</b>, ${e.choques.toFixed(1)} choques por corrida.</div>`;
+  const p = OBJ.perfiles, ks = Object.keys(p.actual);
+  document.getElementById("objPar").innerHTML = "<tr><th>Parámetro</th><th>Actual</th><th>Batería baja (WCA)</th><th>Mejor caso</th></tr>" +
+    ks.map((k) => `<tr><td>${k}</td><td>${p.actual[k]}</td><td class="${p.WCA[k] != p.actual[k] ? "dif" : ""}">${p.WCA[k]}</td><td class="${p.MEJOR[k] != p.actual[k] ? "dif" : ""}">${p.MEJOR[k]}</td></tr>`).join("");
+  document.getElementById("objParNota").textContent = OBJ.nota || "";
+}
+pintaObj();
 </script>
 </body>
 </html>
