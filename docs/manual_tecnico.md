@@ -83,6 +83,7 @@ Linux llama funciones que expone el STM32 por el Bridge (RPC MessagePack, enruta
 | `mover(mm, lento)` | Avanza hasta *mm* (una celda = 180 mm). Si `lento` es 1 usa `VEL_LENTO`. No bloquea; devuelve 0 si ya hay un movimiento en curso |
 | `girar(k)` | Gira en sitio *k* × 90°; el signo indica el sentido (2 = media vuelta) |
 | `ajustar(g)` | Corrige el rumbo *g* grados (derecha +) con lo que mide la cámara. Con MPU y sentido conocido no gira: mueve el rumbo deseado y la recta lo sostiene (devuelve 1). Si no, gira en su lugar (devuelve 2: hay que esperar) |
+| `centrar(lim)` | Con pared enfrente a menos de *lim* mm: avanza o retrocede a `VEL_MIN` hasta que el frontal lea `D_FRENTE` + *k* × 180 (centro de la celda), máximo 1 s. Python lo pide tras cada avance con `CENTRA_F` = 600. Devuelve 2 si hay que esperar |
 | `alinear(lim)` | Con MPU: gira en su lugar hasta el rumbo deseado si se desvió 3° o más (`ALIN_MIN`) y no más de *lim* (45 antes de avanzar; 180 para terminar un giro fallido). Devuelve 2 si hay que esperar. Sin MPU devuelve 0 |
 | `ocupado()` | 1 mientras hay un movimiento activo |
 | `odo(i)` | Lecturas (tabla siguiente) |
@@ -293,10 +294,10 @@ stateDiagram-v2
 
 | Paso | Qué hace |
 |---|---|
-| **Por distancia** | Al iniciar toma el frontal; si lee menos de 1 m (`RANGO`) avanza hasta que haya bajado 180 mm (`CELDA`). Si no ve nada a ese alcance avanza por tiempo (`MS_CELDA`) y, si a medio camino aparece una pared, sigue por distancia |
+| **Por distancia** | Al iniciar toma el frontal; si lee menos de 600 mm (`RANGO`) avanza hasta que haya bajado 180 mm (`CELDA`); si la pared está más cerca que eso, cuenta solo lo que cabe (antes reportaba 180 mm sin moverse y el mapa se recorría una celda). Si no ve nada a ese alcance avanza por tiempo (`MS_CELDA`) y, si a medio camino aparece una pared, sigue por distancia |
 | **Alto y retroceso** | Se detiene al leer 30 mm reales al frente (`D_FRENTE`): es la lectura con el eje justo al centro de la celda (84 − 54 mm, CAD). Si queda por debajo de 25 mm (`D_FRENTE − D_CERCA`) se hace para atrás hasta 30 mm. Si hay pared y la distancia ya no baja en 300 ms, también para. Desde 130 mm frena de forma proporcional (`FRENA_K`). Un avance nunca pasa de lo pedido + `TRAS_SALTO` (304 mm en una celda) |
 | **Perfil de velocidad** | Rampa de +6 PWM por ciclo hasta `VEL_EXPLORA` (o `VEL_LENTO`), y desaceleración lineal en el último cuarto de celda, con piso en `VEL_MIN` |
-| **Cambios bruscos** | Si una lectura de un ToF cambia `SALTO` = 120 mm o más y la siguiente lo confirma: si se abre un lateral avanza `TRAS_SALTO` = 124 mm más y para en el centro de esa celda para escanearla (fase `ESCANEA`); si salta el frontal, recalcula lo que falta. Python lo lee con `odo(3)` |
+| **Cambios bruscos** | Si una lectura de un ToF cambia `SALTO` = 120 mm o más y la siguiente lo confirma: si se abre un lateral avanza `TRAS_SALTO` = 110 mm más (124 del CAD menos lo que tarda en confirmarse) y para en el centro de esa celda para escanearla (fase `ESCANEA`); si salta el frontal, recalcula lo que falta. Python lo lee con `odo(3)` |
 | **Pasillo** | Si va de frente con pared a ambos lados, Python pide hasta `PASILLO` = 3 celdas de un tirón. Abrirse un lateral lo detiene en el centro de esa celda, así que las celdas intermedias se anotan con pared a los 2 lados. Hace ~9 % menos paradas en la simulación (30/30 laberintos) |
 | **Centrado en el carril** | Con pared a un lado (lateral < `PARED` = 120 mm) corrige *u = K꜀·e + K_d·ė*, saturado en ±40 PWM y aplicado en diferencial (*PWM_izq = v − u*, *PWM_der = v + u*). Con 2 paredes, *e = d_izq − d_der*; con una, *e = 2·(d − D_LADO)*, `D_LADO` = 41 mm (84 − 43, CAD). Sin paredes va derecho con el rumbo del MPU |
 | **Deriva con paredes** | Con 2 paredes, centrado (\|e\| < 15 mm) y paralelo (*ė* < 15 mm/s) durante 300 ms, la mitad de lo que difiera el rumbo del MPU del deseado se toma como deriva y se corrige |
@@ -409,6 +410,35 @@ Historia: antes se probó "frente primero, luego izquierda". En pista se atoraba
 | Ruta corta | Con la meta en el mapa, la siguiente corrida calcula por BFS el camino más corto sobre pasos conocidos como libres (OLED `RAPIDO`). Si al avanzar no queda en la celda esperada, abandona la ruta y sigue explorando |
 | Corrida | El botón corto inicia una corrida nueva (siempre en la misma celda y mirando al mismo lado); otro toque la detiene |
 
+## 9.4 Simulación 2D: qué reglas sirven
+
+::: corto
+200 laberintos de 11 × 11 parecidos a la pista (isla central de 3 × 3 con 2 entradas, algunos bucles, salida en una esquina al azar). Con las reglas elegidas el robot llega al amarillo en 90 % de los laberintos (antes 26 %). Lo que más pesa es no perder la celda, no los umbrales de los ToF.
+:::
+
+El simulador (`uno_q/sim/sim2d.py`) mueve un robot de 120 mm (esquinas R30) con la física de los motores, y simula los ToF en sus posiciones del CAD con ruido (3 %), fallas (1 %) y un cono estrecho. También simula el giroscopio con deriva, los golpes de vibración del acelerómetro sacados de los logs y los choques por contacto del cuerpo. Las decisiones son las funciones reales de `main.py`. La velocidad se calibró con lo medido en pista: 600 ms de avance = 154 mm, 250 ms de giro ≈ 70°. Las corridas tienen un límite de 8 min. Con 200 laberintos, diferencias menores a ±7 puntos son ruido.
+
+| Variante (cambia una regla sobre las elegidas) | Llega | Celda perdida | Choques por corrida |
+|---|---|---|---|
+| **Reglas elegidas** | **90 %** | 40 % | 1.8 |
+| Sin corregir el "avancé" del sketch con pared cerca | 67 % | 98 % | 5.1 |
+| Sin `centrar` tras avanzar | 58 % | 60 % | 3.4 |
+| `KD` = 0.3 (antes) | 59 % | 74 % | 6.0 |
+| Sin MPU (giros por tiempo, `MS_90` = 320) | 52 % | 78 % | 3.8 |
+| Sin preferir el centro | 76 % (tarda 2.2×) | 60 % | 4.8 |
+| Sin esquivar postes tras un choque | 88 % | 40 % | 5.2 |
+| `RANGO` = 1000 (antes) | 87 % | 51 % | 2.8 |
+| `TRAS_SALTO` = 124 (antes) | 87 % | 42 % | 3.8 |
+| Vibración alta (como el log "choca mucho") | 85 % | 41 % | 2.9 |
+| Vibración alta y choque = solo el golpe, sin confirmar | 63 % (9.6 falsos choques) | 84 % | 6.5 |
+| Código anterior completo | 26 % | 100 % | 5.3 |
+
+**Sin efecto medible (±5):** `PARED` 90-150, `FRENTE_LIBRE` 90-160, mínimo o mediana de 3 lecturas, `SALTO` 80-180, 1-3 lecturas para confirmarlo, `VOTO_MAX` 3-8, `PASILLO` 1-3, `KG` 1-2, corrección de deriva, alinear antes de leer, `CHOQUE_G` 0.8-2.5, `CONFIRMA_MS` 150-400, `ATORADO_MS` y `MS_CELDA` 600 o 700 (con `centrar` casi no importa; queda 700 por lo medido en pista). Con vibración normal el detector de choques no cambia la tasa, pero con vibración alta la confirmación evita casi 10 falsos choques por corrida: se queda.
+
+**Peor:** `RETRO_MS` = 250 (no se despega: 60 choques por corrida), `KC` = 0.4-0.6, 5 lecturas con mediana.
+
+Para repetirla: `echo "KD=0.3" | NS=200 python3 uno_q/sim/corre.py`; cada línea es una variante (`-` = el código actual).
+
 # 10. Página web
 
 ::: corto
@@ -438,8 +468,8 @@ Valores tal como están en `sketch.ino` y `main.py`. Cambia uno a la vez y prueb
 | Nombre | Valor | Unidad | Qué hace | Cuándo cambiarlo |
 |---|---|---|---|---|
 | `CELDA` | 180 | mm | Avance de una celda | Si cambia el laberinto |
-| `RANGO` | 1000 | mm | Con el frontal por debajo avanza por distancia; más lejos, por tiempo | — |
-| `MS_CELDA` | 600 | ms | Tiempo por celda cuando no hay pared a la vista | No llega o se pasa sin pared enfrente (±25) |
+| `RANGO` | 600 | mm | Con el frontal por debajo avanza por distancia; más lejos, por tiempo (de lejos, un poco chueco, el frontal ve las paredes laterales) | — |
+| `MS_CELDA` | 700 | ms | Tiempo por celda cuando no hay pared a la vista | No llega o se pasa sin pared enfrente (±25) |
 | `MS_90` | 250 | ms | Giro de 90° por tiempo (solo si el MPU no responde) | Solo sin MPU |
 | `VEL_EXPLORA` | 140 | PWM | Velocidad normal de avance (0–255) | — |
 | `VEL_LENTO` | 100 | PWM | Velocidad cuando la cámara ve blanco | — |
@@ -451,10 +481,10 @@ Valores tal como están en `sketch.ino` y `main.py`. Cambia uno a la vez y prueb
 | `D_CERCA` | 5 | mm | Retrocede si baja de `D_FRENTE − D_CERCA` = 25 mm | — |
 | `FRENA_K` | 2 | PWM/mm | Frenado proporcional desde 130 mm | — |
 | `SALTO` | 120 | mm | Cambio brusco entre 2 lecturas | — |
-| `TRAS_SALTO` | 124 | mm | Avance tras abrirse un lateral, para centrarse en esa celda | Para antes o se pasa del centro (±5) |
+| `TRAS_SALTO` | 110 | mm | Avance tras abrirse un lateral, para centrarse en esa celda | Para antes o se pasa del centro (±5) |
 | `D_LADO` | 41 | mm | Lectura lateral con el robot centrado (84 − 43, CAD) | Si cambia el chasis |
 | `KC` | 0.8 | — | Centrado: ganancia de posición | Zigzaguea entre paredes (bajar, p. ej. 0.5) |
-| `KD` | 0.3 | — | Centrado: velocidad de acercamiento | — |
+| `KD` | 0 | — | Centrado: velocidad de acercamiento (0.3 torcía el rumbo en la simulación) | — |
 | `KG` | 2.0 | PWM/° | Sostener rumbo en recta (con MPU) | Zigzaguea: 1.5; tarda en enderezarse: 3 |
 | `CHOQUE_G` | 1.5 | g | Golpe que hace sospechar un choque | Falsos choques: +0.1; choques sin detectar: −0.1 |
 | `CHOQUE_FUERTE` | 2.5 | g | Golpe que cuenta sin pared enfrente | — |
@@ -476,6 +506,7 @@ Valores tal como están en `sketch.ino` y `main.py`. Cambia uno a la vez y prueb
 | `FRENTE_LIBRE` | 120 | mm reales | El frente cuenta como salida (a la mitad entre ~30 y ~210) | Tras calibrar los ToF |
 | `VOTO_MAX` | 5 | votos | Tope de votos por pared | — |
 | `PASILLO` | 3 | celdas | Máximo de un tirón en pasillo (1 = parar en cada celda) | Tieso: 4; pierde posición: 2 |
+| `CENTRA_F` | 600 | mm | Tras avanzar, con pared enfrente a menos de esto se centra con ella (`centrar`) | 0 = apagado |
 | `CENTRO` | 5 | celdas | De la esquina de salida al centro (11 × 11) | Otro tamaño: (lado − 1) / 2 |
 | `USAR_CAM` | False | — | Cámara apagada: solo ToF | `True` para volver a usarla |
 | `Y_COLOR` | 34 | mm | Del eje al sensor de color (CAD: `COLOR_Y`) | Si cambia el chasis |

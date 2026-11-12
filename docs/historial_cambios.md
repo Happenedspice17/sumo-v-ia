@@ -883,6 +883,20 @@ Además, la cámara ya no se busca en `/dev/video0` y `video1` (son internos) y 
 **Pendiente.** El robot avanza 15-16 cm por celda en vez de 18: falta saber si pasa con pared lejos (más de 1 m: avanza por tiempo, subir `MS_CELDA`) o cerca (lectura del frontal).
 :::
 
+## Etapa 48. Simulación 2D: reglas de ToF y MPU (12-nov)
+
+::: ficha
+**Del equipo.** Simular 200 laberintos con la forma de la pista e iterar qué reglas de los ToF y del MPU sirven.
+
+**Cómo.** Simulador 2D (`uno_q/sim/`): robot de 120 mm con motores, ToF con ruido, fallas y cono, giroscopio con deriva, golpes de vibración como los de los logs y choques por contacto. Usa las funciones reales de `main.py`. Calibrado con la pista: 600 ms = 154 mm (lo que reportó el equipo) y 250 ms de giro ≈ 70°. 200 laberintos de 11 × 11 con isla central, salida en una esquina al azar.
+
+**Hallazgos.** El código anterior llega en 26 %: el robot pierde la celda. Bug real del sketch: al pedir un avance con la pared más cerca que lo pedido (o pegado a ella), paraba pero reportaba los 180 mm completos y Python se adelantaba una celda. Los umbrales de los ToF (`PARED`, `FRENTE_LIBRE`, `SALTO`, muestras, votos) no cambian nada dentro del ruido. Lo que más pesa: el bug (sin corregirlo 67 %), `centrar` (sin él 58 %), `KD` = 0.3 torcía el rumbo (59 %) y el MPU (sin él, giros por tiempo, 52 %). El detector de choques confirmado no cambia la tasa con vibración normal; con vibración alta, contar solo el golpe baja a 63 % con casi 10 falsos choques por corrida.
+
+**Cambio.** Sketch: cuenta solo lo que cabe hasta la pared; nuevo `centrar(lim)` (tras cada avance, con pared enfrente a menos de 600 mm, queda a 30 mm + k celdas de ella); `KD` 0.3 → 0; `TRAS_SALTO` 124 → 110; `RANGO` 1000 → 600; `MS_CELDA` 600 → 700. Python: pide `centrar` tras cada avance (`CENTRA_F` = 600) y, tras un choque sin pared cerca (un poste), esquiva 15° a un lado. Resultado: 90 % (85 % con vibración alta). Detalle en el manual técnico, 9.4.
+
+**Pendiente.** Probar en pista; si `centrar` va y viene frente a la pared, bajar `CENTRA_F` o subir la tolerancia (4 mm).
+:::
+
 # Pruebas realizadas
 
 ::: corto

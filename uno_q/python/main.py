@@ -25,6 +25,7 @@ except AttributeError:
 paso("cv2 OK")
 import glob
 import math
+import random
 import numpy as np
 paso("numpy OK")
 import json
@@ -59,6 +60,7 @@ D_FRENTE_TOF = 30                        # mm reales donde se detiene el sketch 
 FUERA = 2000                             # mm: los 2 laterales sin nada a esta distancia = salio del laberinto
 RECORRIDO = -3                           # voto de un paso por donde ya paso (-5) con hasta 2 lecturas en contra
 CENTRO = 5                               # celdas de la esquina de salida a la meta (laberinto de 11 x 11)
+CENTRA_F = 600                           # mm: tras avanzar, con pared enfrente a menos de esto se centra en la celda con ella
 PASILLO = 3                              # celdas maximas de un tiron con pared a ambos lados (1 = parar en cada celda)
 VOTO_MAX = 5                             # cada lectura vota pared (+1) o libre (-1); tope para que el mapa se corrija
 Y_COLOR = 34                             # mm del eje al sensor de color (adelante; CAD: COLOR_Y)
@@ -260,6 +262,8 @@ def avanzar(celdas=1):
     if rpc("odo", 12):                   # el acelerometro sintio un choque: el sketch ya retrocedio
         print(f"MPU: choque a los {mm} mm (golpe {rpc('odo', 15) / 1000:.2f} g); retrocedi")
         vuelve_al_carril()
+    if rpc("centrar", CENTRA_F) == 2:    # a D_FRENTE + k celdas de la pared de enfrente: re-centra la celda
+        esperar()
     vivo["mm"], vivo["saltos"] = mm, saltos
     n = round(mm / CELDA)
     for i in range(n):                   # por donde paso no hay pared, seguro
@@ -275,12 +279,15 @@ def avanzar(celdas=1):
 
 def vuelve_al_carril():
     """Tras un choque (casi siempre una esquina contra una pared lateral): se aleja de la pared mas cercana.
-    Gira 20 grados hacia el otro lado, avanza 50 mm (unos 17 mm de lado) y regresa al rumbo deseado. Con MPU."""
+    Gira 20 grados hacia el otro lado, avanza 50 mm (unos 17 mm de lado) y regresa al rumbo deseado. Con MPU.
+    Sin pared cerca choco con un poste (punta de pared) que los ToF no ven: prueba 15 grados a un lado al azar."""
     izq, _, der = tof3(2)
-    if min(izq, der) >= LADO_CERCA:      # centrado (~41 mm) o mas lejos: no hace falta
-        return
-    g = 20 if izq < der else -20         # pared a la izquierda: gira a la derecha (+)
-    print(f"Carril: pared {'izquierda' if g > 0 else 'derecha'} a {min(izq, der)} mm, me alejo")
+    if min(izq, der) < LADO_CERCA:
+        g = 20 if izq < der else -20     # pared a la izquierda: gira a la derecha (+)
+        print(f"Carril: pared {'izquierda' if g > 0 else 'derecha'} a {min(izq, der)} mm, me alejo")
+    else:
+        g = random.choice((15, -15))
+        print(f"Carril: choque sin pared cerca (poste), esquivo {'derecha' if g > 0 else 'izquierda'}")
     if rpc("ajustar", g) == 2:           # sin MPU ajustar gira en su lugar
         esperar()
     elif rpc("alinear", 45) == 2:

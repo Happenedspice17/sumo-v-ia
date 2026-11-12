@@ -208,8 +208,8 @@ Calibra con la batería cargada. Cambia **un número a la vez** en `sketch/sketc
 
 | Si el robot... | Cambia | Valor hoy | Así |
 |---|---|---|---|
-| No llega a la siguiente celda (sin pared enfrente) | `MS_CELDA` | 600 ms | Súbelo 25 |
-| Se pasa de la celda (sin pared enfrente) | `MS_CELDA` | 600 ms | Bájalo 25 |
+| No llega a la siguiente celda (sin pared enfrente) | `MS_CELDA` | 700 ms | Súbelo 25 |
+| Se pasa de la celda (sin pared enfrente) | `MS_CELDA` | 700 ms | Bájalo 25 |
 | Se pasa del giro | `ADELANTO` | 6° | Súbelo 2 |
 | Le falta giro | `ADELANTO` | 6° | Bájalo 2 |
 | Zigzaguea en recta | `KG` | 2.0 | Bájalo a 1.5 |
@@ -220,8 +220,9 @@ Calibra con la batería cargada. Cambia **un número a la vez** en `sketch/sketc
 | Se ve tieso en pasillos largos | `PASILLO` (main.py) | 3 | Súbelo a 4 |
 | Pierde la posición en pasillos largos | `PASILLO` (main.py) | 3 | Bájalo a 2 (1 = parar en cada celda) |
 | Laberinto de otro tamaño | `CENTRO` (main.py) | 5 | (lado − 1) / 2 |
-| Se queda antes del centro de la celda al abrirse un lado | `TRAS_SALTO` | 124 mm | Súbelo 5 |
-| Se pasa del centro de la celda al abrirse un lado | `TRAS_SALTO` | 124 mm | Bájalo 5 |
+| Se queda antes del centro de la celda al abrirse un lado | `TRAS_SALTO` | 110 mm | Súbelo 5 |
+| Se pasa del centro de la celda al abrirse un lado | `TRAS_SALTO` | 110 mm | Bájalo 5 |
+| Tras avanzar va y viene frente a la pared | `CENTRA_F` (main.py) | 600 mm | Bájalo a 300; 0 lo apaga |
 | Se va a la derecha | `AJUSTE_DER` | −10 | Súbelo 5 |
 | Se va a la izquierda | `AJUSTE_DER` | −10 | Bájalo 5 |
 | Zigzaguea entre paredes | `KC` | 0.8 | Bájalo, por ejemplo a 0.5 |
