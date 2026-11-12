@@ -139,6 +139,8 @@ BASE = dict(
     # fisica
     K_V=3.0, DEAD=40, TRACK=100.0, ASIM=0.03, TOF_SIG=0.03, TOF_FALLA=0.01, CONO=2, GYRO_BIAS=0.03,
     VIB="normal", T_MAX=480.0,
+    # no idealidades (0 = ideal): caida de bateria, error ToF, motores
+    SAG=0.0, TOF_OFF=0.0, TOF_ESC=0.0, KV_SIG=0.0, DEAD_SIG=0.0,
 )
 
 VIB = {"normal": (0.15, 0.85, 0.22), "alta": (0.5, 1.3, 0.4)}   # golpes/s al avanzar, mediana g, sigma log
@@ -149,6 +151,8 @@ class Robot:
         r = s.r
         s.asim = 1 + r.gauss(-0.03, P["ASIM"])          # el izquierdo un poco mas debil (como en pista)
         s.bias = r.gauss(0, P["GYRO_BIAS"])             # grados/s de deriva del giroscopio
+        s.kv = P["K_V"] * (1 + r.gauss(0, P["KV_SIG"])); s.dead = P["DEAD"] + r.gauss(0, P["DEAD_SIG"])
+        s.toff = [r.gauss(0, P["TOF_OFF"]) for _ in range(3)]; s.tesc = [1 + r.gauss(0, P["TOF_ESC"]) for _ in range(3)]
         s.t = 0.0
         s.choques = s.detectados = s.falsos = s.atorones = 0
         s.contacto = False
@@ -175,7 +179,7 @@ class Robot:
         d = min(s.M.rayo(x, y, s.th + a + math.radians(o)) * math.cos(math.radians(o)) for o in (-P["CONO"], 0, P["CONO"]))
         if r.random() < P["TOF_FALLA"]:
             return 9999 if r.random() < .7 else r.uniform(5, d)
-        d += r.gauss(0, 2 + P["TOF_SIG"] * d)
+        d = d * s.tesc[i] + s.toff[i] + r.gauss(0, 2 + P["TOF_SIG"] * d)
         return 9999 if d > 2000 else max(1, int(d))
 
     def lee_tofs(s, avanzando, f_falta):
@@ -205,7 +209,8 @@ class Robot:
 
     def paso(s, pwmL, pwmR, dt=0.01):
         P = s.P
-        def v(p, k): return math.copysign(max(0, abs(p) - P["DEAD"]) * P["K_V"] * k, p)
+        sag = 1 - P["SAG"] * min(1.0, s.t / P["T_MAX"])   # bateria: menos velocidad y mas zona muerta con el tiempo
+        def v(p, k): return math.copysign(max(0, abs(p) - s.dead / sag) * s.kv * sag * k, p)
         tl, tr = v(pwmL, s.asim), v(pwmR, 1.0)
         a = 1 - math.exp(-dt / 0.05)                    # motores: 50 ms de constante de tiempo
         s.vL += (tl - s.vL) * a; s.vR += (tr - s.vR) * a
