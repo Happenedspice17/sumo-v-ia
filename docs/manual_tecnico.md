@@ -20,7 +20,7 @@ author:
 - **Laberinto:** celdas de 180 mm. La meta es el cuadro amarillo; no se supone un tamaño de laberinto fijo.
 - **Robot:** diferencial con dos ruedas motrices y un patín, huella ≤ 120 mm.
 - **Estrategia en dos fases:**
-  1. **Exploración** guiada por los sensores: regla de la mano izquierda: izquierda si se puede, si no de frente, si no derecha, si no media vuelta. El mapa se va llenando con votos.
+  1. **Exploración** guiada por los sensores hacia el centro (donde está la meta): de las salidas hacia celdas nuevas toma la que más acerca al centro; en empate, izquierda, frente, derecha. El mapa se va llenando con votos. La cámara está apagada (`USAR_CAM = False`).
   2. **Ruta corta** en la siguiente corrida: si el mapa ya tiene la meta, va por el camino más corto conocido (BFS). Si algo no cuadra, sigue explorando desde donde quedó.
 
 # 2. Dos cerebros
@@ -231,7 +231,7 @@ Son experimentales porque dependen de que la calibración por filas sea estable 
 # 7. Cómo decide y qué mapa guarda
 
 ::: {.simple}
-**En simple:** el robot decide siempre quieto, en cuatro pasos que se repiten: **mira** (con los láser), **decide** (a dónde ir), **gira** y **avanza** una celda. Sigue la regla de la mano izquierda: si puede, gira a la izquierda; si no, sigue de frente; si no, a la derecha; y si está encerrado, da media vuelta. Prefiere siempre los lugares donde no ha estado; si ya no hay ninguno cerca, regresa por donde conoce al lugar más cercano que le falte explorar. Así entra a la meta del centro aunque esté rodeada de paredes.
+**En simple:** el robot decide siempre quieto, en cuatro pasos que se repiten: **mira** (con los láser), **decide** (a dónde ir), **gira** y **avanza** una celda. Sabe que la meta está al centro: de los caminos nuevos toma el que más lo acerca (en empate, izquierda, frente, derecha; si está encerrado, media vuelta). Prefiere siempre los lugares donde no ha estado; si ya no hay ninguno cerca, regresa por donde conoce al lugar más cercano que le falte explorar. Así entra a la meta del centro aunque esté rodeada de paredes.
 :::
 
 **Máquina de estados** (Python; la fase se ve en la OLED y en la web):
@@ -253,7 +253,9 @@ Son experimentales porque dependen de que la calibración por filas sea estable 
 3. **Derecha**, con el mismo criterio que la izquierda.
 4. **Media vuelta** si no hay ninguna.
 
-**Exploración completa (tipo Trémaux / búsqueda en profundidad).** De las salidas libres elige la primera, en ese orden, que lleve a una celda **sin ver** (`vistas`: celdas donde ya leyó sus 3 ToF; se guardan con el mapa). Si todas llevan a celdas vistas, busca con BFS, por pasos conocidos, la celda vista más cercana que tenga un lado libre hacia una celda sin ver (`frontera()`), y da el primer paso hacia ella. Así recorre todas las celdas alcanzables.
+**Exploración completa (tipo Trémaux / búsqueda en profundidad).** De las salidas libres que llevan a una celda **sin ver** elige la que más acerca al centro (en empate, la primera en ese orden) (`vistas`: celdas donde ya leyó sus 3 ToF; se guardan con el mapa). Si todas llevan a celdas vistas, busca con BFS, por pasos conocidos, las celdas vistas con un lado libre hacia una celda sin ver (`frontera()`), escoge la de menos pasos + distancia de esa celda nueva al centro, y da el primer paso hacia ella. Así recorre todas las celdas alcanzables, empezando por las cercanas al centro.
+
+**Dónde está el centro.** El laberinto es de 11 × 11 y el robot sale de una esquina (cualquiera), así que el centro queda a `CENTRO` = 5 celdas en x y en y. Lo que no sabe es hacia qué lado: en la celda de salida, cada lado libre apunta hacia adentro (en una esquina, los muros exteriores están pegados), y en cuanto se mueve en un eje, ese lado es hacia adentro (`ubica()`, `signo`). Mientras un eje no se conoce, no cuenta. En simulación (40 laberintos de 11 × 11 con la meta en una isla central, esquina de salida al azar) llega 40/40 en 1173 pasos en total contra 5479 sin preferir el centro (peor caso 93 contra 163).
 
 **Por qué.** La meta está al centro y solo tiene 2 entradas: las paredes que la rodean forman una **isla**, separada del muro exterior. Un seguidor de pared (mano izquierda o derecha) solo recorre el muro al que está pegado, así que rodea la isla para siempre sin entrar. En simulación (laberintos de 9 × 9 con la meta en una isla central de 3 × 3 con 2 entradas, 30 laberintos), la mano izquierda pura llegó a la meta 0 de 30 veces y la exploración completa 30 de 30.
 
@@ -328,6 +330,8 @@ Valores tal como están en `sketch.ino` y `main.py`.
 | `FRENTE_LIBRE` | 120 mm | El frente cuenta como salida (mm reales: a la mitad entre ~30 y ~210) |
 | `VOTO_MAX` | 5 | Tope de votos por pared |
 | `PASILLO` | 3 | Celdas máximas de un tirón en pasillo (1 = parar en cada celda) |
+| `CENTRO` | 5 | Celdas de la esquina de salida al centro (laberinto de 11 × 11) |
+| `USAR_CAM` | False | Cámara apagada: solo ToF |
 | `Y_COLOR` | 34 mm | Del eje al sensor de color (CAD: `COLOR_Y`) |
 | `UMBRAL_MIN` / `UMBRAL_MAX` | 100 / 220 | Límites del umbral de gris de Otsu |
 | `ZONA_BORDES` | (0.45, 0.95) | Filas donde busca las bases de las paredes |

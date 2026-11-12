@@ -23,7 +23,9 @@ author:
 - [ ] Laberinto nuevo: borra el mapa antes de empezar (paso 3)
 
 ::: {.nota}
-**¿Qué versión cargar?** El sketch es siempre `sketch/` (con MPU-6050). Python: `python/`. Para probar la versión experimental de la cámara (además mide distancias y ve aberturas) cambia `EXPERIMENTAL = False` a `True` en `main.py`. La versión vieja sin MPU está en el historial: ver "Control de versiones" al final.
+**¿Qué versión cargar?** El sketch es siempre `sketch/` (con MPU-6050). Python: `python/`. Para probar la versión experimental de la cámara (además mide distancias y ve aberturas) cambia `EXPERIMENTAL = False` a `True` en `main.py`. Hoy la cámara está apagada (`USAR_CAM = False`, la pantalla dice `SIN CAM`); para usarla pon `True`.
+
+**Dónde ponerlo.** En cualquier esquina del laberinto (11 × 11). El robot deduce solo hacia dónde queda el centro. La versión vieja sin MPU está en el historial: ver "Control de versiones" al final.
 :::
 
 # 2. Prende
@@ -156,6 +158,7 @@ Para ver por qué gira o avanza, usa **Ver sensores ToF** en la página: dibuja 
 | Gira de más o de menos (con MPU-6050) | `ADELANTO` | Si se pasa del giro, súbelo; si le falta, bájalo |
 | Se ve tieso en pasillos largos | `PASILLO` (main.py) | Súbelo a 4 |
 | Pierde la posición en pasillos largos | `PASILLO` (main.py) | Bájalo a 2 (1 = parar en cada celda) |
+| Laberinto de otro tamaño | `CENTRO` (main.py) | Celdas de la esquina al centro: (lado − 1) / 2 |
 | Se queda antes del centro de la celda al abrirse un lado | `TRAS_SALTO` | Súbelo 5 |
 | Se pasa del centro de la celda al abrirse un lado | `TRAS_SALTO` | Bájalo 5 |
 | Se va a la derecha | `AJUSTE_DER` | Súbelo 5 |
