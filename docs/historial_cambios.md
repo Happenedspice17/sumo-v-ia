@@ -897,6 +897,16 @@ Además, la cámara ya no se busca en `/dev/video0` y `video1` (son internos) y 
 **Pendiente.** Probar en pista; si `centrar` va y viene frente a la pared, bajar `CENTRA_F` o subir la tolerancia (4 mm).
 :::
 
+## Etapa 49. Se va por el lado que se abre (12-nov)
+
+::: ficha
+**Del equipo.** Con la versión de las 11 am (etapa 46) el robot se quedaba ciclado en una zona de paredes cortas junto al muro exterior: veía lugares libres durante el avance y en vez de irse por ellos seguía de frente; la salida (abajo a la derecha) nunca la encontraba.
+
+**Razonamiento.** Esa versión tenía el bug de la etapa 48 (con la pared cerca reportaba 180 mm sin moverse): en una zona de pasillos cortos pasa seguido, el mapa se recorre y la exploración da vueltas sobre celdas que cree nuevas. Además decidía izquierda, frente, derecha aunque acabara de abrirse un lado.
+
+**Cambio.** Si el avance paró por abrirse un lateral y esa salida lleva a una celda sin ver, la toma. Simulación: 87 % contra 90 % (igual dentro del ruido). Hay que cargar la versión actual: corrige el bug y centra con la pared.
+:::
+
 # Pruebas realizadas
 
 ::: corto

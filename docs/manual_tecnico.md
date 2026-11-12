@@ -393,6 +393,8 @@ flowchart TD
 
 **Por qué exploración completa.** La meta está al centro y solo tiene 2 entradas: las paredes que la rodean forman una **isla**, separada del muro exterior. Un seguidor de pared solo recorre el muro al que está pegado, así que rodea la isla sin entrar. En simulación (laberintos de 9 × 9 con la meta en una isla central de 3 × 3 con 2 entradas, 30 laberintos), la mano izquierda pura llegó a la meta 0 de 30 veces y la exploración completa 30 de 30.
 
+**Se va por lo que se abre.** Si el avance paró porque se abrió un lateral (`ESCANEA`) y esa salida lleva a una celda sin ver, la toma, aunque otra acerque más al centro (en simulación 87 % contra 90 % sin esta regla: igual dentro del ruido; se ve más natural).
+
 **Hacia el centro.** El laberinto es de 11 × 11 y el robot sale de una esquina cualquiera, así que el centro queda a `CENTRO` = 5 celdas en x y en y. El lado lo deduce `ubica()`: en la celda de salida cada lado libre apunta hacia adentro (los muros exteriores de la esquina están pegados), y en cuanto se mueve en un eje, ese lado es hacia adentro. Un eje sin lado conocido no cuenta. En simulación (40 laberintos de 11 × 11 con isla central, esquina al azar) llega 40/40 en 1173 pasos en total contra 5479 sin preferir el centro (peor caso 93 contra 163). No se precarga un mapa de las fotos: una pared mal ubicada lo haría chocar y la pista puede cambiar.
 
 ::: tip
