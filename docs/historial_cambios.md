@@ -1,11 +1,20 @@
 ---
 title: Bitácora de diseño
 subtitle: Cambios, problemas y soluciones · Robot de laberinto
+materia: Microcontroladores 2
 author:
   - Manuel Harari López
   - Víctor Miguel Vázquez
   - Carlos Emiliano Escamilla Garibay
+date: 12 de noviembre de 2026
+version: Revisión B7 · documento 2.0
 ---
+
+# Cómo leer esta bitácora
+
+::: corto
+La bitácora cuenta cómo se construyó el robot del 19 de octubre al 11 de noviembre de 2026: 46 etapas, de la primera versión con encoders a la exploración completa con MPU-6050. Hubo dos iteraciones sobre el mismo chasis: A (ATmega328p, respaldo) y B (Arduino UNO Q, la actual).
+:::
 
 Este documento cuenta cómo se construyó el robot de laberinto de Microcontroladores 2, del 19 de octubre al 11 de noviembre de 2026, a partir del historial de commits del repositorio, de los análisis de la última sesión de trabajo (11-nov), que no quedaron en commits, y de las respuestas del equipo sobre sus pruebas en pista. El robot recorre un laberinto de celdas de 18 cm, encuentra una marca amarilla (la meta), cuenta marcas de color en el piso y en una segunda corrida debe ir por el camino más corto que conoce.
 
@@ -14,9 +23,36 @@ Hubo dos iteraciones sobre un mismo chasis impreso en 3D, de modo que el chasis 
 - **Iteración A: ATmega328p (Arduino Nano / UNO R3).** Todo el control corre en el microcontrolador, programado en C++ sin librerías de Arduino, con tres sensores de distancia VL53L0X (ToF) y un sensor de color TCS34725. No tiene cámara. Es el respaldo.
 - **Iteración B: Arduino UNO Q (versión actual).** Un STM32 con control de tiempo real y un Linux con Python y una cámara USB. Es la versión con la que se sigue trabajando.
 
-Cómo leer la bitácora. La sección "Línea de tiempo" resume todo en una tabla. "Etapas" detalla cada etapa con el mismo formato: qué cambió, el problema, la solución, las pruebas o evidencia, el razonamiento, el resultado y los commits. Una regla de honestidad atraviesa todo el documento: cuando un motivo o una prueba no está escrito en el commit, el diff, el código ni en las respuestas del equipo, se marca **(deducido)**. Los valores de calibración que aparecen en las primeras etapas son valores iniciales de partida, no resultados medidos, salvo donde se dice lo contrario. El equipo probó el robot en pista durante todo el desarrollo (laberinto de 2 m x 2 m con paredes de madera); sus respuestas del 11-nov están en "Pruebas en pista". Lo que falta es probar en pista la última versión (distancia, saltos, votos, máquina de estados, MPU) y se repite en pendientes.
+**Cómo leer la bitácora.** La sección "Línea de tiempo" resume todo en una tabla. "Etapas" detalla cada etapa con el mismo formato: qué cambió, el problema, la solución, las pruebas o evidencia, el razonamiento, el resultado y los commits. El equipo probó el robot en pista durante todo el desarrollo (laberinto de 2 m x 2 m con paredes de madera); sus respuestas del 11-nov están en "Pruebas en pista". Lo que falta es probar en pista la última versión (distancia, saltos, votos, máquina de estados, MPU) y se repite en pendientes.
 
-## Línea de tiempo
+::: cuidado
+Una regla de honestidad atraviesa todo el documento: cuando un motivo o una prueba no está escrito en el commit, el diff, el código ni en las respuestas del equipo, se marca **(deducido)**. Los valores de calibración que aparecen en las primeras etapas son valores iniciales de partida, no resultados medidos, salvo donde se dice lo contrario.
+:::
+
+# Línea de tiempo
+
+::: corto
+Una fila por etapa: fecha, cambio clave y por qué. La figura agrupa las 46 etapas en cinco fases.
+:::
+
+::: figura
+```mermaid
+%%{init: {'themeVariables': {'fontSize': '17px'}}}%%
+timeline
+  section 19 – 25 oct · Base
+    Etapas 1 – 3 : UNO Q con encoders : Movimiento por tiempo : ToF a 0x30+i y batería 2S
+  section 28 oct – 7 nov · Hardware
+    Etapas 4 – 13 : Firmware bare-metal : Chasis 120 mm modular : OLED propia : Medidas reales y soportes ToF
+  section 7 – 10 nov · Cámara y web
+    Etapas 14 – 25 : Cámara USB : Panel web de colores : Los ToF mandan : Explorar hasta el amarillo
+  section 11 nov · Reescritura
+    Etapas 26 – 35 : Avance por distancia : Mapa con votos : Máquina de estados : MPU-6050 : Cámara OV9281
+  section 11 nov · Exploración y MPU
+    Etapas 36 – 46 : Exploración completa : MPU completo : Un sketch y un Python : Choques confirmados y pasillos
+```
+**Figura 1. Etapas del proyecto.** Qué mirar: casi la mitad de las etapas ocurre el 11-nov, cuando el robot pasa de reglas por tiempo a medir con los ToF y el MPU.
+:::
+
 
 | Fecha | Etapa | Cambio clave | Por qué |
 |---|---|---|---|
@@ -56,10 +92,15 @@ Cómo leer la bitácora. La sección "Línea de tiempo" resume todo en una tabla
 | 11-nov | 34 | Cámara monocromática OV9281: solo blanco y negro | La cámara real no ve colores |
 | 11-nov | 35 | Cámara: exposición fija, Otsu, rumbo por punto de fuga; experimental: distancia y aberturas | Desviación en recta y esquinas sin ver |
 
-## Etapas
+# Etapas
 
-### Etapa 1. Primera versión: UNO Q con encoders (19-oct)
+::: corto
+Cada etapa sigue el mismo formato: qué cambió, el problema, la solución, las pruebas o evidencia, el razonamiento, el resultado y los commits. Las últimas etapas (36 a 46) vienen de la sesión del 11-nov y de las respuestas del equipo.
+:::
 
+## Etapa 1. Primera versión: UNO Q con encoders (19-oct)
+
+::: ficha
 **Qué cambió.** Se crea `laberinto/` con un sketch para el STM32 (L298N, encoders, TCS34725, OLED, botón) y una app Python con cámara y flood-fill (283 líneas en `main.py`, 332 en `sketch.ino`). Después, una pulsación larga del botón (más de 2 s) borra la memoria (mapa en `/app/mapa.json` y conteo de colores) y la OLED muestra LISTO al volver al inicio en la primera corrida.
 
 **Problema.** El laberinto cambia entre pruebas. Sin forma de olvidar el mapa guardado, la corrida 2 usaría datos viejos.
@@ -73,9 +114,11 @@ Cómo leer la bitácora. La sección "Línea de tiempo" resume todo en una tabla
 **Resultado.** Base funcional del software de laberinto, todavía con encoders en D2/D3 (`TICKS_CELDA` 360 por 18 cm, `TICKS_90` 120).
 
 **Commits.** 43671b9, a257e7a, bf223fb
+:::
 
-### Etapa 2. Movimiento por tiempo y dos iteraciones (19-oct)
+## Etapa 2. Movimiento por tiempo y dos iteraciones (19-oct)
 
+::: ficha
 **Qué cambió.** `USE_ENC` pasa a 0 (movimiento por tiempo): `MS_CELDA` 600 ms por 18 cm, `MS_RAPIDA` 400 ms, `MS_90` 250 ms; se agrega `AJUSTE_DER` (suma PWM al motor derecho) y `OFF_COLOR` pasa a celdas (0.3). Luego el repo se divide en `uno_q/` (3 VL53L0X para centrar y frenar; la cámara adelanta paredes de la celda siguiente), `atmega328p/` (todo en el MCU, flood-fill, EEPROM, Timer1 de 10 ms, 517 líneas) y `chasis/` (OpenSCAD paramétrico y planos PDF).
 
 **Problema.** Los motores N20 no tienen encoders (el commit y el README posterior lo dan como hecho).
@@ -89,9 +132,11 @@ Cómo leer la bitácora. La sección "Línea de tiempo" resume todo en una tabla
 **Resultado.** Dos bases de firmware y un chasis común.
 
 **Commits.** 2edde2e, e8b9b4c
+:::
 
-### Etapa 3. Bus I2C, batería y primeros ajustes de chasis (25-oct)
+## Etapa 3. Bus I2C, batería y primeros ajustes de chasis (25-oct)
 
+::: ficha
 **Qué cambió.** Los VL53L0X cambian su dirección a 0x30+i antes de `init()` y el TCS34725 se inicializa al final. Batería 2S 18650 con interruptor a VIN. Diagrama de conexiones del UNO R3. Piso 3 para mini protoboard, OLED y botón. Luego tolerancias FDM, STL, manuales y BOM, y un modo calibración con botón (corto avanza una celda, largo de más de 1 s gira 90 grados).
 
 **Problema.** El TCS34725 también responde en 0x29, igual que un VL53L0X sin reasignar; con ambos en el bus la dirección chocaba (lo dice el mensaje del commit).
@@ -105,9 +150,11 @@ Cómo leer la bitácora. La sección "Línea de tiempo" resume todo en una tabla
 **Resultado.** Chasis de 3 pisos para R3, STL listos, manuales y BOM.
 
 **Commits.** 883e2a1, 5d436bc, a65d3ec, 25ce73b
+:::
 
-### Etapa 4. Firmware C++ bare-metal y rediseño del chasis a 120x120 (28-oct)
+## Etapa 4. Firmware C++ bare-metal y rediseño del chasis a 120x120 (28-oct)
 
+::: ficha
 **Qué cambió.** El sketch se reemplaza por C++ sin librerías de Arduino, para Microchip Studio, con acceso a registros: TWI a 400 kHz, Timer1 en CTC a 1 kHz, Timer0 Fast PWM en OC0A/OC0B, SSD1306, TCS34725 y VL53L0X (librería de Pololu adaptada). Parámetros: `T_CELDA` 60 ticks (10 ms), `T_RAPIDA` 40, `T_90` 25, `PARED` 120 mm, `D_FRENTE` 34, `D_LADO` 38, `KC` 0.8. Chasis: de 125 a 120 mm, 2 pisos, sensores que deslizan sin tornillos; luego se modelan pines y conectores, se reubican OLED, botón e interruptor, se rediseña para headers rectos (batería sobre el eje, `BAT_Y` 7; pasillos libres de 27 mm para el dupont de cada VL53L0X; avellanados en cunas), se modelan los cables con rutas, tolerancias A2L, placa para la cama de la X2D y manual paso a paso, y se simplifica a solo tornillos Allen M3 e insertos de calor.
 
 **Problema.** Reducir recursos (RAM al 72%), cumplir el tamaño máximo con ruedas (L = 120 mm) y resolver varios choques geométricos entre conectores y piezas, además de que la batería y los cables de VL53L0X no estorbaran.
@@ -121,9 +168,11 @@ Cómo leer la bitácora. La sección "Línea de tiempo" resume todo en una tabla
 **Resultado.** Firmware de 42% de flash y chasis de 2 pisos con manual de ensamble.
 
 **Commits.** cdf37ec, eb0672b, 4a0368c, 8d67661, c0b858a, c32c131
+:::
 
-### Etapa 5. Chasis modular R3 / UNO Q y documentación de apoyo (29-oct)
+## Etapa 5. Chasis modular R3 / UNO Q y documentación de apoyo (29-oct)
 
+::: ficha
 **Qué cambió.** Variantes `PLACA = nano | unoq | uno_r3` en el CAD. UNO Q con cámara USB UVC de 32x32 en un mástil, repisa con hub USB (95x30x12) y OLED en el mástil. Proto Shield con mini protoboard de 170 puntos (45.7x34.5x9.5) para el bus I2C (4 columnas: VCC, GND, SDA, SCL; VCC a 3V3 con la Q y a 5V con el R3). Columnas traseras en (±48, -40) para librar el jack y el USB-B del R3. README y Makefile pasan a UNO R3 (avrdude `m328p`, `/dev/ttyACM0`). El UNO Q adopta el mismo mapa de pines (ENA D5, ENB D6, IN1 a IN4 en D7 a D10, botón D2; antes D9/D10, D4/D5/D7/D8, D12). Se escribe `docs/uno_q.md` (plan, Bridge, cámara, color, energía), la guía de programación y el manual modular (pasos 7 a 11), y se regeneran manuales y planos.
 
 **Problema.** El R3 funciona como respaldo y el Q es experimental; al cambiar de placa habría que recablear. Además el R3 es de 5 V y el Q de 3.3 V: a 5 V se dañan los pines I2C del Q (aviso del README).
@@ -137,9 +186,11 @@ Cómo leer la bitácora. La sección "Línea de tiempo" resume todo en una tabla
 **Resultado.** Un solo chasis para ambas placas, con la Q como extra (mástil, repisa, cabeza de cámara).
 
 **Commits.** 43d9b37, 70bc992, 3e551e3, 76a9c97, 72eac0e, 36310ab, 2ca6fee, df9381c, 188c5ee, 21e7d1e
+:::
 
-### Etapa 6. Ajustes de software del UNO Q (29-oct)
+## Etapa 6. Ajustes de software del UNO Q (29-oct)
 
+::: ficha
 **Qué cambió.** Driver SSD1306 propio (`uno_q/sketch/oled.h`, sin librerías), OpenCV fijado en `requirements.txt` y luego quitado, mensaje de arranque en Python.
 
 **Problema.** Adafruit_SSD1306 no compila en el core Zephyr del UNO Q (mensaje del commit). OpenCV ya viene en la imagen base, así que el requirement sobraba.
@@ -153,15 +204,19 @@ Cómo leer la bitácora. La sección "Línea de tiempo" resume todo en una tabla
 **Resultado.** Sketch de la Q compilable.
 
 **Commits.** 7a777fc, 0b2ebf7, dfcc08c, b82d8a3
+:::
 
-### Etapa 7. Herramientas del repositorio (1-nov)
+## Etapa 7. Herramientas del repositorio (1-nov)
 
+::: ficha
 Etapa menor. Se instalan graphify (grafo del código con hooks) y los skills de ponytail, y `CLAUDE.md` pide consultar el grafo antes de buscar código, para reducir contexto al explorar. No hay problema de producto ni pruebas. Resultado: repositorio con grafo de código versionado.
 
 **Commits.** 44adb1e, fc9c6cb, b170e86
+:::
 
-### Etapa 8. Medidas reales de rueda, motor y pila (7-nov)
+## Etapa 8. Medidas reales de rueda, motor y pila (7-nov)
 
+::: ficha
 **Qué cambió.** Se miden las piezas reales y se actualiza el CAD: rueda D 45 x 17 (antes 34 x 20), motor 26.11 x 11.94 x 11.94 (antes 24x12x10), pila 70 mm (antes 65). `POZO_Y` se calcula como media cuerda de la rueda más 1.5 mm. Postes delanteros en (±34, 55) (antes 42, 50) y `TOF_LADO` en [43, 40] (antes 50, 34.5) para librar la rueda grande. Se regeneran planos, manuales, BOM, cables y renders con etiquetas de progreso.
 
 **Problema.** La rueda real era más grande que la modelada y chocaba con sensores y columnas.
@@ -175,9 +230,11 @@ Etapa menor. Se instalan graphify (grafo del código con hooks) y los skills de 
 **Resultado.** CAD y documentación alineados con las piezas reales.
 
 **Commits.** cef8925, 5c5f2ed, f8137e9, b33987a, ef31a48, d22d141, 176e066 (ver también la etapa 9)
+:::
 
-### Etapa 9. Soporte del VL53L0X: de postes con ranura a una pieza aparte con insertos (7-nov)
+## Etapa 9. Soporte del VL53L0X: de postes con ranura a una pieza aparte con insertos (7-nov)
 
+::: ficha
 **Qué cambió.** El soporte pasó por tres formas el mismo día.
 - Forma 1: ranura de 1.8 mm (`RAN_TOF`, antes 2.0) con postes que abrazan 4 mm de cada oreja del sensor; luego un tornillo por oreja. M2x8 pasa a M3x8 (rosca de 2.5 mm en plástico, paso de 3.4) porque la oreja real pasa M3; `TOF_AG = [20, 5.35]` confirmado con el plano de UNIT.
 - Forma 2: pieza impresa aparte (`soporte_tof`, se imprimen 3: frente, izquierdo, derecho) que se atornilla al piso 1 con 2 tornillos M3x8 desde abajo y 2 insertos. Aparece `TOF_BASE = 7` mm (el sensor queda 7 mm sobre el piso 1) y `TOF_FIJ`. Las columnas delanteras pasan de (34, 55) a (32, 55.5) y el cable frontal sube de 50 a 56 mm.
@@ -194,9 +251,11 @@ Etapa menor. Se instalan graphify (grafo del código con hooks) y los skills de 
 **Resultado.** Soporte tipo bloque que se ajusta de forma independiente, sin chocar con el piso 1.
 
 **Commits.** 93d9d14, 360ad39, a9cf261, 82f34ff, d328a22, 6eedd49, bd09e58, d532c3c, 7307d79, 87d42e5, 01cced4, dff5684
+:::
 
-### Etapa 10. Piso 2 modelado igual al ya impreso (7-nov)
+## Etapa 10. Piso 2 modelado igual al ya impreso (7-nov)
 
+::: ficha
 **Qué cambió.** Se modela el piso 2 para que coincida con el que ya estaba impreso: ranuras de cables de sensores en Y = 34.5 (`RAN2_Y`, antes seguían la Y de los ToF laterales) y repisa a `REPISA_Z = Z2 + ESP + 19` (postes de 19 mm, antes 82 fijo). Solo cambian los 2 agujeros delanteros, por las columnas movidas en la etapa 9.
 
 **Problema.** Para no reimprimir el piso 2, el modelo debía reflejar la pieza física y no divergir de ella.
@@ -210,9 +269,11 @@ Etapa menor. Se instalan graphify (grafo del código con hooks) y los skills de 
 **Resultado.** El piso 2 impreso sigue siendo válido salvo por los 2 agujeros delanteros.
 
 **Commits.** bd103c5, 6d85d90
+:::
 
-### Etapa 11. Cuna del motor: ajuste fino del hueco (7-nov)
+## Etapa 11. Cuna del motor: ajuste fino del hueco (7-nov)
 
+::: ficha
 **Qué cambió.** Se mide el motor: 12 x 11 mm (`MOT_A = 12`, `MOT_H = 11`; antes 11.94 x 11.94). Se regeneran cuna, patín y capucha. Después el hueco se afina por pruebas de impresión: 11.94 + 0.1 por lado (12.04), 12.00, 12.05, 11.85 y 11.90 mm. Valor final: **11.9 mm** de ancho, 18 mm de largo y `MOT_H + 1` de alto.
 
 **Problema.** Ajuste de tolerancia; el motor no entraba o quedaba flojo según la impresión. Es parte de las 20 a 50 iteraciones de chasis y piezas que el equipo dice haber hecho para verificar geometrías y tolerancias.
@@ -226,9 +287,11 @@ Etapa menor. Se instalan graphify (grafo del código con hooks) y los skills de 
 **Resultado.** Hueco final de 11.9 mm.
 
 **Commits.** 2722f97, 712fac8, 9c03141, db48994, b5a7abb
+:::
 
-### Etapa 12. OLED en la cabeza de la cámara y mástil 2020 (7-nov)
+## Etapa 12. OLED en la cabeza de la cámara y mástil 2020 (7-nov)
 
+::: ficha
 **Qué cambió.** La OLED se mueve a la cabeza de la cámara, de pie, con el header recto hacia adelante por encima de la manga; entra por arriba en 2 rieles y se elimina `clip_oled`. En el sketch, `oled.begin(..., true)` pasa a `false` (ya no va de cabeza; el último parámetro es la inversión). Mástil: `MASTIL = 20` (perfil de aluminio 2020, 75 mm), cabeza con hueco de 20 y opresor M3 (agujero d = 2.5), piso 2 con agujero M5 al hoyo central del mástil. El sketch espera 500 ms al arrancar por VIN.
 
 **Problema.** El clip de la OLED era una pieza extra y la pantalla iba de cabeza. La OLED no encendía al alimentar por VIN (por el comentario del código: "tarda en despertar").
@@ -242,15 +305,19 @@ Etapa menor. Se instalan graphify (grafo del código con hooks) y los skills de 
 **Resultado.** Una pieza menos y pantalla confiable al prender.
 
 **Commits.** 5a4462a, d7892a8, 9592c25
+:::
 
-### Etapa 13. Diagrama de conexiones (7-nov)
+## Etapa 13. Diagrama de conexiones (7-nov)
 
+::: ficha
 Etapa menor de documentación. `docs/diagrama_conexiones.py` (matplotlib) genera `diagrama_conexiones.png` y `.pdf`, válido para UNO R3 y UNO Q (el cableado es el mismo), con colores de cable tomados de `cables.csv` (VCC rojo, GND negro, SDA azul, SCL turquesa, XSHUT verde, EN morado, IN café, PWR naranja, BTN rosa) para que coincida con los cables físicos. No hay problema ni pruebas; el resultado es un diagrama reproducible desde script.
 
 **Commits.** ef53524
+:::
 
-### Etapa 14. Cámara en el UNO Q: búsqueda del nodo de video (7 y 8-nov)
+## Etapa 14. Cámara en el UNO Q: búsqueda del nodo de video (7 y 8-nov)
 
+::: ficha
 **Qué cambió.** En `uno_q/python/main.py`: el 7-nov, en vez de abrir solo `CAM_ID`, recorre `/dev/video{CAM_ID..11}` con V4L2, usa el primero que realmente entrega un cuadro e imprime la lista de dispositivos. El 8-nov se agrega `USAR_CAM = False` para correr sin cámara, vuelve a `True` al llegar la cámara, y un print por ciclo de lo que ve (`cam: ROJO=P VERDE=. ...`).
 
 **Problema.** Una cámara USB expone varios nodos `/dev/video*` y no todos capturan, de modo que abrir uno fijo fallaba.
@@ -262,9 +329,11 @@ Etapa menor de documentación. `docs/diagrama_conexiones.py` (matplotlib) genera
 **Resultado.** Cámara activa y depurable por consola.
 
 **Commits.** 98273c8, 7388d36, 3374d6a, 9784df6
+:::
 
-### Etapa 15. Diagnóstico en la OLED (8-nov)
+## Etapa 15. Diagnóstico en la OLED (8-nov)
 
+::: ficha
 **Qué cambió.** En `sketch.ino`, un contador `nRpc` sube cada vez que Python consulta y se muestra como `PY n` junto con la última orden (`M`, `G`, `L` borrar mapa, `B` botón); la OLED se refresca cada 300 ms en reposo.
 
 **Problema.** Sin pantalla no se sabía si el programa Python en Linux estaba corriendo.
@@ -276,9 +345,11 @@ Etapa menor de documentación. `docs/diagrama_conexiones.py` (matplotlib) genera
 **Resultado.** Diagnóstico visible a simple vista.
 
 **Commits.** 03a7610
+:::
 
-### Etapa 16. Panel web de calibración de colores (8-nov)
+## Etapa 16. Panel web de calibración de colores (8-nov)
 
+::: ficha
 **Qué cambió.** Interfaz `uno_q/assets/index.html` servida en el puerto 7000 con el brick `arduino:web_ui` (`app.yaml`). `main.py` expone `/api/lectura` (r, g, b normalizados más brillo c, con el color clasificado por distancia y umbral 0.02) y `/api/guardar` (promedia 5 lecturas cada 50 ms, actualiza `REFS`, las envía al sketch con `set_ref` y las guarda en `/app/colores.json`, que se recarga al arrancar). Valores iniciales: PISO (0.33, 0.33, 0.33, 900), ROJO (0.58, 0.22, 0.20, 400), VERDE (0.26, 0.46, 0.28, 350), AZUL (0.20, 0.32, 0.48, 300), AMAR (0.42, 0.40, 0.18, 700). Después se añade un asistente paso a paso (guarda cada color en orden, con Atrás y Saltar).
 
 **Problema.** Calibrar colores obligaba a leer valores en la OLED y copiarlos a mano a `refs[]` en el sketch.
@@ -292,15 +363,19 @@ Etapa menor de documentación. `docs/diagrama_conexiones.py` (matplotlib) genera
 **Resultado.** Ya no hay que tocar `refs[]` a mano.
 
 **Commits.** 531b253, 3c72308
+:::
 
-### Etapa 17. Manuales (8-nov)
+## Etapa 17. Manuales (8-nov)
 
+::: ficha
 Etapa menor de documentación. `docs/manual_uso.md` (uso y calibración: batería de al menos 7.4 V, unos 20 s de arranque, botón D2 con toque corto para arrancar y más de 2 s para borrar el mapa), reordenado como secuencia (sanidad, calibrar, ensayo, competencia) para poder seguirlo sin entender el sistema. Primero se escribió un manual para jueces y luego uno técnico (`manual_tecnico.md`) con explicaciones simples. Se agregan `prompt_pdf.md` (retirado después), `md_pdf.sh/.css/.js` y los PDF a color en `docs/pdf/`. Los criterios de operación (batería de al menos 7.4 V; con menos de 7 V el L298N pierde fuerza; unos 20 s de arranque) los escribió el equipo; los commits no dicen cómo se midieron.
 
 **Commits.** 989c327, 7a4781a, f3b0647, c0c54fb, 7a015f0
+:::
 
-### Etapa 18. Pedestal impreso y cabeza de cámara (8-nov)
+## Etapa 18. Pedestal impreso y cabeza de cámara (8-nov)
 
+::: ficha
 **Qué cambió.** Pedestal impreso de 20x20 mm y 75 mm de alto que sustituye al perfil 2020 (M5 desde abajo del piso 2, hoyo de 4.2 mm); luego se cambia a M4 con inserto de calor (`INSERTO_M4 = [5.6, 8]` mm, paso de 4.2 mm para el tornillo largo). Cabeza de cámara: ventana de 22 x 22 mm para el conector USB y el cable (antes 16), cuatro agujeros M2 en x, z = ±14 mm con tuerca atrás; después agujeros ovalados con 1 mm de juego y un marco que centra el PCB de la cámara (`CAM_PCB` + 1 mm, 0.5 mm por lado) con base 6 mm mayor. Se regeneran los STL de repisa, piso 2 y cabeza.
 
 **Problema.** No se tenía el perfil 2020 a mano (por el commit del pedestal, "impreso en lugar del perfil"). En la cámara, los agujeros exactos no coincidían con el PCB (por el "1 mm de juego").
@@ -312,10 +387,13 @@ Etapa menor de documentación. `docs/manual_uso.md` (uso y calibración: baterí
 **Resultado.** Pedestal y cabeza imprimibles con tolerancias de montaje.
 
 **Commits.** 5e485c1, 15d6883, 14a9821, d16b370, cc64a96
+:::
 
-### Etapa 19. Panel de cámara, cabeza en el CAD y motores invertidos (8 al 10-nov)
+## Etapa 19. Panel de cámara, cabeza en el CAD y motores invertidos (8 al 10-nov)
 
+::: ficha
 **Qué cambió.**
+
 - El panel web (`/api/foto`) muestra la imagen de la cámara reducida a 160x120, calidad JPEG 40, con las regiones de pared dibujadas: rojo si ve pared, verde si está libre.
 - Python separa `analiza(img)` de `leer_camara()` y protege la cámara con un `cam_lock`, porque ahora la usan a la vez el robot y la página.
 - En el CAD, la placa de la cámara sube 12 mm (`CAM_DZ = 12`) para que su parte trasera quede libre. Se agregan costillas, un hueco para el conector USB arriba a la izquierda y un paso para los cables de alimentación abajo.
@@ -333,9 +411,11 @@ Etapa menor de documentación. `docs/manual_uso.md` (uso y calibración: baterí
 **Resultado.** Las regiones se pueden afinar con la imagen del panel y los motores se invierten con una constante.
 
 **Commits.** 3f72096, 1d5ae18, 3b2d8f5, d5c56ae
+:::
 
-### Etapa 20. La cámara como sensor de paredes con mapa 16x16 (10-nov)
+## Etapa 20. La cámara como sensor de paredes con mapa 16x16 (10-nov)
 
+::: ficha
 **Qué cambió.** `ROI` pasa de 3 regiones fijas a regiones con clave `"adelante,lado,pared"`: hasta 2 celdas adelante y por encima de la pared de enfrente (6 regiones, por ejemplo `"1,0,F": (0.35, 0.05, 0.65, 0.25)`). Esas paredes entran al mapa como "tentativas" para que el flood-fill descarte callejones antes de entrar. La cámara también pre-revisa el color del piso de la celda siguiente (`ROI_PISO = (0.30, 0.45, 0.70, 0.80)`, `HUE` por color, `FRAC_COLOR = 0.08`) y el TCS34725 confirma. Se rechaza un color del sensor si la cámara vio piso limpio en esa celda (falso positivo). Filtro de brillo para el piso negro: `BRILLO_MIN = 1.3`, es decir, una marca refleja al menos 1.3 veces más que el piso, tanto en Python como en el sketch. `META` se calcula según N: las 4 celdas centrales cuando N es par.
 
 **Problema.** Los ToF solo ven la celda actual, así que explorar es lento y se entra a callejones. La cámara, montada alta, puede ver por encima de las paredes. El sensor de color daba falsos positivos sobre el piso negro.
@@ -349,9 +429,11 @@ Etapa menor de documentación. `docs/manual_uso.md` (uso y calibración: baterí
 **Resultado.** El flood-fill usa información adelantada y hay un filtro de falsos positivos de color en dos capas (cámara y brillo).
 
 **Commits.** abb9ce3, 1b68e5b
+:::
 
-### Etapa 21. Laberinto 11x11, modo "tonto" y "los ToF mandan" (10-nov)
+## Etapa 21. Laberinto 11x11, modo "tonto" y "los ToF mandan" (10-nov)
 
+::: ficha
 **Qué cambió.** `N` pasa de 16 a 11 (celdas de 18 cm); con N impar la meta es una sola celda, la central. Aparece el modo "tonto" (pared derecha, sin depender del mapa) con selector en el panel; si da vueltas a una isla (misma posición y rumbo repetidos), cambia solo a modo mapa. El flood-fill pasa de BFS a Dijkstra (`heapq`) y una pared vista solo por la cámara ya no bloquea: cuesta `PESO_CAM = 3` celdas extra. Los VL53L0X se leen en cada celda, aunque ya se conozca, y antes de cada avance (`frente_libre()`); si ven pared al frente no se avanza. El mapa se corrige en los dos sentidos con `quita_pared`. Un mapa guardado de otro tamaño se ignora.
 
 **Problema.** El mensaje dice "Los VL53L0X mandan": la cámara bloqueaba rutas con paredes tentativas y podía equivocarse. Un mapa viejo o una pared falsa podían impedir llegar a la meta. No hay un dato numérico del fallo.
@@ -365,10 +447,13 @@ Etapa menor de documentación. `docs/manual_uso.md` (uso y calibración: baterí
 **Resultado.** El mapa ya no se queda bloqueado por la cámara y se autocorrige con los ToF.
 
 **Commits.** 0aec4a2, c4e7291
+:::
 
-### Etapa 22. Odometría ligera y confianza en el ToF frontal (10-nov)
+## Etapa 22. Odometría ligera y confianza en el ToF frontal (10-nov)
 
+::: ficha
 **Qué cambió.**
+
 - dff8225, sketch: odometría ligera con medidas del CAD (`CELDA = 180`, `Y_LADO = 40`, `MEDIA_PARED = 6`). Cuando un ToF lateral pasa el borde de una pared (el poste entre celdas), corrige la posición y aprende la velocidad real (`escala`, acotada a 0.6 a 1.6). Con pared al frente a menos de `FRENTE_ODO = 400` mm corrige lo que falta con ganancia 0.2. Se ignoran correcciones de más de `MAX_CORR = 45` mm. Nuevo RPC `odo(i)` que lo expone al panel.
 - dff8225, Python: la cámara mide la distancia a la base de la pared de enfrente con la geometría del CAD (`CAM_H = 162`, `CAM_Y = 32`, `CAM_INCL = 25`, `CAM_FOV_V = 75`) y ajusta cada avance hasta `ODO_MAX`.
 - 70b44fa: `ODO_MAX` baja de 60 a 30 mm. Antes de avanzar se lee el frontal 3 veces y se toma la menor (`tof_frente()`). `celdas_libres()` limita cuántas celdas avanza y, si recorta la recta, marca la pared en el mapa. Si el frontal ve algo a menos de `TOF_RANGO = 1000` mm manda el frontal; la cámara corrige solo si el frontal no ve nada. `PESO_CAM` baja de 3 a 1. El panel agrega vista en vivo de los ToF.
@@ -386,10 +471,13 @@ Etapa menor de documentación. `docs/manual_uso.md` (uso y calibración: baterí
 **Resultado.** Los avances se autocorrigen y nunca superan lo que el frontal ve libre.
 
 **Commits.** dff8225, 70b44fa, 76030d2, cc80dd9
+:::
 
-### Etapa 23. Frenado, `D_FRENTE` y simulador "qué haría" (10-nov)
+## Etapa 23. Frenado, `D_FRENTE` y simulador "qué haría" (10-nov)
 
+::: ficha
 **Qué cambió.**
+
 - 41063ab: `FRENA_K = 2` PWM por mm. Con pared al frente baja la velocidad al acercarse; si queda muy pegado (más de `D_CERCA = 15` mm por debajo de `D_FRENTE`) retrocede a `-VEL_MIN`, como máximo 0.8 s. El panel ToF "simula qué haría el robot" (`que_haria()`).
 - e6e42fc: si hay pared enfrente y la distancia ya no baja durante 300 ms (con margen de 3 mm), se detiene (`dMin` más `tBaja`).
 - 496e845: `D_FRENTE` pasa de 55 a 130 mm, `D_CERCA` de 15 a 10, y el frenado empieza a `D_FRENTE + 100` (230 mm). En el simulador, "Retrocede" se dispara por debajo de `D_FRENTE_TOF - 10`.
@@ -406,9 +494,11 @@ Etapa menor de documentación. `docs/manual_uso.md` (uso y calibración: baterí
 **Resultado.** Para a 130 mm de la pared, retrocede si pasó y no empuja.
 
 **Commits.** 41063ab, e6e42fc, 496e845, 0f50bde
+:::
 
-### Etapa 24. Solo seguir pared, prueba sin cámara y escritura atómica (10-nov)
+## Etapa 24. Solo seguir pared, prueba sin cámara y escritura atómica (10-nov)
 
+::: ficha
 **Qué cambió.** 285261b: se elimina el modo mapa de la estrategia. Queda solo el modo "tonto" con `seguir_pared(objetivos, mano)`: pared derecha y, si rodea una isla, prueba con la izquierda. Ya no guarda ni usa el mapa; sigue la pared con lo que leen los ToF en cada celda. 8833c86: `USAR_CAM = False` para una prueba sin cámara (solo ToF y sensor de color). c95da2f: los datos pasan a `/app/datos`; la escritura es atómica (archivo `.tmp` y `os.replace`) y la lectura es tolerante (`lee()` devuelve `None` si el JSON está roto).
 
 **Problema.** El mapa con flood-fill dependía de paredes que la cámara y los sensores veían mal. El mensaje dice "Solo modo tonto": se reduce el alcance; el motivo exacto no está escrito en el commit; coincide con las etapas 21 a 23, donde se descartó el mapa en favor de los ToF. Un JSON vacío tumbaba la app, y App Lab se confundía con archivos en la raíz de `/app`.
@@ -422,10 +512,13 @@ Etapa menor de documentación. `docs/manual_uso.md` (uso y calibración: baterí
 **Resultado.** Una app que arranca aunque haya un archivo roto y una estrategia mínima y comprobable.
 
 **Commits.** 285261b, 8833c86, c95da2f
+:::
 
-### Etapa 25. Explorar hasta el amarillo; la cámara guía y cubre puntos ciegos (10-nov)
+## Etapa 25. Explorar hasta el amarillo; la cámara guía y cubre puntos ciegos (10-nov)
 
+::: ficha
 **Qué cambió.**
+
 - a4f1221: nueva meta, encontrar el amarillo. `buscar_color()` explora sin fin y entre las salidas libres elige la celda menos visitada. Se detiene cuando el TCS34725 lee amarillo y, si hay cámara, ella también lo vio (si no coinciden, sigue buscando). Nuevo RPC `alto` (`pideAlto` en el sketch) para parar el avance en curso. D2 detiene la exploración. `USAR_CAM = True` otra vez.
 - 7c1b4be: la cámara guía hacia el amarillo (`hacia_objetivo()` parte la mitad de abajo de la imagen en tercios y elige el que tiene más píxeles amarillos).
 - 8c37fe8: se corrige el papel de la cámara: "Cámara solo desempata entre salidas igual de visitadas; los ToF y las visitas mandan".
@@ -442,10 +535,13 @@ Etapa menor de documentación. `docs/manual_uso.md` (uso y calibración: baterí
 **Resultado.** El robot puede explorar sin conocer el laberinto y parar al encontrar el amarillo. Las diagonales quedan cubiertas por la cámara con geometría del CAD.
 
 **Commits.** a4f1221, 7c1b4be, 8c37fe8, 38bd54c
+:::
 
-### Etapa 26. Robustez de la cámara y la web, colores de fábrica y manuales (11-nov, madrugada)
+## Etapa 26. Robustez de la cámara y la web, colores de fábrica y manuales (11-nov, madrugada)
 
+::: ficha
 **Qué cambió.**
+
 - cd5101b: los colores calibrados pasan a ser valores de fábrica. `REFS` y `refs[]` del sketch pasan de valores provisionales a PISO 0.282, 0.379, 0.333, 153; ROJO 0.602, 0.208, 0.188, 581; VERDE 0.155, 0.535, 0.309, 636; AZUL 0.16, 0.329, 0.508, 354; AMAR 0.409, 0.449, 0.142, 1836.
 - 92cc120: la página reintenta abrir la cámara cada 5 s si se conectó tarde, y la reabre si se desconecta.
 - 34f910f y 9e56d36: `bool` de Python en lugar de `numpy.bool`, y `limpio()` convierte tipos numpy antes de responder, porque FastAPI no los serializa.
@@ -463,10 +559,13 @@ Etapa menor de documentación. `docs/manual_uso.md` (uso y calibración: baterí
 **Resultado.** La app arranca siempre, la cámara se recupera sola y los colores quedan con valores calibrados por defecto.
 
 **Commits.** cd5101b, 92cc120, 34f910f, 9e56d36, b5af071, b881968, 4ae53a0, bb1d40a, 157c8d0
+:::
 
-### Etapa 27. Alinear con giros de 5 grados y su retirada (11-nov)
+## Etapa 27. Alinear con giros de 5 grados y su retirada (11-nov)
 
+::: ficha
 **Qué cambió.**
+
 - 8b497c4: `alinear()` barre de -10 a +10 grados en pasos de unos 5 (`MS_5 = 25` ms, RPC `ajustar`) y se queda donde la pared de enfrente se ve más cerca (perpendicular) o, sin ella, donde las dos laterales suman menos (paralelo al pasillo). Centrado con rumbo: `KD = 0.3` corrige según qué tan rápido cambia el error lateral (cada 100 ms). Mano derecha. El frente cuenta libre desde 220 mm (137 mm es pared en la celda propia: 0 celdas, no 1). La cámara se inclina de 25 a 40 grados y ve el piso desde unos 7 cm adelante del eje.
 - 0c72165: se quita todo `alinear()` y `ajustar`. Se avanza derecho con `FRENTE_LIBRE = 150` mm. El centrado solo corrige si un lateral lee menos de `D_LADO_MIN = 90` mm; lejos de las dos paredes va derecho.
 
@@ -481,10 +580,13 @@ Etapa menor de documentación. `docs/manual_uso.md` (uso y calibración: baterí
 **Resultado.** Queda el centrado diferencial (`KC` y `KD`) con banda muerta de 90 mm. El frente libre pasa de 220 a 150 mm (luego vuelve a 220, etapa 30).
 
 **Commits.** 8b497c4, 0c72165
+:::
 
-### Etapa 28. Reescritura: avance por distancia, cámara solo para amarillo y mano izquierda (11-nov)
+## Etapa 28. Reescritura: avance por distancia, cámara solo para amarillo y mano izquierda (11-nov)
 
+::: ficha
 **Qué cambió.**
+
 - 9467a00: reescritura grande (146 líneas agregadas y 651 quitadas; `main.py` baja de unas 800 líneas). En el sketch, `mover(mm)` avanza por distancia con el frontal: al arrancar toma la lectura del frontal (`objetivo = dist[1] - total`, mínimo `D_FRENTE`) y para cuando bajó 180 mm (`CELDA`). Si el frontal no ve nada a menos de `RANGO = 1000` mm, avanza por tiempo (`MS_CELDA = 600`), y si aparece una pared a medio avance sigue por distancia. Se vuelve a parar a 130 mm y retrocede si queda más cerca. Se eliminan la odometría de bordes, `MS_RAPIDA`, `VEL_RAPIDA`, `escala` y `OFF_COLOR`. En Python se eliminan el mapa 11x11, el flood-fill, `ROI`, los puntos ciegos, la corrección de distancia con cámara, el pre-chequeo de piso y el modo "tonto". Python decide con 3 muestras de cada ToF; con 3 visitas a una celda (`ISLA`) toma la salida menos usada y la cámara desempata. La posición sale de los mm recorridos. La cámara solo busca amarillo (`HUE_AMAR = (20, 35)`) y el panel dibuja un recuadro donde lo ve.
 - a6db9a1: regla de la mano izquierda (en `salidas()` el orden pasa de derecha, frente, izquierda a izquierda, frente, derecha). Se probó mano derecha y luego izquierda, y se priorizó ir de frente y después la mano izquierda. Según las pruebas en pista, esa regla resultó peor: ver "Decisiones de ingeniería" (mano derecha pura).
 
@@ -499,10 +601,13 @@ Etapa menor de documentación. `docs/manual_uso.md` (uso y calibración: baterí
 **Resultado.** Un diseño mucho más corto: unos 500 renglones menos en `main.py`.
 
 **Commits.** 9467a00, a6db9a1
+:::
 
-### Etapa 29. Mapa de paredes y colores con ruta corta; cambios bruscos de ToF; cámara blanco/negro (11-nov)
+## Etapa 29. Mapa de paredes y colores con ruta corta; cambios bruscos de ToF; cámara blanco/negro (11-nov)
 
+::: ficha
 **Qué cambió.**
+
 - Mapa nuevo y ligero: `muros` (celda a [N, E, S, O]) y `colores`, más la `meta`, guardados en `/app/datos/mapa.json`. Los ToF anotan paredes; por donde pasó queda libre. Cada color que lee el TCS34725 (3 lecturas seguidas) se anota en la celda donde está el sensor (`Y_COLOR = 36` mm adelante del eje) y se cuenta una vez. La meta es la celda del amarillo.
 - Si ya conoce la meta, la siguiente corrida va por el camino más corto conocido (BFS, `seguir_ruta`); si algo no cuadra, vuelve a explorar. Cada corrida empieza en la misma celda y mirando al mismo lado; si no, se usa el borrado largo del botón (2 s) que limpia mapa y conteo.
 - Prioridad de salida: de frente, luego izquierda, luego derecha, luego media vuelta.
@@ -520,10 +625,13 @@ Etapa menor de documentación. `docs/manual_uso.md` (uso y calibración: baterí
 **Resultado.** La segunda corrida puede ir directo a la meta por el camino más corto conocido.
 
 **Commits.** 1564598
+:::
 
-### Etapa 30. Máquina de estados, votos, frente libre a 220 mm, alto en amarillo desde el STM32 y web sin Bridge (11-nov)
+## Etapa 30. Máquina de estados, votos, frente libre a 220 mm, alto en amarillo desde el STM32 y web sin Bridge (11-nov)
 
+::: ficha
 **Qué cambió.**
+
 - Máquina de estados en Python: `SENSA` a `DECIDE` a `GIRA` a `AVANZA` a `SENSA`, o `ESCANEA` en lugar de `SENSA` tras un salto. "Todo se decide con el robot quieto; el color se revisa todo el tiempo". El STM32 conserva su máquina de tiempo real (NADA/AVANZA/GIRA). La fase sale en la OLED (`set_fase`) y en la web.
 - Mapa con votos: cada lectura vota pared (+1) o libre (-1) con tope `VOTO_MAX = 5`; por donde pasó queda `-VOTO_MAX`, libre seguro.
 - `FRENTE_LIBRE` pasa de 150 a 220 mm.
@@ -531,6 +639,7 @@ Etapa menor de documentación. `docs/manual_uso.md` (uso y calibración: baterí
 - Durante una corrida la web no llama al Bridge: muestra la última lectura del robot (`vivo`) y la última foto (`ult_img`). La OLED ya no se refresca en movimiento (tarda unos 25 ms bloqueantes).
 
 **Problema.**
+
 - Una lectura errónea de ToF cambiaba el mapa de pared a libre o al revés (comentario: "una lectura mala no borra lo que vieron las demás").
 - 150 mm quedaba demasiado cerca del valor de pared en la celda propia. Con pared en su propia celda el frontal lee unos 130 mm; con la pared una celda más allá, unos 310 mm. Un umbral de 150 dejaba solo 20 mm de margen frente al ruido del sensor. Los laterales ya estaban bien: pared unos 50, libre más de 200, umbral de 120 a la mitad.
 - Si la parada dependía del ciclo Python, el retraso hacía que el robot pasara del amarillo. Los motores no se afectan por la web (el control de 10 ms corre en el STM32), pero cada consulta web eran 5 a 9 llamadas al Bridge cada 150 a 300 ms compitiendo con el robot, y la foto de la web bloqueaba la cámara unos 130 ms. El riesgo real era que el "alto" en amarillo llegara tarde.
@@ -544,9 +653,11 @@ Etapa menor de documentación. `docs/manual_uso.md` (uso y calibración: baterí
 **Resultado.** Decisiones más estables, parada inmediata en el amarillo y un panel que ya no interfiere con la corrida.
 
 **Commits.** 9635cf9
+:::
 
-### Etapa 31. MPU-6050 opcional: giros por ángulo y rumbo sostenido (11-nov)
+## Etapa 31. MPU-6050 opcional: giros por ángulo y rumbo sostenido (11-nov)
 
+::: ficha
 **Qué cambió.** Si un MPU-6050 (GY-521) responde en 0x68 al arrancar, el sketch gira hasta el ángulo, con giroscopio a ±500 grados/s (`LSB_DPS = 65.5`) y filtro de unos 44 Hz. Mide el sesgo (bias) con 200 muestras con el robot quieto al encender. El rumbo es absoluto: cada giro va al ángulo acumulado deseado, así que corrige lo que se pasó o faltó en el giro anterior. `ADELANTO = 6` grados corta el giro antes por la inercia. En recta sostiene el rumbo (`KG = 2.0` PWM por grado, tope ±20), además del centrado con paredes. El sentido del montaje (`signo`) se aprende en el primer giro, cuando el yaw supera 30 grados. Sin MPU el sketch sigue por tiempo (`MS_90`). `odo(8)` da el desvío en grados. La OLED muestra `G` si lo encontró y no se refresca en movimiento.
 
 **Problema.** Los giros por tiempo acumulan error de rumbo, el mismo problema de la etapa 27, que no se había resuelto. El UNO Q no trae IMU. Sin referencia angular, el robot tampoco corregía derivas en recta.
@@ -560,9 +671,11 @@ Etapa menor de documentación. `docs/manual_uso.md` (uso y calibración: baterí
 **Resultado.** Giros por ángulo y rumbo sostenido cuando el MPU está presente; sin él, el comportamiento anterior no cambia.
 
 **Commits.** 6a6f10b
+:::
 
-### Etapa 32. Calibración de los sensores de distancia desde la página web (11-nov)
+## Etapa 32. Calibración de los sensores de distancia desde la página web (11-nov)
 
+::: ficha
 **Qué cambió.** La página web suma una sección "Calibrar distancia". Por sensor se guardan puntos (mm reales medidos con vernier contra la lectura cruda, promedio de 10) y se ajusta una recta `real = a × crudo + b` por mínimos cuadrados (con un solo punto, solo desfase). Se guarda en `/app/datos/tof.json` y se manda al STM32 (`set_tof`), que la aplica a cada lectura antes del control. `odo(9..11)` da la lectura sin calibrar para comparar.
 
 **Problema.** Los VL53L0X leen con un desfase propio por sensor ("nunca llega a 50" con pared al frente) y varían ±15 mm según las pruebas del equipo; los umbrales se habían ajustado sobre lecturas crudas.
@@ -576,9 +689,11 @@ Etapa menor de documentación. `docs/manual_uso.md` (uso y calibración: baterí
 **Resultado.** Cada sensor reporta milímetros reales con el mismo procedimiento que los colores.
 
 **Commits:** b416c9f.
+:::
 
-### Etapa 33. Dos versiones del sketch: con y sin MPU-6050 (11-nov)
+## Etapa 33. Dos versiones del sketch: con y sin MPU-6050 (11-nov)
 
+::: ficha
 **Qué cambió.** Se conserva `uno_q/sketch/` (con MPU-6050 autodetectado) y se agrega `uno_q/sketch_sin_mpu/`, la misma lógica sin el código del giroscopio (giros y rectas solo por tiempo).
 
 **Razonamiento.** La versión con MPU ya funciona sin él, pero tener la versión sin MPU por separado da un respaldo simple y fácil de leer mientras se consigue y calibra el giroscopio, y permite comparar en pista los dos métodos de giro.
@@ -586,9 +701,11 @@ Etapa menor de documentación. `docs/manual_uso.md` (uso y calibración: baterí
 **Pendiente.** Compilar ambas en App Lab y confirmar en pista `MS_90` (~320 ms, porque con 250 ms giraba ~70°) y el cambio a mano derecha pura.
 
 **Commits:** 5906d64.
+:::
 
-### Etapa 34. Cámara monocromática OV9281: solo blanco y negro (11-nov)
+## Etapa 34. Cámara monocromática OV9281: solo blanco y negro (11-nov)
 
+::: ficha
 **Problema.** La cámara real del robot es una innomaker U20CAM-9281M: sensor OV9281 de 1 MP, **monocromático**, con obturador global y hasta 120 fps. Sin filtro de color, la búsqueda de amarillo por tono (HSV, `HUE_AMAR`) nunca podía activarse: la saturación de una imagen en gris es cero.
 
 **Razonamiento.** El amarillo por cámara solo desempataba islas; la meta siempre la confirmó el TCS34725, el componente más confiable según las pruebas en pista. Mantener código que nunca se activa confunde a quien lo lee. Lo que sí se usa, distinguir blanco (pared) de negro (piso), depende de la luminancia, y un sensor monocromático la mide mejor: cada píxel recibe toda la luz en lugar de un tercio, con menos ruido. El obturador global además evita que la imagen se deforme con el robot en movimiento.
@@ -596,9 +713,11 @@ Etapa menor de documentación. `docs/manual_uso.md` (uso y calibración: baterí
 **Cambio.** Se quitan `hacia_objetivo`, `HUE_AMAR`, `SAT_MIN`, `VAL_MIN` y `FRAC_COLOR`, el desempate por cámara en islas y el recuadro amarillo de la web. El blanco pasa de un rango HSV a un umbral de gris (`BLANCO_MIN` = 170) que acepta la imagen en 1 o 3 canales. Se actualizan BOM, CAD (medida de la placa por confirmar) y manuales.
 
 **Pruebas.** Pruebas automáticas del Python (decisiones, votos, BFS, guardar/cargar) y de `frac_blanco` con imágenes sintéticas: piso negro da 0, una franja blanca en la zona de paso da 0.37. Falta probarlo con la cámara real.
+:::
 
-### Etapa 35. Exprimir la cámara monocromática: rumbo, umbral automático y 2 técnicas experimentales (11-nov)
+## Etapa 35. Exprimir la cámara monocromática: rumbo, umbral automático y 2 técnicas experimentales (11-nov)
 
+::: ficha
 **Problema.** La cámara solo daba un dato (hay blanco o no) y con un umbral fijo que dependía de la luz. Mientras, dos problemas de pista seguían abiertos: el robot se desviaba en recta y no veía las esquinas en diagonal (por eso se habían pensado ultrasónicos a 45°). Además, la inclinación de la cámara nunca se corrigió: quedó la del primer soporte (la última versión del CAD no se imprimió).
 
 **Razonamiento.** Una escena de piso negro y paredes blancas tiene un histograma bimodal (Otsu lo separa solo) y bordes muy marcados. Las bases de las 2 paredes de un pasillo son rectas paralelas en el piso; en la imagen se cortan en el punto de fuga, cuya columna depende solo del ángulo del robot respecto al pasillo, no de su posición lateral ni de la inclinación de la cámara. Eso da una medida **absoluta** de rumbo, que el giroscopio no tiene (integra y deriva). Para no depender de la inclinación sin corregir, todo se calibra con el robot real desde la web, y la distancia por cámara usa el ToF frontal como regla.
@@ -612,17 +731,21 @@ Etapa menor de documentación. `docs/manual_uso.md` (uso y calibración: baterí
 - Quedan 4 combinaciones: sketch con o sin MPU × Python estable o experimental.
 
 **Pruebas.** Con imágenes sintéticas de un pasillo generadas por proyección de una cámara a 150 mm de altura y 35° hacia abajo, con ruido: el rumbo medido coincidió con el real dentro de ±0.1° de −12° a 12°, también descentrado 25 mm y con una pared abierta; la distancia central dio 209/306/400/517 mm con paredes a 200/300/400/500 mm; las aberturas izquierda, derecha y con el robot girado 6° se detectaron sin falsos positivos. Se revisó la web con datos simulados (Playwright). Siguen pasando las pruebas de decisiones, votos, BFS y guardar/cargar. Los sketches no se han compilado (pendiente en App Lab) y nada de esto se ha probado con la cámara real.
+:::
 
-### Etapa 36. Umbrales del frontal en milímetros reales (11-nov)
+## Etapa 36. Umbrales del frontal en milímetros reales (11-nov)
 
+::: ficha
 **Problema.** Al calibrar en pista con una pared a 100 mm, el frontal leyó 187 mm (antes 192): mide unos 87 mm de más. Los laterales salieron casi exactos (−5 y −0.2 mm). Los umbrales del frente (`D_FRENTE` y `PARED_F` en 130, `FRENTE_LIBRE` en 220) se habían ajustado con lecturas sin calibrar; con la corrección aplicada, el robot habría frenado una celda antes y confundido la pared de la celda siguiente con un frente libre.
 
 **Razonamiento.** El desfase explica una observación vieja: "el sensor lee de más, nunca llega a 50". Con el robot centrado, el frontal queda a 90 − 6 − 40 = 44 mm reales de la pared de su celda, y 130 sin calibrar ≈ 43 reales. Pasar los umbrales a milímetros reales deja el código igual para cualquier sensor calibrado, en vez de depender del error de un sensor en particular.
 
 **Cambio.** Sketches: `D_FRENTE` y `PARED_F` 130 → 45. Python: `PARED_F` y `D_FRENTE_TOF` 130 → 45, `FRENTE_LIBRE` 220 → 135 (a la mitad entre ~45 y ~225). Los laterales no cambian. **Requiere el frontal calibrado:** si se borra su calibración, el robot se pegaría a la pared.
+:::
 
-### Etapa 37. Mano izquierda pura, compensación de motores y alto a 10 mm (11-nov)
+## Etapa 37. Mano izquierda pura, compensación de motores y alto a 10 mm (11-nov)
 
+::: ficha
 **Observación en pista.** Los colores se detectan muy bien. El robot se va un poco a la izquierda: la llanta izquierda avanza menos.
 
 **Cambio.**
@@ -632,9 +755,11 @@ Etapa menor de documentación. `docs/manual_uso.md` (uso y calibración: baterí
 - **`D_FRENTE` = 10 mm reales** (antes 45), a pedido del equipo, con el frontal ya calibrado. `D_CERCA` = 5 mm. `FRENTE_LIBRE` = 110 mm y `D_FRENTE_TOF` = 10 mm en Python.
 
 **Riesgo anotado.** Con el robot centrado, el frontal queda a unos 44 mm de la pared de su celda (90 − 6 − 40). Frenar a 10 mm deja el eje unos 34 mm después del centro de la celda. Y por debajo de unos 30 mm el VL53L0X pierde exactitud. Hay que verificar en pista que no toque la pared y que la siguiente decisión siga saliendo bien.
+:::
 
-### Etapa 38. Exploración completa: la meta al centro (11-nov)
+## Etapa 38. Exploración completa: la meta al centro (11-nov)
 
+::: ficha
 **Problema en pista.** El robot no encontraba la meta. La meta está al centro del laberinto y solo tiene 2 entradas.
 
 **Diagnóstico.** Las paredes que rodean el centro no tocan el muro exterior: forman una isla. Un seguidor de pared solo recorre el muro conexo al que está pegado, así que con mano izquierda (o derecha) rodea la isla sin entrar nunca. La regla anterior de "3 visitas → salida menos usada" no basta: el robot casi nunca repite la celda exacta.
@@ -644,9 +769,11 @@ Etapa menor de documentación. `docs/manual_uso.md` (uso y calibración: baterí
 **Pruebas.** Simulación con 30 laberintos de 9 × 9 con la meta en una isla central de 3 × 3 con 2 entradas: mano izquierda pura 0/30, exploración completa 30/30. Pruebas unitarias de `decidir()` y `frontera()`.
 
 **Otros cambios de la misma etapa.** `D_FRENTE` = 35 mm (pedido: 30 a 40), `PARED_F` = 55, `FRENTE_LIBRE` = 130. Cámara: estiramiento de contraste antes de Otsu y sensibilidad ajustable desde la web.
+:::
 
-### Etapa 39. Primera corrida larga con MPU: 3 fallas del log (11-nov)
+## Etapa 39. Primera corrida larga con MPU: 3 fallas del log (11-nov)
 
+::: ficha
 **Del log de pista** (157 s, sin cámara conectada):
 
 1. **"Avanzo 0 mm" después de girar.** El robot giraba y mandaba avanzar en seguida. El sketch arrancaba el avance con la lectura del frontal de **antes** del giro (la pared que tenía enfrente), creía que ya estaba a 35 mm y no se movía. Python volvía a leer, ya mirando al nuevo lado, y decidía otro giro sobre el anterior. **Cambio:** 0.1 s de espera después de cada giro para que los ToF den una lectura nueva.
@@ -656,9 +783,11 @@ Etapa menor de documentación. `docs/manual_uso.md` (uso y calibración: baterí
 Además, la cámara ya no se busca en `/dev/video0` y `video1` (son internos) y OpenCV queda en nivel ERROR: se acaban los WARN cada 2 s.
 
 **Pruebas.** Simulación de 30 laberintos con la meta en una isla central, con 15 % de lecturas libres leídas como pared: todos llegan a la meta, y en la mayoría con menos pasos que antes.
+:::
 
-### Etapa 40. Cronómetro, registro de colores y alineación con MPU (11-nov)
+## Etapa 40. Cronómetro, registro de colores y alineación con MPU (11-nov)
 
+::: ficha
 **Pedido del equipo.** Ver en cuánto tiempo encuentra el amarillo, qué colores fue viendo, y aprovechar el MPU para enderezarse mejor.
 
 **Cambio.**
@@ -666,9 +795,11 @@ Además, la cámara ya no se busca en `/dev/video0` y `video1` (son internos) y 
 - **Cronómetro:** la web muestra el tiempo de la corrida en vivo, a qué segundo encontró el amarillo y, al terminar, la duración total. También queda en el log de Python.
 - **Registro de colores:** cada color confirmado por el TCS34725 se anota con su segundo y su celda; la web muestra los últimos 15.
 - **Alineación con MPU (`alinear()`):** antes de cada avance, si el rumbo se desvió 3° o más del deseado (hasta 45°; más se toma como lectura mala), gira en su lugar hasta corregirlo. Así no empieza el avance chueco, que es cuando las esquinas tocan la pared. En el sketch sin MPU la función existe y no hace nada, para que el Python sea el mismo.
+:::
 
-### Etapa 41. El MPU completo: choques, atorones, giros verificados y robot levantado (11-nov)
+## Etapa 41. El MPU completo: choques, atorones, giros verificados y robot levantado (11-nov)
 
+::: ficha
 **Pedido del equipo.** Usar todo lo que da el MPU-6050, no solo el giroscopio para girar.
 
 **Cambio (sketch con MPU; el sin MPU responde 0 a todo esto).**
@@ -681,19 +812,25 @@ Además, la cámara ya no se busca en `/dev/video0` y `video1` (son internos) y 
 **No se hizo:** giros en curva. Hoy el robot decide quieto en el centro de cada celda; una curva termina fuera del centro y rompe el mapa por celdas. Queda para cuando lo demás esté estable.
 
 **Pruebas.** Revisión de sintaxis de los 2 sketches con g++ y cabeceras de Arduino simuladas. Pruebas de Python: verificación de giro (desvío de 95°, 92° y 88° → acepta un cuarto de vuelta y mueve la referencia 2°), control web, decisiones y mapa. Los umbrales (0.6 g, 0.8 g, 400 ms) son de partida: hay que calibrarlos en pista con el golpe que muestra el log.
+:::
 
-### Etapa 42. Un solo sketch, con MPU-6050 (11-nov)
+## Etapa 42. Un solo sketch, con MPU-6050 (11-nov)
 
+::: ficha
 **Decisión del equipo.** El robot ya lleva el MPU-6050 montado y funcionando (la OLED muestra `G`). Tener 2 sketches (`sketch/` y `sketch_sin_mpu/`) confundía: había que mantener los dos iguales y decir cuál cargar. Se retira `sketch_sin_mpu/` del repositorio; la última versión queda en el commit `2e01996` y se describe en la sección "Control de versiones" de los manuales. `sketch/` conserva el respaldo: si el MPU no responde al arrancar, gira y avanza por tiempo.
 
 **Documentación.** Manual técnico con la sección 6.1 sobre el MPU-6050 (configuración de registros, integración del rumbo, alineación, verificación de giros, choques, atorones, robot levantado, fusión con la cámara y calibración); manual de uso con la tabla de ajustes del MPU y fallas; diagrama de conexiones y BOM con el MPU-6050 (AD0 a GND); sección "Control de versiones" en los 2 manuales.
+:::
 
-### Etapa 43. Un solo Python (11-nov)
+## Etapa 43. Un solo Python (11-nov)
 
+::: ficha
 `python_experimental/main.py` era el mismo archivo que `python/main.py` con `EXPERIMENTAL = True`. Tener 2 copias obligaba a mantenerlas iguales y confundía al ver el repositorio. Se retira la carpeta (queda en el commit `2e01996`); la versión experimental se activa cambiando esa línea.
+:::
 
-### Etapa 44. Centrado en el carril con la geometría del chasis; choques (11-nov)
+## Etapa 44. Centrado en el carril con la geometría del chasis; choques (11-nov)
 
+::: ficha
 **Del log de pista.** La exploración ya encontró el amarillo (113 s en una corrida). Pero en otra el robot se quedó decenas de veces en la misma celda: "choque a los 0 mm" con el frontal libre a 300-450 mm y un lateral a 40-80 mm. Estaba trabado con una esquina contra una pared lateral: retrocedía 250 ms a PWM 80 (muy poco), se enderezaba al mismo rumbo y volvía a chocar, unos 15 s por punto. Además, un avance llegó a 895 mm porque varios saltos laterales seguidos lo alargaron.
 
 **Diagnóstico.**
@@ -712,28 +849,37 @@ Además, la cámara ya no se busca en `/dev/video0` y `video1` (son internos) y 
 - El log ya no muestra "ERROR al arrancar" cuando App Lab detiene la app (código 143).
 
 **Pruebas.** Sintaxis del sketch con g++ y cabeceras simuladas; pruebas de Python (maniobra de carril, decisiones, mapa, control web) y simulación de la meta al centro (30/30). Falta probar en pista.
+:::
 
-### Etapa 45. Choques confirmados (11-nov)
+## Etapa 45. Choques confirmados (11-nov)
 
+::: ficha
 **Del log de pista.** Con el umbral de 0.6 g el robot "chocaba" sin chocar: golpes de 0.75 a 1.5 g en avances normales (vibración de los motores y del arranque), y cada falso choque lo hacía retroceder y hacer la maniobra de carril aunque estuviera a 60-87 mm de la pared.
 
 **Razonamiento.** Un golpe por sí solo no distingue un choque de una vibración. Lo que sí lo distingue es la consecuencia: si chocó, deja de avanzar.
 
 **Cambio.** El golpe (> 0.8 g) solo abre una ventana de 250 ms; es choque si en ella el frontal no bajó 10 mm. Sin pared enfrente para medirlo, solo cuenta un golpe de más de 2.5 g. La maniobra de carril solo se hace si un lateral quedó a menos de 35 mm (centrado lee ~41).
+:::
 
-### Etapa 46. Pasillos de un tirón; golpe a 1.5 g (11-nov)
+## Etapa 46. Pasillos de un tirón; golpe a 1.5 g (11-nov)
 
+::: ficha
 **Del equipo.** El robot se veía tieso: paraba, leía, decidía y arrancaba en cada celda. Además, el equipo pidió subir el umbral de golpe a 1.5 g.
 
 **Razonamiento.** El sketch ya vigila los ToF durante el avance y para en cuanto se abre un lateral. En un pasillo (pared a ambos lados) no hay nada que decidir, así que parar en cada celda no aporta información.
 
 **Cambio.** Con pared a ambos lados y yendo de frente, Python pide hasta `PASILLO` = 3 celdas de un tirón. Si se abre un lateral, para en el centro de esa celda como antes; las celdas intermedias se anotan con pared a los 2 lados. El tope de saltos del sketch ahora es lo pedido + `TRAS_SALTO` (antes, una celda + `TRAS_SALTO`). La simulación sigue en 30/30 con ~9 % menos paradas. `CHOQUE_G` pasa de 0.8 a 1.5 g: en el último log los falsos choques fueron de 0.75 a 1.52 g.
+:::
 
-## Pruebas realizadas
+# Pruebas realizadas
+
+::: corto
+Lo medido o probado, separado de lo deducido. El equipo probó en pista todo el desarrollo; la última versión (distancia, saltos, votos, máquina de estados, MPU) todavía no.
+:::
 
 La tabla distingue lo medido o probado de lo que solo se deduce de la secuencia de commits (marcado **deducido**). Cuando el repositorio guarda la sucesión de valores pero no el resultado de cada intento, se dice. Las pruebas en pista del equipo están en su propia subsección; la última versión (distancia, saltos, votos, máquina de estados, MPU) aún no se ha probado en pista.
 
-### Pruebas en pista
+## Pruebas en pista
 
 Datos de la pista: laberinto de prueba de 2 m x 2 m en total, con paredes de madera. La batería dura unas 3 horas con carga al 100 % haciendo pruebas constantes. Ninguna pieza se rompió. Fuente: respuestas del equipo del 11-nov.
 
@@ -754,7 +900,7 @@ Datos de la pista: laberinto de prueba de 2 m x 2 m en total, con paredes de mad
 | 13. Piezas | Ninguna se rompió | Arduino vertical con cinchos para conservar los 12 cm y que el OTG no salga del contorno |
 | 14. Chasis | Entre 20 y 50 iteraciones del chasis y sus piezas para verificar geometrías y tolerancias | Geometrías y tolerancias finales (hueco del motor 11.9 mm, soporte ToF, etc.) |
 
-### Mediciones e iteraciones físicas
+## Mediciones e iteraciones físicas
 
 | Prueba | Cómo | Resultado | Qué se cambió por ella |
 |---|---|---|---|
@@ -769,7 +915,7 @@ Datos de la pista: laberinto de prueba de 2 m x 2 m en total, con paredes de mad
 | Rutas de cables y choques de conectores | Verificación geométrica por intersección en OpenSCAD (37 cables) | Sin choques tras los ajustes | Batería sobre el eje, pasillos de 27 mm, topes de batería fuera de los pasillos |
 | Memoria del ATmega | Compilación y reporte de uso | Arduino: 18.9 KB flash (58%) y 1.47 KB RAM (72%); bare-metal: 13.8 KB (42%) y 1.0 KB (50%) | Se reemplazó el sketch por C++ bare-metal |
 
-### Electrónica y alimentación
+## Electrónica y alimentación
 
 | Prueba | Cómo | Resultado | Qué se cambió por ella |
 |---|---|---|---|
@@ -782,7 +928,7 @@ Datos de la pista: laberinto de prueba de 2 m x 2 m en total, con paredes de mad
 | Compilación en el core Zephyr | Compilar el sketch en el UNO Q (fallos implícitos en los commits) | Adafruit_SSD1306 no compila | Driver OLED propio (`oled.h`) |
 | Arranque de App Lab | Arranque con archivos de datos | Imágenes en `/app` y un JSON vacío hacían fallar el arranque | Datos en `/app/datos` con escritura atómica y lectura tolerante |
 
-### Sensores
+## Sensores
 
 | Prueba | Cómo | Resultado | Qué se cambió por ella |
 |---|---|---|---|
@@ -793,7 +939,7 @@ Datos de la pista: laberinto de prueba de 2 m x 2 m en total, con paredes de mad
 | Cámara para paredes (etapas 20 a 25) | Se usó como sensor de paredes, luego como guía (7c1b4be) y se revirtió (8c37fe8); pruebas en pista del equipo | Veía demasiadas paredes y zapatos (ve muy por arriba); con mucho peso chocaba todo el tiempo; sus regiones dependían de la inclinación, que cambió de 25 a 40 grados | Se quitó de la estrategia; queda solo para amarillo y blanco/negro |
 | Alinear con giros de 5 grados | Se implementó (8b497c4) y se quitó 15 minutos después (0c72165) | Prueba negativa: el robot se volvió súper lento (pruebas del equipo) | Avance derecho con centrado solo si un lateral lee menos de 90 mm |
 
-### Software
+## Software
 
 | Prueba | Cómo | Resultado | Qué se cambió por ella |
 |---|---|---|---|
@@ -806,7 +952,7 @@ Datos de la pista: laberinto de prueba de 2 m x 2 m en total, con paredes de mad
 | Compilación del Python | `py_compile` en cada cambio | Sin errores de sintaxis | Ninguno |
 | Sin cámara | `USAR_CAM = False` | Permite aislar ToF y sensor de color | Se usó para depurar la estrategia de seguir pared |
 
-### Herramientas de prueba integradas en el robot
+## Herramientas de prueba integradas en el robot
 
 | Herramienta | Cómo se usa | Para qué sirve |
 |---|---|---|
@@ -817,16 +963,21 @@ Datos de la pista: laberinto de prueba de 2 m x 2 m en total, con paredes de mad
 | Contador `PY n` y fase en la OLED | OLED en reposo; la fase (SENSA, DECIDE, GIRA, AVANZA, ESCANEA) también en la web | Ver si Python corre y en qué estado está |
 | `USAR_CAM` y `odo(8)` | Constantes y RPC | Aislar fallos de la cámara y leer el desvío en grados |
 
-### Pendiente
+## Pendiente
 
 | Prueba | Cómo | Resultado | Qué se cambió por ella |
 |---|---|---|---|
 | Pendiente: probar en pista la última versión | Correr la pista con distancia, saltos, votos, máquina de estados y MPU | Aún no; hasta ahora solo hay pruebas automáticas con datos simulados | Por definir con los datos de la pista |
 
-## Decisiones de ingeniería
+# Decisiones de ingeniería
+
+::: corto
+Dieciocho decisiones, cada una con sus alternativas, el criterio y lo que se eligió. La idea que se repite: los ToF mandan, y una lectura mala nunca decide sola.
+:::
 
 Para cada decisión se indican las alternativas que aparecen en el historial, el criterio y lo que se eligió. Cuando una alternativa no tiene respaldo en un commit o en las notas, se dice.
 
+::: decisiones
 **1. Movimiento por tiempo, luego por distancia.** Alternativas: encoders (primera versión, `TICKS_CELDA` 360), tiempo (`MS_CELDA` 600) y distancia con el ToF frontal. Criterio: los N20 no tienen encoder; el tiempo depende de batería, piso y carga, y el robot a veces se pasaba de la celda o no encontraba nada; el ToF mide directamente lo que falta. Decisión: por distancia (parar cuando la lectura baja 180 mm), con tiempo solo como plan B cuando el frontal no ve pared a menos de 1 m y como tope (`t > 3 * dur`). Python vuelve a leer los 3 ToF (mínimo de 3 lecturas) antes de decidir.
 
 **2. Cámara para paredes o ToF.** Alternativas: cámara con regiones (hasta 2 celdas adelante), cámara que encarece, ToF solamente. Criterio: en pista la cámara veía demasiadas paredes (ve muy por arriba: paredes lejanas, zapatos) y el robot no sabía a cuál darle prioridad; sus regiones se ajustaban a mano y dependían de la inclinación, que cambió de 25 a 40 grados; si se equivoca, un reflejo o mala luz podría encerrar al robot. Mejora futura: calibrar la exposición y los parámetros de la cámara para distinguir mejor blanco y negro. Decisión: los ToF mandan para paredes; la cámara se queda en amarillo y en distinguir blanco (pared) de negro (piso), y nunca bloquea un camino. El frontal hace el doble check y el sketch para a 130 mm. Se acepta perder la anticipación a cambio de simplicidad y robustez.
@@ -862,8 +1013,13 @@ Para cada decisión se indican las alternativas que aparecen en el historial, el
 **17. Colores: referencias de fábrica, brillo y tamaño de zona.** Criterio: en pista, entre más grande la zona de color, mejor, porque el sensor RGB puede pasar por un lado y saltarse una línea amarilla delgada; por eso las marcas deben ser anchas. Además: normalizar r, g, b entre sí hace la clasificación menos sensible a la luz; el brillo c, con peso pequeño, distingue el piso de las marcas. Decisión: referencias calibradas guardadas en `colores.json` y recargadas al arrancar, con tres lecturas seguidas para aceptar un color.
 
 **18. Alto en amarillo con doble confirmación.** Criterio: evitar parar por un falso positivo de un solo sensor, pero sin esperar a Python. Decisión: el STM32 llama `termina()` al confirmar el amarillo con el TCS34725; la cámara ayuda a buscar el amarillo pero no es requisito de la parada.
+:::
 
-## Arquitectura según el grafo de conocimiento
+# Arquitectura según el grafo de conocimiento
+
+::: corto
+El grafo de graphify confirma que los VL53L0X son el centro del robot y que todo en el UNO Q pasa por el Bridge. Señala `main.cpp` del ATmega como el archivo a dividir.
+:::
 
 El repositorio se analizó con graphify, que arma un grafo de conocimiento con el código, los documentos y el CAD. Cada función, clase o sección es un nodo y cada llamada o referencia es una relación. El reporte completo está en `graphify-out/GRAPH_REPORT.md` y el grafo interactivo en `graphify-out/graph.html`. Se generó el 11-nov desde el commit `c3ab381`, antes de la última etapa. Para actualizarlo: `graphify update .`.
 
@@ -892,7 +1048,11 @@ El repositorio se analizó con graphify, que arma un grafo de conocimiento con e
 - Hay 87 nodos aislados. Casi todos son registros del VL53L0X que se definen y no se usan; no es un hueco de diseño.
 - La documentación está enlazada al código: el manual técnico, la guía y el README de cada iteración aparecen conectados con las funciones que describen.
 
-## Lecciones aprendidas
+# Lecciones aprendidas
+
+::: corto
+Lo que el equipo se lleva: calibrar desde la web, umbrales a la mitad de lecturas reales, una jerarquía clara entre sensores y que quitar código también es ingeniería.
+:::
 
 - **Calibrar desde la página web fue de lo más útil del proyecto.** Colores, distancia, simulador de decisiones y cámara se ajustan desde el celular en la pista, sin reprogramar ni copiar valores; por eso cada nueva calibración se agregó ahí.
 - Un número geométrico no sirve si el sensor no lo alcanza. `D_FRENTE = 55` nunca se cumplía porque el VL53L0X "nunca llega a 50"; con 130 mm, medido, el robot dejó de empujar la pared.
@@ -907,7 +1067,11 @@ El repositorio se analizó con graphify, que arma un grafo de conocimiento con e
 - Una zona de color delgada se puede saltar: el sensor RGB pasa por un lado, así que las marcas deben ser grandes. Y un componente "tonto" (el adaptador OTG) puede resolver un problema de alimentación que parecía de diseño.
 - Quitar código también es una decisión de ingeniería. `alinear()` se retiró tras 15 minutos y la reescritura quitó unos 500 renglones de `main.py` sin perder capacidad, porque los ToF ya hacían ese trabajo.
 
-## Pendientes
+# Pendientes
+
+::: corto
+Lo que falta antes de dar el robot por terminado: probar en pista la última versión y calibrar sensores, cámara y MPU con datos reales.
+:::
 
 - Probar en pista la última versión: avance por distancia, cambios bruscos, mapa con votos, máquina de estados y MPU-6050.
 - Verificar que las paredes de madera estén pintadas de blanco, porque la detección de la cámara toma blanco como pared.
@@ -920,3 +1084,26 @@ El repositorio se analizó con graphify, que arma un grafo de conocimiento con e
 - Usar los colores leídos para corregir la posición en el mapa (hoy se anotan y se cuentan, pero no corrigen).
 - Dibujar el mapa en la web.
 - Hacer el test de alimentación sin PD (`docs/uno_q.md`, sección 12) y decidir si hace falta el módulo PD.
+
+# Glosario
+
+::: corto
+Términos que se repiten en la bitácora. El glosario completo está en el Manual técnico.
+:::
+
+| Término | Significado |
+|---|---|
+| **Bare-metal** | Firmware que programa los registros del microcontrolador directamente, sin el core de Arduino |
+| **BFS** | Búsqueda en anchura: encuentra el camino más corto entre dos celdas |
+| **Bridge** | Servicio que pasa las llamadas (RPC) entre Linux y el STM32 del UNO Q |
+| **CAD** | Modelo 3D del chasis (OpenSCAD) del que salen las medidas del robot |
+| **Commit** | Cambio guardado en el repositorio de git; cada etapa cita los suyos |
+| **(deducido)** | Motivo o prueba que no está escrito en el commit, el código ni en las respuestas del equipo |
+| **DFS** | Búsqueda en profundidad: avanza hasta el fondo de un camino antes de volver a probar otro |
+| **Flood fill** | Algoritmo que llena el mapa con la distancia a la meta; se usó en la primera versión |
+| **MPU-6050** | Sensor de giro y aceleración (GY-521) |
+| **Otsu** | Método que elige solo el umbral que mejor separa piso negro y pared blanca |
+| **RPC** | Llamada a procedimiento remoto: un procesador le pide a otro que ejecute una función |
+| **ToF** | *Time of Flight*: sensor láser de distancia (VL53L0X) |
+| **Trémaux** | Método clásico para recorrer un laberinto marcando los caminos ya visitados |
+| **Voto** | Cada lectura suma +1 (pared) o −1 (libre) a un lado de la celda, con tope ±5 |
