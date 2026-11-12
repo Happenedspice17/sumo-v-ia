@@ -127,7 +127,7 @@ BASE = dict(
     PARED_S=120, PARED_F=55, D_FRENTE=30, D_CERCA=5, FRENA_K=2, D_LADO=41, KC=0.8, KD=0.0, RANGO=600,
     SALTO=120, N_SALTO=2, TRAS_SALTO=110, KG=2.0, ADELANTO=6, DERIVA_CORR=True,
     CHOQUE="confirma", CHOQUE_G=1.5, CHOQUE_FUERTE=2.5, CONFIRMA_MS=250, RETRO_MS=450, VEL_RETRO=110, ATORADO_MS=400,
-    MPU=True, ALINEAR=True, CARRIL=True, FIX_HECHO=True, ALIN_SENSA=False, STALL=False, ESQUIVA=True, CENTRA_F=600, ABRE=True, EST="brujula", MANO_N=25, RUIDO=0.6, PEN=1.0,
+    MPU=True, ALINEAR=True, CARRIL=True, FIX_HECHO=True, ALIN_SENSA=False, STALL=False, ESQUIVA=True, CENTRA_F=600, ABRE=True, EST="brujula", CONOCE=False, MANO_N=25, RUIDO=0.6, PEN=1.0,
     # python
     PARED=120, FRENTE_LIBRE=120, VOTO_MAX=5, PASILLO=3, MUESTRAS=3, AGREGA="min", CENTRO_ON=True,
     # fisica
@@ -446,6 +446,10 @@ def corrida(P, seed):
     g["ESTRATEGIA"] = "mapa" if P["EST"] == "mapa" else "brujula"
     g["RUIDO"], g["CASTIGO"] = P["RUIDO"], P["PEN"]
     g["usos"].clear(); random.seed(seed)
+    if P["CONOCE"]:                                              # el usuario eligio la esquina en el menu
+        esq = rb.celda_real(); v = (1 if esq[0] == 0 else -1, 1 if esq[1] == 0 else -1)
+        for _ in range(rb.h0): v = (-v[1], v[0])
+        g["signo"][:] = list(v)
     g["muros"].clear(); g["vistas"].clear(); g["pos"], g["rumbo"] = (0, 0), 0; g["signo"][:] = [0, 0]
     # marco: celda real -> celda de Python (rumbo inicial h0 = +y de Python)
     h0 = rb.h0; c0 = rb.celda_real()
