@@ -871,6 +871,98 @@ Además, la cámara ya no se busca en `/dev/video0` y `video1` (son internos) y 
 **Cambio.** Con pared a ambos lados y yendo de frente, Python pide hasta `PASILLO` = 3 celdas de un tirón. Si se abre un lateral, para en el centro de esa celda como antes; las celdas intermedias se anotan con pared a los 2 lados. El tope de saltos del sketch ahora es lo pedido + `TRAS_SALTO` (antes, una celda + `TRAS_SALTO`). La simulación sigue en 30/30 con ~9 % menos paradas. `CHOQUE_G` pasa de 0.8 a 1.5 g: en el último log los falsos choques fueron de 0.75 a 1.52 g.
 :::
 
+## Etapa 47. Exploración hacia el centro, sin cámara (12-nov)
+
+::: ficha
+**Del equipo.** Fotos del laberinto desde los 4 lados: 11 × 11 celdas de 18 cm, la meta amarilla al centro, la salida en una esquina (al azar). Las cintas de colores solo hay que leerlas. Por ahora sin cámara.
+
+**Razonamiento.** No se precarga un mapa de las fotos: con la perspectiva no se ubica cada pared con precisión de celda, una pared mal puesta hace chocar al robot y la pista puede cambiar. Lo que sí sirve: la meta está a 5 celdas de cualquier esquina en cada eje. Las fotos confirman que el cuarto central es una isla, así que un seguidor de pared no entraría.
+
+**Cambio.** `USAR_CAM = False`. Entre las salidas a celdas nuevas, la que más acerca al centro (empate: izquierda, frente, derecha); `frontera()` escoge menos pasos + distancia al centro. El lado del centro se deduce en la esquina de salida (sus lados libres apuntan hacia adentro) o con el primer movimiento en cada eje (`ubica()`). Simulación, 40 laberintos de 11 × 11 con isla central y esquina al azar: 40/40, 1173 pasos en total contra 5479 antes (peor caso 93 contra 163).
+
+**Pendiente.** El robot avanza 15-16 cm por celda en vez de 18: falta saber si pasa con pared lejos (más de 1 m: avanza por tiempo, subir `MS_CELDA`) o cerca (lectura del frontal).
+:::
+
+## Etapa 48. Simulación 2D: reglas de ToF y MPU (12-nov)
+
+::: ficha
+**Del equipo.** Simular 200 laberintos con la forma de la pista e iterar qué reglas de los ToF y del MPU sirven.
+
+**Cómo.** Simulador 2D (`uno_q/sim/`): robot de 120 mm con motores, ToF con ruido, fallas y cono, giroscopio con deriva, golpes de vibración como los de los logs y choques por contacto. Usa las funciones reales de `main.py`. Calibrado con la pista: 600 ms = 154 mm (lo que reportó el equipo) y 250 ms de giro ≈ 70°. 200 laberintos de 11 × 11 con isla central, salida en una esquina al azar.
+
+**Hallazgos.** El código anterior llega en 26 %: el robot pierde la celda. Bug real del sketch: al pedir un avance con la pared más cerca que lo pedido (o pegado a ella), paraba pero reportaba los 180 mm completos y Python se adelantaba una celda. Los umbrales de los ToF (`PARED`, `FRENTE_LIBRE`, `SALTO`, muestras, votos) no cambian nada dentro del ruido. Lo que más pesa: el bug (sin corregirlo 67 %), `centrar` (sin él 58 %), `KD` = 0.3 torcía el rumbo (59 %) y el MPU (sin él, giros por tiempo, 52 %). El detector de choques confirmado no cambia la tasa con vibración normal; con vibración alta, contar solo el golpe baja a 63 % con casi 10 falsos choques por corrida.
+
+**Cambio.** Sketch: cuenta solo lo que cabe hasta la pared; nuevo `centrar(lim)` (tras cada avance, con pared enfrente a menos de 600 mm, queda a 30 mm + k celdas de ella); `KD` 0.3 → 0; `TRAS_SALTO` 124 → 110; `RANGO` 1000 → 600; `MS_CELDA` 600 → 700. Python: pide `centrar` tras cada avance (`CENTRA_F` = 600) y, tras un choque sin pared cerca (un poste), esquiva 15° a un lado. Resultado: 90 % (85 % con vibración alta). Detalle en el manual técnico, 9.4.
+
+**Pendiente.** Probar en pista; si `centrar` va y viene frente a la pared, bajar `CENTRA_F` o subir la tolerancia (4 mm).
+:::
+
+## Etapa 49. Se va por el lado que se abre (12-nov)
+
+::: ficha
+**Del equipo.** Con la versión de las 11 am (etapa 46) el robot se quedaba ciclado en una zona de paredes cortas junto al muro exterior: veía lugares libres durante el avance y en vez de irse por ellos seguía de frente; la salida (abajo a la derecha) nunca la encontraba.
+
+**Razonamiento.** Esa versión tenía el bug de la etapa 48 (con la pared cerca reportaba 180 mm sin moverse): en una zona de pasillos cortos pasa seguido, el mapa se recorre y la exploración da vueltas sobre celdas que cree nuevas. Además decidía izquierda, frente, derecha aunque acabara de abrirse un lado.
+
+**Cambio.** Si el avance paró por abrirse un lateral y esa salida lleva a una celda sin ver, la toma. Simulación: 87 % contra 90 % (igual dentro del ruido). Hay que cargar la versión actual: corrige el bug y centra con la pared.
+:::
+
+## Etapa 50. Brújula en vez de mapa; calibrar avance en la web (12-nov)
+
+::: ficha
+**Del equipo.** En Python la posición se desfasa, y en cada golpe también: no hay encoders y no se van a poder poner. Solo hay que llegar al centro (amarillo) con la menor información posible. Además, un botón en la web para calibrar el avance a unos 10 cm.
+
+**Razonamiento.** Lo que se desfasa es la posición, no el rumbo: el giroscopio sí es confiable. Con el mapa desfasado, Trémaux da vueltas (celdas "nuevas" que ya vio, fronteras que no existen). Una regla que solo use lo que ven los ToF en la celda actual y hacia dónde queda el centro tolera errores de 1-2 celdas.
+
+**Simulación** (200 laberintos, `uno_q/sim/`):
+
+| Estrategia | Odometría actual | Odometría mala |
+|---|---|---|
+| Mapa (Trémaux + centro) | 87 % | 46 % |
+| **Brújula** (centro + castigo + azar) | **86 %** | **60 %** |
+| Seguidor de pared que cambia de mano | 20-47 % | 27 % |
+
+**Cambio.** `ESTRATEGIA = "brujula"` (con `"mapa"` vuelve Trémaux). Sketch: `MS_CELDA` pasa a la variable `msCelda`; nuevos RPC `mover_t` (avance de prueba por tiempo) y `set_ms`. Web: **Calibrar avance**: avanza 10 cm, mides con regla, guardas; se guarda en `/app/datos/avance.json` y se manda al arrancar.
+:::
+
+## Etapa 51. La pista real en el simulador (12-nov)
+
+::: ficha
+**Del equipo.** Hacer un mapa digital 2D de la pista con las fotos (11 × 11 celdas de 18 cm) y simular sobre él.
+
+**Cómo.** Se rectificó la foto más cenital (homografía de las 4 esquinas del piso) a una cuadrícula de 11 × 11 y se leyó cada tramo de pared a mano (la detección automática por brillo fallaba por la inclinación de las paredes). Queda en `uno_q/python/main.py` (`PISTA_H`, `PISTA_V`, `PISTA_META`; editable) y en `docs/img/pista_mapa.png` / `pista_foto.jpg` (mapa sobre la foto). Todas las celdas son alcanzables; el cuarto del amarillo tiene 2 entradas (arriba a la derecha y abajo al centro, vista desde la foto) y el amarillo queda en la celda (6, 6), una celda abajo a la derecha del centro geométrico. **Verificado por el equipo** (12-nov): las paredes coinciden; los muros exteriores están cerrados (el robot se pone adentro, en una esquina); el amarillo cae en la isla y es más chico que una celda.
+
+**Simulación** (`PISTA=1`, 100 corridas por esquina, con ruido):
+
+| Salida (vista desde la foto) | Brújula | Mapa (Trémaux) |
+|---|---|---|
+| Abajo a la izquierda | 98 %, 41 s | 73 %, 115 s |
+| Abajo a la derecha | 99 %, 36 s | 75 %, 87 s |
+| Arriba a la izquierda | 95 %, 36 s | 79 %, 35 s |
+| Arriba a la derecha (la isla grande) | 94 %, 88 s | 72 %, 134 s |
+:::
+
+## Etapa 52. Mapa cargado con autolocalización (12-nov)
+
+::: ficha
+**Del equipo.** Que el robot traiga el mapa y se dé cuenta en el momento si algo cambió (una entrada cerrada) o si no llegó a donde creía, para depender menos de la odometría.
+
+**Cambio.** `ESTRATEGIA = "pista"`: localización de Markov sobre (celda, rumbo inicial) con las celdas libres que ven los 3 ToF; la odometría solo sugiere el avance (*k* ± 1). Camino más corto al amarillo con la pista como la cree; si los ToF contradicen el mapa 2 veces, lo corrige; si nada cuadra, concluye que es otra pista y sigue con la brújula. El mapa queda en `main.py` (`PISTA_H`, `PISTA_V`, `PISTA_META`) y el simulador usa el mismo.
+
+| Caso (200 corridas) | Pista (mapa cargado) | Brújula |
+|---|---|---|
+| Pista real | **98 %, 23 s** | 96 %, 39 s |
+| Odometría mala | **82 %** | 71 % |
+| Entrada de arriba del cuarto cerrada | **92 %, 25 s** | 74 %, 56 s |
+| 6 paredes cambiadas | **92 %** | 92 % |
+| 15 paredes cambiadas | 83 % | 86 % |
+| Otro laberinto (el mapa no sirve) | 84 % | 86 % |
+
+Primer intento sin detectar "otra pista": 42 % en laberintos distintos; con la regla de perdido, 84 %.
+
+Amarillo del tamaño real (unos 13.5 × 15 cm, 4 cm a la izquierda del centro de su celda) y solo cuenta con el sensor de color 2.5 cm dentro del parche: pista 98 % (24 s), brújula 95 % (41 s); entrada cerrada 92 % contra 74 %; odometría mala 80 % contra 70 %.
+:::
+
 # Pruebas realizadas
 
 ::: corto

@@ -33,7 +33,8 @@ El robot **no se mueve solo**. Lo prendes, esperas a que la pantalla diga `LISTO
 |---|---|---|
 | Sketch (STM32) | `sketch/` | Siempre este, con MPU-6050 |
 | Python (Linux) | `python/` | Un solo `main.py` |
-| Cámara experimental | `python/main.py` | Cambia `EXPERIMENTAL = False` a `True`: además mide distancias y ve aberturas |
+| Cámara | `python/main.py` | Hoy apagada (`USAR_CAM = False`, la pantalla dice `SIN CAM`). `True` la enciende; con `EXPERIMENTAL = True` además mide distancias y ve aberturas |
+| Salida | — | Cualquier esquina del laberinto de 11 × 11: el robot deduce solo hacia dónde queda el centro |
 
 ::: tip
 ¿Necesitas la versión vieja sin MPU? Está en el historial de git. Mira el capítulo 9, "Control de versiones".
@@ -163,6 +164,17 @@ Se guarda solo y se queda aunque apagues. Recalibra solo si cambias de pista o d
 Los umbrales (`PARED`, `D_FRENTE`, `FRENTE_LIBRE`) se ajustaron con lecturas sin calibrar. Después de calibrar, revisa en el dibujo qué lee el robot centrado en una celda. Si salió mal, solo repítelo: reemplaza la calibración anterior de ese sensor. **Borrar** la quita.
 :::
 
+## 4.2b Avance sin encoders (una vez, o si cambia la batería o el piso)
+
+1. En **Ver sensores ToF**, baja a **Calibrar avance**. Pon el robot en el piso con espacio libre adelante y marca dónde está el eje (las ruedas).
+2. Aprieta **Avanzar 10 cm**: avanza por tiempo, sin medir con el frontal.
+3. Mide con regla cuánto avanzó de verdad, escríbelo en **mm reales** y aprieta **Guardar**. Ajusta los ms por celda en proporción y se guarda en el robot.
+4. Repite hasta que avance 100 mm (±5).
+
+::: tip
+Solo se usa cuando el frontal no ve pared a menos de 600 mm. Con pared enfrente, el robot mide con el ToF y se centra con ella (`centrar`).
+:::
+
 ## 4.3 Cámara (una vez, o si mueves la cámara)
 
 1. Abre **Calibrar cámara**, abajo de la imagen.
@@ -207,8 +219,9 @@ Calibra con la batería cargada. Cambia **un número a la vez** en `sketch/sketc
 
 | Si el robot... | Cambia | Valor hoy | Así |
 |---|---|---|---|
-| No llega a la siguiente celda (sin pared enfrente) | `MS_CELDA` | 600 ms | Súbelo 25 |
-| Se pasa de la celda (sin pared enfrente) | `MS_CELDA` | 600 ms | Bájalo 25 |
+| No llega a la siguiente celda (sin pared enfrente) | Web: Calibrar avance | 700 ms | Repite la prueba de 10 cm |
+| Se pasa de la celda (sin pared enfrente) | Web: Calibrar avance | 700 ms | Repite la prueba de 10 cm |
+| Se queda dando vueltas en una zona | `RUIDO` / `CASTIGO` (main.py) | 0.6 / 1.0 | Sube `CASTIGO` a 1.5 |
 | Se pasa del giro | `ADELANTO` | 6° | Súbelo 2 |
 | Le falta giro | `ADELANTO` | 6° | Bájalo 2 |
 | Zigzaguea en recta | `KG` | 2.0 | Bájalo a 1.5 |
@@ -218,8 +231,10 @@ Calibra con la batería cargada. Cambia **un número a la vez** en `sketch/sketc
 | Se detiene solo: "me levantaron" | `LEVANTA_G` | 0.8 g | Bájalo a 0.7 |
 | Se ve tieso en pasillos largos | `PASILLO` (main.py) | 3 | Súbelo a 4 |
 | Pierde la posición en pasillos largos | `PASILLO` (main.py) | 3 | Bájalo a 2 (1 = parar en cada celda) |
-| Se queda antes del centro de la celda al abrirse un lado | `TRAS_SALTO` | 124 mm | Súbelo 5 |
-| Se pasa del centro de la celda al abrirse un lado | `TRAS_SALTO` | 124 mm | Bájalo 5 |
+| Laberinto de otro tamaño | `CENTRO` (main.py) | 5 | (lado − 1) / 2 |
+| Se queda antes del centro de la celda al abrirse un lado | `TRAS_SALTO` | 110 mm | Súbelo 5 |
+| Se pasa del centro de la celda al abrirse un lado | `TRAS_SALTO` | 110 mm | Bájalo 5 |
+| Tras avanzar va y viene frente a la pared | `CENTRA_F` (main.py) | 600 mm | Bájalo a 300; 0 lo apaga |
 | Se va a la derecha | `AJUSTE_DER` | −10 | Súbelo 5 |
 | Se va a la izquierda | `AJUSTE_DER` | −10 | Bájalo 5 |
 | Zigzaguea entre paredes | `KC` | 0.8 | Bájalo, por ejemplo a 0.5 |
@@ -272,7 +287,7 @@ Busca el síntoma en la tabla. La mayoría de los problemas se arreglan con una 
 | Síntoma | Causa probable | Solución |
 |---|---|---|
 | No se mueve | No recibió el toque corto, o no está en `LISTO` | Dale un toque corto a D2 con la pantalla en `LISTO` |
-| Se pasa de la meta | Amarillo mal calibrado, o va por tiempo | Recalibra el amarillo (4.1). Si va por tiempo, baja `MS_CELDA` |
+| Se pasa de la meta | Amarillo mal calibrado, o va por tiempo | Recalibra el amarillo (4.1). Si va por tiempo, recalibra el avance (4.2b) |
 | Gira de más o de menos | `ADELANTO` desajustado | Ajusta `ADELANTO` (capítulo 6) |
 | No sale la `G` abajo en la pantalla | El MPU-6050 no responde | Revisa VCC, GND, SDA, SCL y que AD0 vaya a GND. Sin él gira por tiempo y gira mal |
 | Se detiene a media corrida y el log dice "me levantaron" | Lo moviste o se inclinó | Si no fue eso, baja `LEVANTA_G` |

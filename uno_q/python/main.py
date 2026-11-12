@@ -25,6 +25,7 @@ except AttributeError:
 paso("cv2 OK")
 import glob
 import math
+import random
 import numpy as np
 paso("numpy OK")
 import json
@@ -40,6 +41,7 @@ os.makedirs(DATOS, exist_ok=True)
 ARCH_COL = DATOS + "/colores.json"
 ARCH_MAPA = DATOS + "/mapa.json"
 ARCH_TOF = DATOS + "/tof.json"
+ARCH_AVANCE = DATOS + "/avance.json"     # ms por celda calibrados en la web (avance de prueba)
 TOF_NOM = ["izq", "frente", "der"]
 tof_cal = {n: {} for n in TOF_NOM}       # sensor -> {mm reales: lectura cruda promedio}
 # r, g, b normalizados y brillo c; los mismos de refs[] del sketch
@@ -56,15 +58,25 @@ PARED = 120                              # mm: lateral con esto o mas = libre
 PARED_F = 55                             # mm reales (frontal calibrado): menos de esto = pared (= PARED_F del sketch)
 FRENTE_LIBRE = 120                       # mm reales: a la mitad entre pared en su celda (~30) y en la siguiente (~210)
 D_FRENTE_TOF = 30                        # mm reales donde se detiene el sketch con pared enfrente (= D_FRENTE)
+D_LADO_TOF = 41                          # mm reales de cada lateral con el robot centrado (= D_LADO)
 FUERA = 2000                             # mm: los 2 laterales sin nada a esta distancia = salio del laberinto
 RECORRIDO = -3                           # voto de un paso por donde ya paso (-5) con hasta 2 lecturas en contra
+CENTRO = 5                               # celdas de la esquina de salida a la meta (laberinto de 11 x 11)
+ESTRATEGIA = "pista"                     # "pista": trae el mapa de la pista y se ubica con lo que ven los ToF;
+                                         # "brujula": sin mapa (respaldo); "mapa": Tremaux con el mapa que arma
+PERDIDAS_MAX = 1                         # pista: perdido estas veces = es otra pista (o la cambiaron mucho): solo brujula
+MALA = 0.01                              # pista: lectura que casi no cuadra con ninguna hipotesis (0.7^3 = 0.34 cuadra)
+CONFIANZA = 0.6                          # pista: con menos certeza de donde esta, decide con la brujula
+RUIDO = 0.6                              # brujula: azar en cada decision (rompe ciclos)
+CASTIGO = 1.0                            # brujula: castigo por cada vez que ya tomo esa salida desde esa celda aproximada
+CENTRA_F = 600                           # mm: tras avanzar, con pared enfrente a menos de esto se centra en la celda con ella
 PASILLO = 3                              # celdas maximas de un tiron con pared a ambos lados (1 = parar en cada celda)
 VOTO_MAX = 5                             # cada lectura vota pared (+1) o libre (-1); tope para que el mapa se corrija
 Y_COLOR = 34                             # mm del eje al sensor de color (adelante; CAD: COLOR_Y)
 
 # ---------- Camara (OV9281 monocromatica, obturador global): asistencia, nunca decide sola ----------
 CAM_ID = 2                               # /dev/video0 y video1 son internos de la placa: nunca son la camara
-USAR_CAM = True
+USAR_CAM = False                         # apagada por ahora: solo ToF
 EXPERIMENTAL = False                     # True: version experimental, ademas distancias y aberturas por camara
 ANCHO, ALTO = 320, 240
 ARCH_CAM = DATOS + "/camara.json"
@@ -92,6 +104,9 @@ cuenta = [0] * len(COLORES)
 encontrado = False
 # Mapa: celda -> [N, E, S, O] con 1 pared, 0 libre, None sin dato; colores: celda -> color; meta: celda del amarillo
 muros = {}
+usos = {}                                # brujula: (celda aproximada, rumbo) -> veces tomada
+ms_celda = 700                           # ms por celda del avance por tiempo (se calibra en la web)
+signo = [0, 0]                           # hacia donde esta el centro en x, y (0 = aun no se sabe)
 vistas = set()                           # celdas donde el robot ya leyo sus 3 ToF (se guarda con el mapa)
 colores = {}
 meta = None
@@ -258,6 +273,8 @@ def avanzar(celdas=1):
     if rpc("odo", 12):                   # el acelerometro sintio un choque: el sketch ya retrocedio
         print(f"MPU: choque a los {mm} mm (golpe {rpc('odo', 15) / 1000:.2f} g); retrocedi")
         vuelve_al_carril()
+    if rpc("centrar", CENTRA_F) == 2:    # a D_FRENTE + k celdas de la pared de enfrente: re-centra la celda
+        esperar()
     vivo["mm"], vivo["saltos"] = mm, saltos
     n = round(mm / CELDA)
     for i in range(n):                   # por donde paso no hay pared, seguro
@@ -267,18 +284,22 @@ def avanzar(celdas=1):
         sig = vecino(pos, rumbo)
         celda(pos)[rumbo] = celda(sig)[(rumbo + 2) % 4] = -VOTO_MAX
         pos = sig
+    loc_mueve(n)
     print(f"Avanzo {mm} mm -> {pos}" + (f", salto en ToF {saltos}" if saltos else ""))
     return saltos
 
 
 def vuelve_al_carril():
     """Tras un choque (casi siempre una esquina contra una pared lateral): se aleja de la pared mas cercana.
-    Gira 20 grados hacia el otro lado, avanza 50 mm (unos 17 mm de lado) y regresa al rumbo deseado. Con MPU."""
+    Gira 20 grados hacia el otro lado, avanza 50 mm (unos 17 mm de lado) y regresa al rumbo deseado. Con MPU.
+    Sin pared cerca choco con un poste (punta de pared) que los ToF no ven: prueba 15 grados a un lado al azar."""
     izq, _, der = tof3(2)
-    if min(izq, der) >= LADO_CERCA:      # centrado (~41 mm) o mas lejos: no hace falta
-        return
-    g = 20 if izq < der else -20         # pared a la izquierda: gira a la derecha (+)
-    print(f"Carril: pared {'izquierda' if g > 0 else 'derecha'} a {min(izq, der)} mm, me alejo")
+    if min(izq, der) < LADO_CERCA:
+        g = 20 if izq < der else -20     # pared a la izquierda: gira a la derecha (+)
+        print(f"Carril: pared {'izquierda' if g > 0 else 'derecha'} a {min(izq, der)} mm, me alejo")
+    else:
+        g = random.choice((15, -15))
+        print(f"Carril: choque sin pared cerca (poste), esquivo {'derecha' if g > 0 else 'izquierda'}")
     if rpc("ajustar", g) == 2:           # sin MPU ajustar gira en su lugar
         esperar()
     elif rpc("alinear", 45) == 2:
@@ -584,6 +605,26 @@ def api_tof_cal(s: int, mm: int):
     return estado_tof_cal()
 
 
+def api_avance_prueba():
+    """Avance de prueba de 100 mm por tiempo (sin medir con el frontal), para calibrar ms_celda."""
+    if corriendo:
+        return {"ok": False, "ms": ms_celda}
+    ok = rpc("mover_t", 100) == 1
+    print(f"Avance de prueba: 100 mm por tiempo con {ms_celda} ms por celda")
+    return {"ok": ok, "ms": ms_celda}
+
+
+def api_avance_cal(mm: int):
+    """Lo que de verdad avanzo la prueba (mm, con regla): ajusta ms_celda en proporcion y lo guarda."""
+    global ms_celda
+    if mm > 0:
+        ms_celda = max(200, min(2000, round(ms_celda * 100 / mm)))
+        rpc("set_ms", ms_celda)
+        escribe(ARCH_AVANCE, {"ms_celda": ms_celda})
+        print(f"Avance: midio {mm} mm de 100 -> {ms_celda} ms por celda")
+    return {"ok": mm > 0, "ms": ms_celda}
+
+
 def estado_tof_cal():
     return {n: {"puntos": tof_cal[n], "a": round(ajuste(tof_cal[n])[0], 3), "b": round(ajuste(tof_cal[n])[1], 1)}
             for n in TOF_NOM}
@@ -740,6 +781,8 @@ ui.expose_api("GET", "/api/guardar", api_guardar)
 ui.expose_api("GET", "/api/foto", api_foto)
 ui.expose_api("GET", "/api/tof", api_tof)
 ui.expose_api("GET", "/api/tof_cal", api_tof_cal)
+ui.expose_api("GET", "/api/avance_prueba", api_avance_prueba)
+ui.expose_api("GET", "/api/avance_cal", api_avance_cal)
 ui.expose_api("GET", "/api/cam_expo", api_cam_expo)
 ui.expose_api("GET", "/api/cam_cero", api_cam_cero)
 ui.expose_api("GET", "/api/cam_sens", api_cam_sens)
@@ -748,26 +791,224 @@ ui.expose_api("GET", "/api/cam_dist", api_cam_dist)
 
 
 # ---------- Estrategia ----------
+def ubica(izq, frente, der):
+    """Arranca en una esquina: un lado libre en la salida, o haberse movido en un eje, apunta hacia adentro."""
+    if pos == (0, 0):
+        for rel, d, lim in ((-1, izq, PARED), (0, frente, FRENTE_LIBRE), (1, der, PARED)):
+            h = (rumbo + rel) % 4
+            if d >= lim:
+                signo[0] = signo[0] or DX[h]
+                signo[1] = signo[1] or DY[h]
+    for i in (0, 1):
+        if pos[i] and not signo[i]:
+            signo[i] = 1 if pos[i] > 0 else -1
+
+
+def al_centro(c):
+    """Celdas (sin paredes) de c al centro; un eje sin direccion conocida no cuenta."""
+    return sum(abs(CENTRO * s - v) for v, s in zip(c, signo) if s)
+
+
 def frontera():
-    """Rumbo (0-3) del primer paso hacia la celda vista mas cercana que tiene un lado libre hacia una celda
-    sin ver (BFS por pasos conocidos), o None si ya no queda nada por explorar."""
-    previo, cola = {pos: None}, [pos]
+    """Rumbo (0-3) del primer paso hacia una celda vista con un lado libre hacia una celda sin ver (BFS por pasos
+    conocidos); entre ellas, la de menos pasos + distancia de la celda nueva al centro. None si ya no queda nada."""
+    previo, dist, cola, mejor = {pos: None}, {pos: 0}, [pos], None
     for c in cola:
-        if c != pos and any(muros.get(c, [0] * 4)[h] < 0 and vecino(c, h) not in vistas for h in range(4)):
-            while previo[c][0] != pos:
-                c = previo[c][0]
-            return previo[c][1]
         for h in range(4):
             n = vecino(c, h)
+            if c != pos and muros.get(c, [0] * 4)[h] < 0 and n not in vistas:
+                costo = dist[c] + al_centro(n)
+                if mejor is None or costo < mejor[0]:
+                    mejor = (costo, c)
             if n not in previo and n in vistas and libre(c, h):
-                previo[n] = (c, h)
+                previo[n], dist[n] = (c, h), dist[c] + 1
                 cola.append(n)
+    if mejor is None:
+        return None
+    c = mejor[1]
+    while previo[c][0] != pos:
+        c = previo[c][0]
+    return previo[c][1]
+
+
+# ---------- Pista conocida (fotos del 12-nov) y autolocalizacion ----------
+# 11 x 11 celdas, vista desde la foto 3: x a la derecha, y hacia abajo (0 = lado opuesto al fotografo).
+# PISTA_H[y] = columnas x con pared horizontal en la linea y (de x a x+1); PISTA_V[x] = filas y con pared vertical.
+# Los muros exteriores van aparte. Si cambian la pista, se corrige aqui (y uno_q/sim lo usa igual).
+PISTA_H = {1: [1, 3, 4, 5, 7, 10], 2: [2, 3, 4, 7, 8, 9, 10], 3: [3, 4, 5, 8, 9, 10], 4: [1, 2, 5, 9, 10],
+           5: [0, 1, 5, 6, 10], 6: [0, 4, 9], 7: [1, 3], 8: [1, 5, 7], 9: [4, 5, 6, 10], 10: [4, 6, 8, 9]}
+PISTA_V = {1: [1, 3, 6, 8, 10], 2: [0, 1, 2, 6, 9, 10], 3: [0, 4, 5, 7, 9, 10], 4: [4, 5, 7, 8], 5: [2, 5, 6, 7, 10],
+           6: [1, 3], 7: [1, 3, 4, 5, 8], 8: [3, 5, 6, 7, 9], 9: [0, 4, 6, 8, 9], 10: [5, 6, 8, 9]}
+PISTA_META = (6, 6)                      # el amarillo
+PN = 11
+PDX, PDY = [0, 1, 0, -1], [-1, 0, 1, 0]  # rumbos de la pista: 0 arriba de la foto, 1 derecha, 2 abajo, 3 izquierda
+
+
+def pista_celdas():
+    """{(x, y): [arriba, der, abajo, izq]} con True = pared."""
+    W = {(x, y): [y == 0, x == PN - 1, y == PN - 1, x == 0] for x in range(PN) for y in range(PN)}
+    for y, xs in PISTA_H.items():
+        for x in xs:
+            if y > 0: W[(x, y - 1)][2] = True
+            if y < PN: W[(x, y)][0] = True
+    for x, ys in PISTA_V.items():
+        for y in ys:
+            if x > 0: W[(x - 1, y)][1] = True
+            if x < PN: W[(x, y)][3] = True
+    return W
+
+
+pmuros = {}                              # la pista como la cree ahora (se corrige si algo cambio)
+creencia = {}                            # (celda, h0) -> probabilidad; h0 = rumbo de la pista cuando rumbo = 0
+cambios = {}                             # (celda, lado) -> votos de que la pista cambio ahi
+perdidas = 0                             # veces que se perdio en esta corrida
+malas = 0                                # lecturas seguidas que no cuadran con ninguna hipotesis
+
+
+def loc_inicia():
+    """Sale de una esquina, viendo hacia cualquier lado: 16 hipotesis; las lecturas descartan las malas."""
+    global malas, perdidas
+    malas = perdidas = 0
+    pmuros.clear()
+    pmuros.update(pista_celdas())
+    cambios.clear()
+    creencia.clear()
+    for c in ((0, 0), (PN - 1, 0), (0, PN - 1), (PN - 1, PN - 1)):
+        for h0 in range(4):
+            creencia[(c, h0)] = 1 / 16
+
+
+def tramo(c, h, tope=6):
+    """Celdas libres seguidas desde c hacia h en la pista (hasta tope)."""
+    n = 0
+    while n < tope and not pmuros[c][h]:
+        c = (c[0] + PDX[h], c[1] + PDY[h])
+        n += 1
+    return n
+
+
+def leidas(lect):
+    """Celdas libres que ven los ToF a izq, frente, der (None = mas de ~5: no ve nada)."""
+    out = []
+    for d, base in zip(lect, (D_LADO_TOF, D_FRENTE_TOF, D_LADO_TOF)):
+        out.append(None if d >= 1000 else max(0, round((d - base) / CELDA)))
+    return out
+
+
+def loc_observa(lect):
+    """Bayes: cada hipotesis pesa segun cuanto se parecen las celdas libres que ven los ToF a las de la pista."""
+    if not creencia:
+        return
+    obs = leidas(lect)
+    global malas
+    tot = 0
+    for (c, h0), p in creencia.items():
+        for rel, o in zip((-1, 0, 1), obs):
+            m = tramo(c, (h0 + rumbo + rel) % 4)
+            if o is None:
+                p *= 0.7 if m >= 5 else 0.2 if m == 4 else 0.03
+            else:
+                p *= 0.7 if min(m, 5) == min(o, 5) else 0.12 if abs(m - o) == 1 else 0.02
+        creencia[(c, h0)] = p
+        tot += p
+    malas = malas + 1 if tot < MALA else 0   # lo que ve no cuadra con ninguna hipotesis
+    if malas >= 2:                       # perdido: se vuelve a ubicar en toda la pista, con los 4 rumbos
+        global perdidas
+        perdidas += 1
+        malas = 0
+        if perdidas >= PERDIDAS_MAX:     # no es esta pista (la cambiaron): sigue solo con la brujula
+            print("Pista: no cuadra con el mapa, sigo con la brujula")
+            creencia.clear()
+            return
+        print("Pista: perdido, me vuelvo a ubicar en toda la pista")
+        creencia.clear()
+        creencia.update({((x, y), h0): 1 / (4 * PN * PN) for x in range(PN) for y in range(PN) for h0 in range(4)})
+        return loc_observa(lect)
+    for k in creencia:
+        creencia[k] = creencia[k] / tot if tot else 1 / len(creencia)
+    (c, h0), pm = max(creencia.items(), key=lambda kv: kv[1])
+    if pm >= CONFIANZA:                  # seguro de donde esta: lo que no cuadra es que la pista cambio
+        for rel, o in zip((-1, 0, 1), obs):
+            h = (h0 + rumbo + rel) % 4
+            n = (c[0] + PDX[h], c[1] + PDY[h])
+            if o is not None and (o == 0) != pmuros[c][h] and n in pmuros:   # los muros exteriores no cambian
+                k = (c, h)
+                cambios[k] = cambios.get(k, 0) + 1
+                if cambios[k] >= 2:
+                    pmuros[c][h] = pmuros[n][(h + 2) % 4] = o == 0
+                    print(f"Pista: cambio en {c} hacia {'NESO'[h]}: ahora {'pared' if o == 0 else 'libre'}")
+                    del cambios[k]
+
+
+def loc_mueve(k):
+    """Avanzo ~k celdas (odometria): cada hipotesis avanza k (o k +- 1) por donde la pista deja pasar."""
+    if not creencia:
+        return
+    nueva = {}
+    for (c, h0), p in creencia.items():
+        h = (h0 + rumbo) % 4
+        run = tramo(c, h, k + 1)
+        for kk, pk in ((k, 0.7), (k - 1, 0.15), (k + 1, 0.15)):
+            if kk < 0:
+                continue
+            kk = min(kk, run)
+            d = (c[0] + PDX[h] * kk, c[1] + PDY[h] * kk)
+            nueva[(d, h0)] = nueva.get((d, h0), 0) + p * pk
+    tot = sum(nueva.values())
+    creencia.clear()
+    creencia.update({k2: v / tot for k2, v in nueva.items() if v / tot > 1e-4})
+
+
+def por_pista(izq, frente, der):
+    """Con la ubicacion segura: primer paso del camino mas corto (en la pista como la cree) al amarillo.
+    Sin certeza, o si los ToF dicen pared donde la pista dice paso, decide la brujula."""
+    if not creencia:
+        return None
+    (c, h0), pm = max(creencia.items(), key=lambda kv: kv[1])
+    if pm < CONFIANZA:
+        return None
+    previo, cola = {c: None}, [c]
+    for a in cola:
+        if a == PISTA_META:
+            break
+        for h in range(4):
+            n = (a[0] + PDX[h], a[1] + PDY[h])
+            if not pmuros[a][h] and n not in previo:
+                previo[n] = (a, h)
+                cola.append(n)
+    if PISTA_META not in previo or PISTA_META == c:
+        return None
+    a = PISTA_META
+    while previo[a][0] != c:
+        a = previo[a][0]
+    rel = {0: 0, 1: 1, 2: 2, 3: -1}[(previo[a][1] - h0 - rumbo) % 4]
+    if rel == 2 or rel in salidas(izq, frente, der):
+        return rel
     return None
 
 
-def decidir(izq, frente, der):
-    """Exploracion completa con mano izquierda (tipo Tremaux / DFS):
-    1. Salidas libres hacia celdas sin ver: la primera en orden izquierda, frente, derecha.
+def brujula(izq, frente, der):
+    """Sin mapa de paredes: entre las salidas libres que ven los ToF ahora, la que apunta mas al centro
+    (rumbo del giroscopio + posicion aproximada), menos un castigo por cada vez que ya la tomo desde esa celda,
+    mas algo de azar. Una posicion desfasada 1-2 celdas casi no cambia hacia donde queda el centro.
+    En simulacion (200 laberintos) iguala al mapa con buena odometria y le gana 10-22 puntos con mala."""
+    libres = [r for r in salidas(izq, frente, der) if r != 2]
+    if not libres:
+        return 2
+    cx, cy = ((CENTRO * s - p) if s else 0 for p, s in zip(pos, signo))
+    n = math.hypot(cx, cy) or 1
+    def nota(r):
+        h = (rumbo + r) % 4
+        return (DX[h] * cx + DY[h] * cy) / n - CASTIGO * usos.get((pos, h), 0) + random.gauss(0, RUIDO)
+    r = max(libres, key=nota)
+    h = (rumbo + r) % 4
+    usos[(pos, h)] = usos.get((pos, h), 0) + 1
+    return r
+
+
+def decidir(izq, frente, der, abre=()):
+    """Exploracion completa hacia el centro (tipo Tremaux / DFS):
+    1. Salidas libres hacia celdas sin ver: la que mas acerca al centro (empate: izquierda, frente, derecha).
     2. Si todas llevan a celdas ya vistas: va por el camino conocido mas corto a la celda con lados sin explorar.
     Asi entra a una meta en una isla (al centro, con pocas entradas), que la mano izquierda sola rodea sin entrar."""
     if izq >= FUERA and der >= FUERA:        # nada a 2 m por ningun lado: salio del laberinto
@@ -776,13 +1017,20 @@ def decidir(izq, frente, der):
             p[(rumbo + r) % 4] = VOTO_MAX
         print("Fuera del laberinto: regreso")
         return 2
+    if ESTRATEGIA == "pista":
+        loc_observa((izq, frente, der))
+        rel = por_pista(izq, frente, der)
+        return brujula(izq, frente, der) if rel is None else rel
+    if ESTRATEGIA == "brujula":
+        return brujula(izq, frente, der)
     # un paso por donde ya paso cuenta como libre aunque un ToF diga pared (robot descentrado o chueco):
     # sin esto se quedaba yendo y viniendo entre 2 celdas (paso en pista)
     libres = set(salidas(izq, frente, der)) | {r for r in (-1, 0, 1) if celda(pos)[(rumbo + r) % 4] <= RECORRIDO}
     ops = [r for r in (-1, 0, 1) if r in libres] or [2]
     nuevas = [r for r in ops if r != 2 and vecino(pos, (rumbo + r) % 4) not in vistas]
     if nuevas:
-        return nuevas[0]
+        tomar = [r for r in nuevas if r in abre]   # se acaba de abrir a un lado (paro ahi por eso): se va por ahi
+        return min(tomar or nuevas, key=lambda r: al_centro(vecino(pos, (rumbo + r) % 4)))
     h = frontera()
     if h is not None:
         rel = {0: 0, 1: 1, 2: 2, 3: -1}[(h - rumbo) % 4]
@@ -797,7 +1045,7 @@ def buscar_color():
     global encontrado
     encontrado = False
     estado(1)
-    f = "SENSA"
+    f, abre = "SENSA", []
     while not encontrado:
         if detener():
             return False
@@ -805,10 +1053,11 @@ def buscar_color():
         if f in ("SENSA", "ESCANEA"):
             lect = tof3(5 if f == "ESCANEA" else 3)
             anota(*lect)
+            ubica(*lect)
             vistas.add(pos)
             f = "DECIDE"
         elif f == "DECIDE":
-            rel = decidir(*lect)
+            rel = decidir(*lect, abre=abre)
             print("ToF izq {} frente {} der {} en {}:".format(*lect, pos),
                   {1: "derecha", 0: "frente", -1: "izquierda", 2: "media vuelta"}[rel])
             f = "GIRA"
@@ -819,6 +1068,7 @@ def buscar_color():
             # pasillo (pared a ambos lados y sin girar): varias celdas de un tiron; para si se abre un lateral
             n = PASILLO if rel == 0 and lect[0] < PARED and lect[2] < PARED else 1
             saltos = avanzar(n)
+            abre = [r for r, b in ((-1, 1), (1, 4)) if saltos & b]   # bits de odo(3): 1 izq, 2 frente, 4 der
             f = "ESCANEA" if saltos else "SENSA"
     return True
 
@@ -874,6 +1124,9 @@ def iniciar():
             tof_cal[n].update(p)
     enviar_tof()
     paso("ToF enviados")
+    global ms_celda
+    ms_celda = (lee(ARCH_AVANCE) or {}).get("ms_celda", ms_celda)
+    rpc("set_ms", ms_celda)
     camcal.update(lee(ARCH_CAM) or {})
     cargar()
     for c in range(1, len(COLORES)):
@@ -942,6 +1195,9 @@ def loop():
         return
     global pos, rumbo, encontrado, corriendo, t_ini, t_meta, t_fin
     pos, rumbo, encontrado = (0, 0), 0, False   # cada corrida empieza en la misma celda viendo al mismo lado
+    signo[:] = [0, 0]                    # la esquina de salida puede cambiar
+    usos.clear()
+    loc_inicia()
     t = t_ini = time.time()
     t_meta = t_fin = None
     log_col.clear()
