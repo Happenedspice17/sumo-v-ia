@@ -168,6 +168,7 @@ class Robot:
         s.ref = 0.0
         s.th0 = s.th
         s.vL = s.vR = 0.0
+        s.traj = []
 
     # --- sensores ---
     def tof_real(s, i):
@@ -230,6 +231,8 @@ class Robot:
         else:
             s.contacto = False
             s.x, s.y, s.th = nx, ny, nth
+        s.n = getattr(s, 'n', 0) + 1
+        if s.n % 20 == 0: s.traj.append((s.x, s.y, s.t))
         s.yaw = math.degrees(s.th - s.th0) + s.bias * s.t + s.r.gauss(0, 0.1)
         s.t += dt
 
@@ -507,7 +510,7 @@ def corrida(P, seed):
         return [sorted(l)[len(l) // 2] for l in lst]
     while rb.t < P["T_MAX"]:
         if rb.en_meta(): return dict(ok=1, t=rb.t, choques=rb.choques, det=rb.detectados, falsos=rb.falsos,
-                                     desfase=desfase, dec=decisiones)
+                                     desfase=desfase, dec=decisiones, traj=rb.traj, W=W, meta=meta)
         if P["ALIN_SENSA"]: rb.alinear(45)
         lect = tof3(P["MUESTRAS"])
         rb.t += 0.25                                              # rpc, decidir, prints
@@ -552,7 +555,7 @@ def corrida(P, seed):
             sig = g["vecino"](pos, rumbo)
             cel(pos)[rumbo] = cel(sig)[(rumbo + 2) % 4] = -P["VOTO_MAX"]
             g["pos"] = sig
-    return dict(ok=0, t=rb.t, choques=rb.choques, det=rb.detectados, falsos=rb.falsos, desfase=desfase, dec=decisiones)
+    return dict(ok=0, t=rb.t, choques=rb.choques, det=rb.detectados, falsos=rb.falsos, desfase=desfase, dec=decisiones, traj=rb.traj, W=W, meta=meta)
 
 
 def lote(P, seeds):
