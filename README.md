@@ -13,7 +13,7 @@
 
 <img src="chasis/img/q_iso.png" alt="Render del robot con Arduino UNO Q" width="720">
 
-*Robot diferencial de 120 × 120 mm que explora un laberinto desconocido, construye un mapa probabilístico de paredes y colores, se detiene en la meta amarilla y en la siguiente corrida recorre la ruta más corta conocida.*
+*Robot diferencial de 120 × 120 mm que sale desde cualquier esquina, se ubica solo comparando lo que ven sus láser con el mapa de la pista, se detiene en la meta amarilla y en la siguiente corrida recorre la ruta más corta conocida.*
 
 </div>
 
@@ -31,13 +31,14 @@
 
 ## 📚 Documentación para evaluar el proyecto
 
-Los tres documentos finales están en [`docs/pdf/`](docs/pdf/). Se generan desde los `.md` de [`docs/`](docs/) y son la referencia vigente. Si otro archivo del repositorio no coincide con ellos, los PDF tienen prioridad.
+Los cuatro documentos finales están en [`docs/pdf/`](docs/pdf/). Se generan desde los `.md` de [`docs/`](docs/) y son la referencia vigente. Si otro archivo del repositorio no coincide con ellos, los PDF tienen prioridad.
 
 | Documento | Para quién | Contenido |
 |---|---|---|
-| 📘 [**Manual técnico**](docs/pdf/manual_tecnico.pdf) ([fuente](docs/manual_tecnico.md)) | Evaluación técnica | Arquitectura de dos procesadores, sensado, control, máquina de estados, mapa, parámetros y glosario |
-| 📗 [**Manual de uso**](docs/pdf/manual_uso.pdf) ([fuente](docs/manual_uso.md)) | Operación en pista | Encendido, botón, calibración desde la web, ajuste del movimiento y solución de fallas |
-| 📙 [**Bitácora de diseño**](docs/pdf/historial_cambios.pdf) ([fuente](docs/historial_cambios.md)) | Proceso de ingeniería | 35 etapas desde la V1: problema, hipótesis, cambio, pruebas, decisiones y lecciones |
+| 🏅 [**Manual para jueces**](docs/pdf/manual_jueces.pdf) ([fuente](docs/manual_jueces.md)) | Evaluación | 10 páginas a color para imprimir a doble cara: lo que hace distinto a este robot |
+| 📘 [**Manual técnico**](docs/pdf/manual_tecnico.pdf) ([fuente](docs/manual_tecnico.md)) | Evaluación técnica | Arquitectura de dos procesadores, sensado, control, máquina de estados, autolocalización, simulador, parámetros y glosario |
+| 📗 [**Manual de uso**](docs/pdf/manual_uso.pdf) ([fuente](docs/manual_uso.md)) | Operación en pista | Encendido, salida desde cualquier esquina, calibración desde la web, ajuste del movimiento y solución de fallas |
+| 📙 [**Bitácora de diseño**](docs/pdf/historial_cambios.pdf) ([fuente](docs/historial_cambios.md)) | Proceso de ingeniería | 52 etapas desde la V1: problema, hipótesis, cambio, pruebas, decisiones y lecciones |
 | 🛠️ [Manual de armado](docs/manual_ensamble.pdf) · [BOM](docs/bom.csv) · [cables](docs/cables.csv) | Construcción | Ensamble paso a paso, lista de materiales y arnés |
 | 🔌 [Diagrama de conexiones](docs/diagrama_conexiones.pdf) | Construcción | Alimentación, puente H, bus I²C y líneas XSHUT |
 | 🧭 [Documento técnico de la UNO Q](docs/uno_q.md) · [Guía de programación](docs/GUIA_PROGRAMACION.md) | Referencia | Justificación de la placa y cómo programar ambas iteraciones |
@@ -71,9 +72,9 @@ flowchart LR
     end
     subgraph AP["🐧 QRB2210 · Cortex-A53 · Debian — decisiones por celda"]
         direction TB
-        FSM["Máquina de estados<br/>SENSA → DECIDE → GIRA → AVANZA"] --> MAPA["Mapa por votos<br/>paredes · colores · meta"]
+        FSM["Máquina de estados<br/>SENSA → DECIDE → GIRA → AVANZA"] --> MAPA["Mapa de la pista<br/>autolocalización (16 hipótesis)"]
         MAPA --> BFS["Ruta más corta (BFS)"]
-        CAM["Cámara OV9281 mono · OpenCV<br/>blanco/negro (Otsu) · rumbo por punto de fuga"] --> FSM
+        CAM["Cámara OV9281 mono · OpenCV<br/>lista, apagada (USAR_CAM = False)"] -.-> FSM
         WEB["Página web :7000<br/>calibración y diagnóstico"]
     end
     CTRL <== "Bridge RPC (MessagePack)<br/>mover · girar · ajustar · odo · set_ref · set_tof" ==> FSM
@@ -82,7 +83,7 @@ flowchart LR
 | Dominio | Qué corre ahí | Por qué ahí |
 |---|---|---|
 | **Tiempo real** (STM32) | Lazo de control de 10 ms, lectura de ToF y color, frenado ante pared o amarillo | Necesita latencia determinista. Un GC de Python o una consulta web no pueden retrasar un frenado |
-| **Decisión** (Linux) | Máquina de estados, mapa, BFS, visión, persistencia, servidor web | Necesita memoria, archivos, OpenCV y red. Decide **con el robot quieto**, así que su latencia no afecta la dinámica |
+| **Decisión** (Linux) | Máquina de estados, autolocalización, mapa, BFS, visión, persistencia, servidor web | Necesita memoria, archivos, OpenCV y red. Decide **con el robot quieto**, así que su latencia no afecta la dinámica |
 
 **Principio de diseño:** el STM32 ejecuta cada orden de forma **autónoma y segura**. Frena solo a 30 mm de una pared y al confirmar amarillo, sin esperar a Linux. Si el procesador de aplicaciones se retrasa, el robot se queda quieto en lugar de chocar.
 
@@ -96,7 +97,7 @@ stateDiagram-v2
     [*] --> SENSA: toque corto D2
     SENSA --> DECIDE: 3 ToF (mín. de 3 lecturas)<br/>votos al mapa
     DECIDE --> GIRA: salida elegida
-    GIRA --> AVANZA: cámara revisa el piso
+    GIRA --> AVANZA
     AVANZA --> SENSA: llegó a la celda
     AVANZA --> ESCANEA: cambio brusco en un ToF
     ESCANEA --> DECIDE: 5 lecturas<br/>prefiere celda no mapeada
@@ -125,7 +126,7 @@ Cada decisión vino de un fallo observado en pista. La bitácora completa está 
 Sin calibrar, el frontal leía ~130 mm con la pared en su propia celda y ~310 mm con la pared una celda más allá. El umbral original de 150 mm dejaba **20 mm de margen** contra un ruido de ±15 mm; se movió al punto medio. Después, la calibración en pista mostró que el frontal medía **~87 mm de más**: con el sensor calibrado los mismos umbrales quedaron en milímetros reales, frena a **30 mm** (el eje queda al centro de la celda, según la geometría del CAD) y el frente cuenta como libre desde **120 mm** (a la mitad entre ~30 y ~210). Para los laterales (pared ~50, libre > 200) el umbral de 120 mm deja 70 mm de margen.
 
 ### 4. Detección de discontinuidades ("saltos")
-Si un ToF lateral cambia ≥ 120 mm **en dos lecturas consecutivas**, se abrió un pasillo. Pedir dos lecturas elimina los picos de una muestra. El robot avanza **124 mm más** (90 mm al centro de celda + 40 mm de adelanto del sensor respecto al eje − 6 mm de media pared, medidos en el CAD) para quedar centrado en la intersección. La discontinuidad también sirve como **landmark** que corrige la posición.
+Si un ToF lateral cambia ≥ 120 mm **en dos lecturas consecutivas**, se abrió un pasillo. Pedir dos lecturas elimina los picos de una muestra. El robot avanza **110 mm más** (`TRAS_SALTO`: 124 mm del CAD, 90 al centro de celda + 40 de adelanto del sensor − 6 de media pared, menos 20 mm que recorre mientras confirma el salto) para quedar centrado en la intersección. La discontinuidad también sirve como **landmark** que corrige la posición.
 
 ### 5. Calibración lineal de los ToF
 Cada sensor se ajusta con **mínimos cuadrados**, `real = a·crudo + b`, a partir de 3 a 5 distancias medidas con vernier y flexómetro desde la página web. Los coeficientes viajan al STM32 y la corrección se aplica **antes** de cualquier umbral.
@@ -134,6 +135,9 @@ Cada sensor se ajusta con **mínimos cuadrados**, `real = a·crudo + b`, a parti
 Por tiempo, los giros de "90°" medían **~70°** en pista. Con el **MPU-6050** (opcional, se detecta solo) el giro se cierra por ángulo integrado, con bias medido al encender (200 muestras), rumbo absoluto acumulado (cada giro corrige el error del anterior) y compensación de inercia (`ADELANTO`). En recta sostiene el rumbo con un control proporcional.
 
 ### 7. La cámara como sensor auxiliar, no primario
+> [!NOTE]
+> Hoy la cámara está **lista pero apagada** (`USAR_CAM = False`): la estrategia actual usa solo los ToF. Lo siguiente describe lo que hace al encenderla.
+
 La primera versión usaba la cámara para ver paredes y el robot **chocaba constantemente**. Desde arriba veía demasiadas paredes, zapatos y reflejos, y no había forma robusta de priorizar. Hoy la cámara **asiste y nunca decide sola**. Es una OV9281 **monocromática con obturador global**: no ve el amarillo (la meta queda en el sensor de color), pero separa muy bien el piso negro de la pared blanca y no deforma la imagen en movimiento. Antes de cada avance toma una foto y:
 
 - **Fija la exposición** (desde la web) para que el gris del piso no cambie con la luz del lugar.
@@ -142,14 +146,21 @@ La primera versión usaba la cámara para ver paredes y el robot **chocaba const
 
 La versión **experimental** agrega distancia a la pared en 5 columnas, calibrada con el ToF frontal como regla, que funcionan como "ToF virtuales" en diagonal. También detecta aberturas laterales una celda antes de llegar.
 
-### 8. Página web sin interferir con la corrida
+### 8. Se ubica solo en la pista
+**Observación:** sin encoders, la posición propia se desfasaba y explorar con un mapa construido sobre la marcha daba vueltas.
+**Solución:** con `ESTRATEGIA = "pista"` el robot trae el mapa de la pista y no sabe desde cuál de las 4 esquinas ni con qué rumbo sale: son **16 hipótesis**. En cada celda compara lo que ven los 3 ToF con lo que cada hipótesis predice y actualiza sus pesos con Bayes (localización de Markov). Cuando una supera el 60 % de confianza, va a la meta por la ruta más corta. Si la pierde, vuelve a ubicarse; como respaldo quedan las estrategias `"brujula"` y `"mapa"` (Trémaux).
+
+### 9. Simular antes de afinar
+El simulador 2D ([`uno_q/sim/`](uno_q/sim/)) corre el mismo Python contra 200 laberintos con ruido de sensores y motores. Encontró un bug real del sketch (reportaba "avancé 180 mm" sin moverse) y mostró que los umbrales de los ToF casi no importaban. Las llegadas pasaron de **26 %** con el código anterior a **90 %** en laberintos aleatorios y **98 %** en la pista.
+
+### 10. Página web sin interferir con la corrida
 Cada consulta web eran 5 a 9 llamadas RPC que competían con el robot por el Bridge y por la cámara. Durante una corrida la página **solo muestra datos en caché** (última lectura y última foto), y la OLED no se refresca en movimiento porque un refresco I²C bloquea ~25 ms.
 
 ---
 
 ## 📊 Resultados en pista
 
-Pruebas en un laberinto de **2 × 2 m** con paredes de madera pintadas de blanco:
+Pruebas en un laberinto de **2 × 2 m** con paredes de madera pintadas de blanco (en simulación, la estrategia actual llega en 98 % de las corridas sobre la pista):
 
 | Aspecto | Resultado | Acción |
 |---|---|---|
@@ -158,7 +169,7 @@ Pruebas en un laberinto de **2 × 2 m** con paredes de madera pintadas de blanco
 | ToF | ✅ ±15 mm, sin lecturas espurias | Umbrales al punto medio + calibración lineal |
 | Giros por tiempo | ⚠️ ~70° en vez de 90° | MPU-6050 o ajuste de `MS_90` |
 | Avance por tiempo | ⚠️ Inconsistente con la batería | Avance por distancia |
-| Cámara para paredes | ❌ Choques por exceso de información | Relegada a asistencia blanco/negro |
+| Cámara para paredes | ❌ Choques por exceso de información | Relegada a asistencia blanco/negro; hoy apagada |
 | Mano derecha vs. izquierda | Derecha llegó más lejos | Análisis: priorizar "de frente" rompe la garantía del seguidor de pared |
 | Autonomía | ~3 h de pruebas continuas | Batería 2S 18650 |
 
@@ -191,7 +202,7 @@ El chasis es **paramétrico en OpenSCAD**. Pasó por entre 20 y 50 iteraciones d
 
 | Carpeta | Contenido |
 |---|---|
-| [`uno_q/`](uno_q/) | **Versión actual.** `sketch/` (STM32 con MPU-6050), `python/` (máquina de estados, mapa, cámara, web; `EXPERIMENTAL = True` activa la distancia y las aberturas por cámara) y `assets/` (página web) |
+| [`uno_q/`](uno_q/) | **Versión actual.** `sketch/` (STM32 con MPU-6050), `python/` (máquina de estados, autolocalización, mapa, cámara, web; `EXPERIMENTAL = True` activa la distancia y las aberturas por cámara), `assets/` (página web) y `sim/` (simulador 2D) |
 | [`atmega328p/`](atmega328p/) | Iteración A, respaldo: firmware *bare-metal* en C++ para UNO R3 / Nano con flood-fill y mapa en EEPROM |
 | [`chasis/`](chasis/) | Modelo OpenSCAD, STL para imprimir, renders y planos (`chasis.pdf`) |
 | [`docs/`](docs/) | Manuales, bitácora, BOM, diagramas y scripts que generan los PDF |
@@ -207,7 +218,7 @@ El chasis es **paramétrico en OpenSCAD**. Pasó por entre 20 y 50 iteraciones d
 
    Los detalles están en [`uno_q/README.md`](uno_q/README.md).
 3. Abre `http://<IP-de-la-placa>:7000` y **calibra colores, sensores de distancia y cámara desde el celular**.
-4. Pon el robot en la celda de inicio y da un toque corto al botón D2.
+4. Pon el robot en cualquier esquina y da un toque corto al botón D2. Si cambias de esquina entre corridas, borra el mapa guardado.
 
 Para regenerar los documentos:
 
