@@ -1,7 +1,7 @@
 """Logs REC del robot (consola o recorridos/*.jsonl) -> mapa virtual (mapa_real.png) + calibracion del simulador (real_fit.json).
 Uso:  python3 logs2nn.py carpeta_o_archivos...      (5 a 10 recorridos reales)
       python3 logs2nn.py --sim 6                    (prueba: 6 recorridos simulados en WCA, mismo formato)
-Despues: python3 afina_nn.py  -> si existe real_fit.json entrena con el simulador calibrado (escenario REAL) y 1000 semillas."""
+Despues: python3 afina_nn.py  -> si existe real_fit.json entrena con el simulador calibrado (escenario REAL) y 800 semillas."""
 import sys, json, glob, os
 import numpy as np
 

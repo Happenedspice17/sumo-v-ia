@@ -138,15 +138,18 @@ def grafica(out, base, ESCN):
     f.tight_layout(); f.savefig("afina_resumen.png", dpi=110)
 
 def resumen(x, esc, seeds):
-    seeds = list(seeds); ch_ = [seeds[i::4] for i in range(4)]       # semillas repartidas en los 4 nucleos
-    with mp.Pool(4) as p: r = p.map(corre, [(x, esc, c) for c in ch_])
-    ok, ch, t = np.average(r, axis=0, weights=[len(c) for c in ch_]); return dict(ok=float(ok), choques=float(ch), t=float(t), score=float(puntaje(ok, ch, t)))
+    seeds = list(seeds)
+    ch_ = [seeds[i:i + 200] for i in range(0, len(seeds), 200)] if len(seeds) >= 400 else [seeds[i::4] for i in range(4)]
+    with mp.Pool(4) as p: r = p.map(corre, [(x, esc, c) for c in ch_])      # bloques de 200 (o 4 repartidos si son pocas)
+    ok, ch, t = np.average(r, axis=0, weights=[len(c) for c in ch_])
+    return dict(ok=float(ok), choques=float(ch), t=float(t), score=float(puntaje(ok, ch, t)),
+                bloques_ok=[round(float(q[0]), 3) for q in r])
 
 if __name__ == "__main__":
     G = int(sys.argv[1]) if len(sys.argv) > 1 else 8
     N0 = int(sys.argv[2]) if len(sys.argv) > 2 else 48
     NG = int(sys.argv[3]) if len(sys.argv) > 3 else 16
-    rnd = random.Random(1); out = {}; ESCN = ("MEJOR", PEOR); VER = range(1000, 2000)
+    rnd = random.Random(1); out = {}; ESCN = ("MEJOR", PEOR); VER = range(1000, 1800)
     for e in ESCN:
         x, d = evoluciona(e, G, N0, NG, range(100, 108), rnd)
         n = len(d["pred"]); d["R2"] = round(1 - float(np.sum((np.array(d["pred"]) - np.array(d["real"])) ** 2) / np.sum(np.array(d["real"]) ** 2)), 2)
@@ -156,7 +159,7 @@ if __name__ == "__main__":
         d["params"] = {k: (round(v) if RNG[k][2] else round(v, 2)) for k, v in zip(K, x)}; d["x_mejor"] = [round(v, 3) for v in x]
         d["nuevo"] = resumen(a_x(d["params"]), e, VER); d["actual"] = resumen(base_x(), e, VER)
         out[e] = d
-        print(e, "VERIFICADO (1000 semillas nuevas) actual:", d["actual"], "afinado:", d["nuevo"], flush=True)
+        print(e, "VERIFICADO (800 semillas nuevas, 4 bloques de 200) actual:", d["actual"], "afinado:", d["nuevo"], flush=True)
     cand = {"MEJOR": a_x(out["MEJOR"]["params"]), PEOR: a_x(out[PEOR]["params"])}
     rob = []
     for n_, c in cand.items():
