@@ -87,7 +87,7 @@ def evoluciona(esc, G, N0, NG, seeds, rnd):
         hijos = [cand[j] for j in np.argsort(-P_)[:NG]]
         xs += hijos; Y += list(lote(hijos, esc, seeds))
     sc = np.array([puntaje(*y) for y in Y]); b = int(np.argmax(sc))
-    return xs[b], dict(hist=hist, sens=sens(nn, norm(xs[b]), mu, sd), x=xs, sc=sc.tolist(), pred=pr.tolist(), real=z.tolist())
+    return xs[b], dict(hist=hist, sens=sens(nn, norm(xs[b]), mu, sd), top=[xs[i] for i in np.argsort(-sc)[:8]], sc=sc.tolist(), pred=pr.tolist(), real=z.tolist())
 
 def sens(nn, b, mu, sd):
     base = nn(b[None])[0, 0]; d = {}
@@ -143,7 +143,9 @@ if __name__ == "__main__":
     for e in ESCN:
         x, d = evoluciona(e, G, N0, NG, range(100, 108), rnd)
         n = len(d["pred"]); d["R2"] = round(1 - float(np.sum((np.array(d["pred"]) - np.array(d["real"])) ** 2) / np.sum(np.array(d["real"]) ** 2)), 2)
-        d.pop("x"); d.pop("sc")
+        d.pop("sc")
+        cs = d.pop("top") + [base_x()]               # los mejores + los parametros actuales, con semillas frescas
+        x = max(cs, key=lambda c: resumen(c, e, range(500, 530))["score"])
         d["params"] = {k: (round(v) if RNG[k][2] else round(v, 2)) for k, v in zip(K, x)}; d["x_mejor"] = [round(v, 3) for v in x]
         d["nuevo"] = resumen(a_x(d["params"]), e, VER); d["actual"] = resumen(base_x(), e, VER)
         out[e] = d
