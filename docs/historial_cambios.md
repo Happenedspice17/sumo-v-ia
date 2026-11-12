@@ -930,7 +930,7 @@ Además, la cámara ya no se busca en `/dev/video0` y `video1` (son internos) y 
 ::: ficha
 **Del equipo.** Hacer un mapa digital 2D de la pista con las fotos (11 × 11 celdas de 18 cm) y simular sobre él.
 
-**Cómo.** Se rectificó la foto más cenital (homografía de las 4 esquinas del piso) a una cuadrícula de 11 × 11 y se leyó cada tramo de pared a mano (la detección automática por brillo fallaba por la inclinación de las paredes). Queda en `uno_q/python/main.py` (`PISTA_H`, `PISTA_V`, `PISTA_META`; editable) y en `docs/img/pista_mapa.png` / `pista_foto.jpg` (mapa sobre la foto). Todas las celdas son alcanzables; el cuarto del amarillo tiene 2 entradas (arriba a la derecha y abajo al centro, vista desde la foto) y el amarillo queda en la celda (6, 6), una celda abajo a la derecha del centro geométrico. **Pendiente: que el equipo lo verifique.**
+**Cómo.** Se rectificó la foto más cenital (homografía de las 4 esquinas del piso) a una cuadrícula de 11 × 11 y se leyó cada tramo de pared a mano (la detección automática por brillo fallaba por la inclinación de las paredes). Queda en `uno_q/python/main.py` (`PISTA_H`, `PISTA_V`, `PISTA_META`; editable) y en `docs/img/pista_mapa.png` / `pista_foto.jpg` (mapa sobre la foto). Todas las celdas son alcanzables; el cuarto del amarillo tiene 2 entradas (arriba a la derecha y abajo al centro, vista desde la foto) y el amarillo queda en la celda (6, 6), una celda abajo a la derecha del centro geométrico. **Verificado por el equipo** (12-nov): las paredes coinciden; los muros exteriores están cerrados (el robot se pone adentro, en una esquina); el amarillo cae en la isla y es más chico que una celda.
 
 **Simulación** (`PISTA=1`, 100 corridas por esquina, con ruido):
 
@@ -959,6 +959,8 @@ Además, la cámara ya no se busca en `/dev/video0` y `video1` (son internos) y 
 | Otro laberinto (el mapa no sirve) | 84 % | 86 % |
 
 Primer intento sin detectar "otra pista": 42 % en laberintos distintos; con la regla de perdido, 84 %.
+
+Amarillo del tamaño real (unos 13.5 × 15 cm, 4 cm a la izquierda del centro de su celda) y solo cuenta con el sensor de color 2.5 cm dentro del parche: pista 98 % (24 s), brújula 95 % (41 s); entrada cerrada 92 % contra 74 %; odometría mala 80 % contra 70 %.
 :::
 
 # Pruebas realizadas
