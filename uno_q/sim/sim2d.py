@@ -500,17 +500,23 @@ def corrida(P, seed):
         for _ in range(h0): dx, dy = -dy, dx                     # rota al marco del robot
         return (dx, dy)
     desfase = 0; decisiones = 0; abre = []; est = {"n": 0, "usos": {}}
+    ev = []                                                      # mismo formato REC que main.py en el robot real
+    def rec(e, **d): ev.append(dict(ev=e, t=round(rb.t, 2), **d))
+    rec("ini", ms_celda=P["MS_CELDA"], estrategia=P["EST"])
+    def fin(ok): rec("fin", ok=ok, t_fin=round(rb.t, 1), t_meta=round(rb.t, 1) if ok else None, muros=[[*c, *p] for c, p in g["muros"].items()])
     def tof3(n):
         d = [9999] * 3; lst = [[], [], []]
         for _ in range(n):
             for _ in range(5): rb.paso(0, 0)
             rb.dist = [rb.tof_real(i) for i in range(3)]
             for i in range(3): lst[i].append(rb.dist[i])
+        rec("tof", pos=list(g["pos"]), rumbo=g["rumbo"], raw=[[lst[i][k] for i in range(3)] for k in range(n)])
         if P["AGREGA"] == "min": return [min(l) for l in lst]
         return [sorted(l)[len(l) // 2] for l in lst]
     while rb.t < P["T_MAX"]:
-        if rb.en_meta(): return dict(ok=1, t=rb.t, choques=rb.choques, det=rb.detectados, falsos=rb.falsos,
-                                     desfase=desfase, dec=decisiones, traj=rb.traj, W=W, meta=meta)
+        if rb.en_meta():
+            fin(1); return dict(ok=1, t=rb.t, choques=rb.choques, det=rb.detectados, falsos=rb.falsos,
+                                     desfase=desfase, dec=decisiones, traj=rb.traj, W=W, meta=meta, rec=ev)
         if P["ALIN_SENSA"]: rb.alinear(45)
         lect = tof3(P["MUESTRAS"])
         rb.t += 0.25                                              # rpc, decidir, prints
@@ -518,9 +524,10 @@ def corrida(P, seed):
         if a_python(rb.celda_real()) != g["pos"]: desfase += 1
         rel = decide_alt(P, g, lect, rb, est) if P["EST"] == "mano_cambia" else g["decidir"](*lect, abre=abre if P["ABRE"] else [])
         decisiones += 1
+        rec("decide", rel=rel, lect=lect, pos=list(g["pos"]), rumbo=g["rumbo"])
         # girar + verifica_giro (con MPU)
         if rel:
-            rb.girar(90 * rel)
+            rb.girar(90 * rel); rec("gira", pedido=rel, real=rel)
             if P["MPU"]:
                 dev = rb.yaw - rb.ref
                 if abs(dev) > 10:
@@ -533,7 +540,8 @@ def corrida(P, seed):
         rumbo = g["rumbo"]
         n = P["PASILLO"] if rel == 0 and lect[0] < P["PARED"] and lect[2] < P["PARED"] else 1
         if P["ALINEAR"]: rb.alinear(45)
-        hecho, saltos, choque = rb.mover(int(C * n))
+        t0 = rb.t; hecho, saltos, choque = rb.mover(int(C * n))
+        rec("avanza", pedido=int(C * n), mm=round(hecho), dt=round(rb.t - t0, 2), saltos=saltos, choque=choque, dev=round(rb.yaw - rb.ref), pos=list(g["pos"]))
         abre = [r for r, b in ((-1, 1), (1, 4)) if saltos & b]
         if rb.en_meta(): continue
         if choque:                                                # vuelve_al_carril
@@ -555,7 +563,8 @@ def corrida(P, seed):
             sig = g["vecino"](pos, rumbo)
             cel(pos)[rumbo] = cel(sig)[(rumbo + 2) % 4] = -P["VOTO_MAX"]
             g["pos"] = sig
-    return dict(ok=0, t=rb.t, choques=rb.choques, det=rb.detectados, falsos=rb.falsos, desfase=desfase, dec=decisiones, traj=rb.traj, W=W, meta=meta)
+    fin(0)
+    return dict(ok=0, t=rb.t, choques=rb.choques, det=rb.detectados, falsos=rb.falsos, desfase=desfase, dec=decisiones, traj=rb.traj, W=W, meta=meta, rec=ev)
 
 
 def lote(P, seeds):

@@ -130,6 +130,21 @@ def escribe(ruta, datos):
     os.replace(ruta + ".tmp", ruta)
 
 
+ARCH_REC = None                          # recorridos/<fecha>.jsonl de la corrida en curso
+
+
+def rec(ev, **d):
+    """Una linea 'REC {json}' por evento (consola y archivo): con eso logs2nn.py rehace el mapa y calibra el simulador."""
+    s = json.dumps(dict(ev=ev, t=round(time.time() - (t_ini or time.time()), 2), **d), separators=(",", ":"))
+    print("REC " + s, flush=True)
+    if ARCH_REC:
+        try:
+            with open(ARCH_REC, "a") as f:
+                f.write(s + "\n")
+        except OSError:
+            pass
+
+
 def lee(ruta):
     """None si no existe o esta roto (un archivo vacio ya no tumba la app)."""
     try:
@@ -204,7 +219,9 @@ def girar(rel):
     if rel:
         rpc("girar", rel)
         esperar()
+        rel0 = rel
         rel += verifica_giro()
+        rec("gira", pedido=rel0, real=rel)
         time.sleep(0.1)                  # ToF frescos: con la lectura de antes del giro el sketch cree que tiene
                                          # la pared enfrente y avanza 0 mm (paso en pista)
     rumbo = (rumbo + rel) % 4
@@ -235,11 +252,15 @@ def verifica_giro():
 
 def tof3(n=3):
     """izq, frente, der: la menor de n lecturas de cada VL53L0X (una lectura mala no deja pasar)."""
-    d = [9999] * 3
+    d, raw = [9999] * 3, []
     for _ in range(n):
         time.sleep(0.03)                 # lectura nueva de los VL53L0X
-        d = [min(a, rpc("odo", i)) for a, i in zip(d, (6, 5, 7))]
+        r = [rpc("odo", i) for i in (6, 5, 7)]
+        raw.append(r)
+        d = [min(a, b) for a, b in zip(d, r)]
     vivo["izq"], vivo["frente"], vivo["der"] = d
+    if corriendo:
+        rec("tof", pos=pos, rumbo=rumbo, raw=raw)
     return d
 
 
@@ -267,10 +288,13 @@ def avanzar(celdas=1):
             h = (rumbo + rel) % 4
             sig[h] = max(-VOTO_MAX, sig[h] - 1)
         print("Camara: abertura adelante", ["izq" if r < 0 else "der" for r in v["abre"]])
+    t_mov = time.time()
     rpc("mover", CELDA * celdas, int(lento))
     esperar(True)
+    dt = time.time() - t_mov
     mm, saltos = rpc("odo", 0), rpc("odo", 3)
-    if rpc("odo", 12):                   # el acelerometro sintio un choque: el sketch ya retrocedio
+    dev, choque = rpc("odo", 8), rpc("odo", 12)
+    if choque:                   # el acelerometro sintio un choque: el sketch ya retrocedio
         print(f"MPU: choque a los {mm} mm (golpe {rpc('odo', 15) / 1000:.2f} g); retrocedi")
         vuelve_al_carril()
     if rpc("centrar", CENTRA_F) == 2:    # a D_FRENTE + k celdas de la pared de enfrente: re-centra la celda
@@ -285,6 +309,7 @@ def avanzar(celdas=1):
         celda(pos)[rumbo] = celda(sig)[(rumbo + 2) % 4] = -VOTO_MAX
         pos = sig
     loc_mueve(n)
+    rec("avanza", pedido=CELDA * celdas, mm=mm, dt=round(dt, 2), saltos=saltos, choque=int(bool(choque)), dev=dev, pos=pos)
     print(f"Avanzo {mm} mm -> {pos}" + (f", salto en ToF {saltos}" if saltos else ""))
     return saltos
 
@@ -1060,6 +1085,7 @@ def buscar_color():
             rel = decidir(*lect, abre=abre)
             print("ToF izq {} frente {} der {} en {}:".format(*lect, pos),
                   {1: "derecha", 0: "frente", -1: "izquierda", 2: "media vuelta"}[rel])
+            rec("decide", rel=rel, lect=lect, pos=pos, rumbo=rumbo)
             f = "GIRA"
         elif f == "GIRA":
             girar(rel)
@@ -1193,7 +1219,7 @@ def loop():
     if not a and p != "corre":
         time.sleep(0.05)
         return
-    global pos, rumbo, encontrado, corriendo, t_ini, t_meta, t_fin
+    global pos, rumbo, encontrado, corriendo, t_ini, t_meta, t_fin, ARCH_REC
     pos, rumbo, encontrado = (0, 0), 0, False   # cada corrida empieza en la misma celda viendo al mismo lado
     signo[:] = [0, 0]                    # la esquina de salida puede cambiar
     usos.clear()
@@ -1201,7 +1227,13 @@ def loop():
     t = t_ini = time.time()
     t_meta = t_fin = None
     log_col.clear()
+    try:
+        os.makedirs(DATOS + "/recorridos", exist_ok=True)
+        ARCH_REC = DATOS + "/recorridos/" + time.strftime("%Y%m%d_%H%M%S") + ".jsonl"
+    except OSError:
+        ARCH_REC = None
     corriendo = True
+    rec("ini", ms_celda=ms_celda, estrategia=ESTRATEGIA, camara=USAR_CAM, ruido=RUIDO, castigo=CASTIGO)
     try:
         ok = (meta is not None and seguir_ruta()) or buscar_color()
     finally:
@@ -1209,6 +1241,7 @@ def loop():
         fase("")
     t_fin = round(time.time() - t, 1)
     guardar()
+    rec("fin", ok=int(bool(ok)), t_fin=t_fin, t_meta=t_meta, muros=[[*c, *p] for c, p in muros.items()])
     estado(4 if ok else 0)
     print(f"Corrida: {t_fin} s" + (f", amarillo a los {t_meta} s" if t_meta is not None else ", sin amarillo") +
           f", marcas {cuenta[1:]}")

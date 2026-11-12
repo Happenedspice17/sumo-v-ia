@@ -1,7 +1,7 @@
 """Red neuronal chica (numpy, 2 capas x 16, ~600 pesos) que aprende simulador: parametros del sketch -> exito/choques/tiempo.
 Luego busca los parametros que maximizan el puntaje en cada escenario. Uso: python3 afina_nn.py [N_MUESTRAS] [SEMILLAS]
 Salida: afina_out.json (WCA, MEJOR, ROBUSTO) + tabla de sensibilidad."""
-import sys, json, random, multiprocessing as mp
+import sys, os, json, random, multiprocessing as mp
 import numpy as np
 import sim2d as S
 
@@ -15,6 +15,11 @@ ESC = {  # escenarios fisicos
     "MEJOR": dict(T_MAX=180.0),  # todo calibrado, sin camara (ToF solo), motores ideales
     "WCA": dict(T_MAX=180.0, SAG=0.25, TOF_OFF=8.0, TOF_ESC=0.05, KV_SIG=0.10, DEAD_SIG=8.0, ASIM=0.08, TOF_FALLA=0.03, VIB="alta", GYRO_BIAS=0.08),
 }
+
+REAL = json.load(open("real_fit.json")) if os.path.exists("real_fit.json") else None
+if REAL:   # simulador calibrado con los recorridos reales; lo que no se midio conserva el supuesto WCA (pesimista)
+    ESC["REAL"] = {**ESC["WCA"], **REAL["fit"]}
+PEOR = "REAL" if REAL else "WCA"
 
 def a_P(x, esc):
     P = dict(S.BASE); P.update(ESC[esc])
@@ -116,8 +121,8 @@ def grafica(out, base, ESCN):
         a = f.add_subplot(gs[1, 2 + j]); a.scatter(out[e]["real"], out[e]["pred"], s=10); lo, hi = min(out[e]["real"]), max(out[e]["real"])
         a.plot([lo, hi], [lo, hi], "k:"); a.set_title(f"{e}: la red predice vs simulador (R2={out[e]['R2']})", fontsize=9)
     seed = 1000
-    for j, (e, nom) in enumerate([("WCA", "WCA actual"), ("WCA", "WCA afinado")]):
-        x = base if j == 0 else out["WCA"]["x_mejor"]; r = traza(x, e, seed)
+    for j, (e, nom) in enumerate([(PEOR, PEOR + " actual"), (PEOR, PEOR + " afinado")]):
+        x = base if j == 0 else out[PEOR]["x_mejor"]; r = traza(x, e, seed)
         a = f.add_subplot(gs[2, j]); Wl = r["W"]; N = S.N; C = S.C
         for (cx, cy), p in Wl.items():
             for h, (x0, y0, x1, y1) in enumerate([(cx, cy + 1, cx + 1, cy + 1), (cx + 1, cy, cx + 1, cy + 1), (cx, cy, cx + 1, cy), (cx, cy, cx, cy + 1)]):
@@ -127,19 +132,21 @@ def grafica(out, base, ESCN):
         a.plot(r["meta"][0] + .5, r["meta"][1] + .5, "y*", ms=16, mec="k")
         a.set_title(f"{nom}: {'llego' if r['ok'] else 'NO llego'} en {r['t']:.0f}s, {r['choques']} choques", fontsize=9); a.set_aspect("equal"); a.axis("off")
     a = f.add_subplot(gs[2, 2:]); a.axis("off")
-    tx = "PARAMETROS (actual -> WCA afinado | MEJOR afinado | ROBUSTO)\n" + "\n".join(
-        f"{k:12s} {S.BASE[k]!s:>6} -> {out['WCA']['params'][k]!s:>6} | {out['MEJOR']['params'][k]!s:>6} | {out['ROBUSTO']['params'][k]!s:>6}" for k in K)
+    tx = "PARAMETROS (actual -> " + PEOR + " afinado | MEJOR afinado | ROBUSTO)\n" + "\n".join(
+        f"{k:12s} {S.BASE[k]!s:>6} -> {out[PEOR]['params'][k]!s:>6} | {out['MEJOR']['params'][k]!s:>6} | {out['ROBUSTO']['params'][k]!s:>6}" for k in K)
     a.text(0, 1, tx, family="monospace", va="top", fontsize=9)
     f.tight_layout(); f.savefig("afina_resumen.png", dpi=110)
 
 def resumen(x, esc, seeds):
-    ok, ch, t = lote([x], esc, seeds)[0]; return dict(ok=float(ok), choques=float(ch), t=float(t), score=float(puntaje(ok, ch, t)))
+    seeds = list(seeds); ch_ = [seeds[i::4] for i in range(4)]       # semillas repartidas en los 4 nucleos
+    with mp.Pool(4) as p: r = p.map(corre, [(x, esc, c) for c in ch_])
+    ok, ch, t = np.average(r, axis=0, weights=[len(c) for c in ch_]); return dict(ok=float(ok), choques=float(ch), t=float(t), score=float(puntaje(ok, ch, t)))
 
 if __name__ == "__main__":
     G = int(sys.argv[1]) if len(sys.argv) > 1 else 8
     N0 = int(sys.argv[2]) if len(sys.argv) > 2 else 48
     NG = int(sys.argv[3]) if len(sys.argv) > 3 else 16
-    rnd = random.Random(1); out = {}; ESCN = ("MEJOR", "WCA"); VER = range(1000, 1030)
+    rnd = random.Random(1); out = {}; ESCN = ("MEJOR", PEOR); VER = range(1000, 1200)
     for e in ESCN:
         x, d = evoluciona(e, G, N0, NG, range(100, 108), rnd)
         n = len(d["pred"]); d["R2"] = round(1 - float(np.sum((np.array(d["pred"]) - np.array(d["real"])) ** 2) / np.sum(np.array(d["real"]) ** 2)), 2)
@@ -150,12 +157,13 @@ if __name__ == "__main__":
         d["nuevo"] = resumen(a_x(d["params"]), e, VER); d["actual"] = resumen(base_x(), e, VER)
         out[e] = d
         print(e, "VERIFICADO (30 semillas nuevas) actual:", d["actual"], "afinado:", d["nuevo"], flush=True)
-    cand = {"MEJOR": a_x(out["MEJOR"]["params"]), "WCA": a_x(out["WCA"]["params"])}
+    cand = {"MEJOR": a_x(out["MEJOR"]["params"]), PEOR: a_x(out[PEOR]["params"])}
     rob = []
     for n_, c in cand.items():
         r = [resumen(c, e, VER) for e in ESCN]; rob.append((min(q["score"] for q in r), n_, c, r))
     m, n_, c, r = max(rob, key=lambda z: z[0])
     out["ROBUSTO"] = dict(params={k: (round(v) if RNG[k][2] else round(v, 2)) for k, v in zip(K, c)}, base=n_, resultados=dict(zip(ESCN, r)))
     print("ROBUSTO", out["ROBUSTO"])
+    if REAL: out["sim_vs_real"] = dict(real=REAL["real"], sim_actual=out[PEOR]["actual"])   # que tanto se parece el simulador a la pista
     grafica(out, base_x(), ESCN)
     json.dump(out, open("afina_out.json", "w"), indent=1)
