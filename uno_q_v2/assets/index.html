@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calibrar colores</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; padding: 16px; background: #0f172a; color: #e2e8f0; }
+  h1 { font-size: 22px; margin: 0 0 12px; }
+  .ahora { display: flex; gap: 16px; align-items: center; background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 16px; }
+  #muestra { width: 90px; height: 90px; border-radius: 12px; border: 2px solid #475569; }
+  #color { font-size: 36px; font-weight: 700; }
+  #nums { font-family: monospace; color: #94a3b8; }
+  p { margin: 16px 0 8px; }
+  .botones { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+  button { font-size: 18px; padding: 16px 8px; border: 0; border-radius: 12px; color: #fff; cursor: pointer; }
+  button small { display: block; font-size: 12px; opacity: .85; font-family: monospace; }
+  .paso { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 16px; margin-top: 16px; font-size: 20px; }
+  .paso #pasoBtn { width: 100%; font-size: 24px; margin: 12px 0; }
+  .nav { display: flex; gap: 10px; }
+  .nav button { flex: 1; background: #475569; font-size: 16px; padding: 10px; }
+  #msg { margin-top: 12px; font-weight: 600; color: #4ade80; min-height: 1.2em; }
+  h1 { color: #38bdf8; }
+  b { color: #f8fafc; }
+  input, select { font-size: 16px; padding: 8px; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: #e2e8f0; }
+  #ctlT::first-line { font-size: 44px; font-weight: 800; }
+  #ctlT { white-space: pre-line; font-size: 18px; font-weight: 600; margin-top: 10px; font-family: monospace; color: #facc15; text-align: center; background: #0f172a; border-radius: 12px; padding: 10px; }
+</style>
+</head>
+<body>
+<div class="paso" style="margin-top:0">
+  <div><b>Corrida</b> <span id="ctlTxt" style="color:#94a3b8"></span></div>
+  <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+    <button style="background:#2e7d32;flex:1" onclick="control('corre')">▶ Iniciar</button>
+    <button style="background:#c62828;flex:1" onclick="control('alto')">■ Detener</button>
+    <button style="background:#6d4c41;flex:1" onclick="if (confirm('¿Borrar el mapa y el conteo? (laberinto nuevo)')) control('borra')">Borrar mapa</button>
+  </div>
+  <div id="ctlT">⏱ —</div>
+  <div id="ctlLog" style="font-family:monospace;font-size:14px;margin-top:4px;white-space:pre-line;color:#cbd5e1"></div>
+  <div style="font-size:14px;color:#94a3b8;margin-top:6px">Igual que el botón D2: pon el robot en la celda de inicio, viendo al mismo lado, antes de Iniciar.</div>
+</div>
+<h1>Calibrar colores</h1>
+<div class="ahora">
+  <div id="muestra"></div>
+  <div>
+    <div>El robot ve:</div>
+    <div id="color">...</div>
+    <div id="nums"></div>
+  </div>
+</div>
+<div class="paso">
+  <button id="tofBtn" style="background:#37474f;width:100%" onclick="verTof()">Ver sensores ToF</button>
+  <div id="tofPanel" style="display:none;margin-top:12px">
+    <svg id="tofSvg" viewBox="-200 -230 400 330" style="width:100%;max-width:420px;display:block;margin:auto;background:#111;border-radius:10px">
+      <rect x="-60" y="-60" width="120" height="120" rx="28" fill="#ffb300"/>
+      <text x="0" y="8" text-anchor="middle" font-size="22" fill="#111">robot</text>
+      <line id="lF" x1="0" y1="-54" x2="0" y2="-54" stroke-width="10"/>
+      <line id="lI" x1="-43" y1="-40" x2="-43" y2="-40" stroke-width="10"/>
+      <line id="lD" x1="43" y1="-40" x2="43" y2="-40" stroke-width="10"/>
+      <g id="flecha" style="transition:transform .2s"><path d="M0,-40 L22,-5 L8,-5 L8,35 L-8,35 L-8,-5 L-22,-5 Z" fill="#1e88e5" stroke="#fff" stroke-width="2"/></g>
+      <text id="tF" x="12" y="-200" font-size="20" fill="#fff"></text>
+      <text id="tI" x="-195" y="-50" font-size="20" fill="#fff"></text>
+      <text id="tD" x="195" y="-50" font-size="20" fill="#fff" text-anchor="end"></text>
+    </svg>
+    <div style="margin-top:10px;font-size:20px">Qué haría: <b id="accion">...</b></div>
+    <div style="font-size:14px;color:#94a3b8">Simulación: tapa o acerca un sensor con la mano y mira qué decide. No mueve el robot.</div>
+    <div id="tofTxt" style="font-family:monospace;font-size:15px;margin-top:8px;white-space:pre-line"></div>
+    <div style="margin-top:14px;border-top:1px solid #334155;padding-top:10px">
+      <b>Calibrar distancia</b> (con el robot quieto): pon algo plano y blanco a <b>100 mm</b> de la cara del sensor (vernier) y aprieta ese sensor. Promedia 10 lecturas y corrige el desfase; si lo repites, reemplaza la calibración anterior de ese sensor.
+      <div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap">
+        <button style="background:#455a64;padding:10px 14px" onclick="calTof(0, 100)">Izq a 100 mm</button>
+        <button style="background:#455a64;padding:10px 14px" onclick="calTof(1, 100)">Frente a 100 mm</button>
+        <button style="background:#455a64;padding:10px 14px" onclick="calTof(2, 100)">Der a 100 mm</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+        <button style="background:#475569;padding:6px 10px;font-size:14px" onclick="calTof(0, 0)">Borrar izq</button>
+        <button style="background:#475569;padding:6px 10px;font-size:14px" onclick="calTof(1, 0)">Borrar frente</button>
+        <button style="background:#475569;padding:6px 10px;font-size:14px" onclick="calTof(2, 0)">Borrar der</button>
+      </div>
+      <div id="calTxt" style="font-family:monospace;font-size:14px;margin-top:8px;white-space:pre-line"></div>
+    </div>
+    <div style="margin-top:14px;border-top:1px solid #334155;padding-top:10px">
+      <b>Calibrar avance</b> (sin encoders, por tiempo): pon el robot en el piso con espacio libre adelante y marca dónde está el eje. Aprieta <b>Avanzar 10 cm</b>, mide con regla cuánto avanzó de verdad y guárdalo: ajusta los ms por celda y se guarda en el robot.
+      <div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap">
+        <button style="background:#455a64;padding:10px 14px" onclick="avPrueba()">Avanzar 10 cm</button>
+        <input id="avMm" type="number" min="10" max="400" placeholder="mm reales" style="width:110px;font-size:18px;padding:6px">
+        <button style="background:#2e7d32;padding:10px 14px" onclick="avGuarda()">Guardar</button>
+      </div>
+      <div id="avTxt" style="font-family:monospace;font-size:14px;margin-top:8px"></div>
+    </div>
+  </div>
+</div>
+<div class="paso">
+  <div><b>Dónde está</b> (odometría)</div>
+  <div id="odo" style="font-family:monospace;font-size:15px;margin-top:6px;white-space:pre-line">...</div>
+</div>
+<div class="paso">
+  <div>Explora todo con mano izquierda: va a celdas sin ver (izquierda, frente, derecha); si no hay, regresa por el camino conocido a la celda más cercana con lados sin explorar. Con los 3 ToF (la menor de 3 lecturas). Tras un cambio brusco en un ToF escanea con 5 lecturas. Mapea paredes y colores; para al leer amarillo y la siguiente corrida va directo.</div>
+</div>
+<div class="paso">
+  <div>Cámara monocromática: camino rojo = blanco/pared (va lento), verde = negro; azul = bases de las paredes y punto de fuga (rumbo); línea blanca = "derecho"<span id="camExpTxt"></span>:</div>
+  <img id="cam" alt="sin cámara" style="width:100%;max-width:320px;image-rendering:pixelated;background:#000;border-radius:8px;margin-top:8px">
+  <div id="camTxt" style="font-family:monospace;font-size:14px;margin-top:6px;white-space:pre-line"></div>
+  <details style="margin-top:8px"><summary><b>Calibrar cámara</b></summary>
+    <div style="margin-top:8px">1. Exposición fija (0 = automática; unidades de 100 µs: 100 = 10 ms; la más baja es 1) y ganancia (-1 = no la toca; 0 = la más baja). Baja hasta que el piso salga negro y las paredes blancas, sin manchas.</div>
+    <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap">
+      Exp <input id="camExpo" type="number" value="50" min="0" style="width:70px;font-size:18px;padding:6px">
+      Gan <input id="camGain" type="number" value="-1" min="-1" style="width:70px;font-size:18px;padding:6px">
+      <button style="background:#455a64;padding:10px 14px" onclick="camApi('cam_expo?v=' + (parseInt(document.getElementById('camExpo').value) || 0) + '&g=' + (parseInt(document.getElementById('camGain').value) || 0))">Aplicar</button>
+    </div>
+    <div style="margin-top:10px">Sensibilidad al blanco (0 = normal; súbela de 10 en 10 si no ve la pared como blanco; negativa si ve blanco donde hay piso negro):</div>
+    <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+      <input id="camSens" type="number" value="0" min="-80" max="80" style="width:70px;font-size:18px;padding:6px">
+      <button style="background:#455a64;padding:10px 14px" onclick="camApi('cam_sens?v=' + (parseInt(document.getElementById('camSens').value) || 0))">Aplicar</button>
+    </div>
+    <div style="margin-top:10px">2. Rumbo: pon el robot derecho y centrado en un pasillo largo y aprieta:</div>
+    <button style="background:#455a64;padding:10px 14px;margin-top:6px" onclick="camApi('cam_cero')">Está derecho</button>
+    <div style="margin-top:10px">3. Gíralo a mano unos grados a la <b>derecha</b> (transportador), escríbelos y aprieta:</div>
+    <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+      <input id="camGiro" type="number" value="15" min="1" style="width:80px;font-size:18px;padding:6px"> °
+      <button style="background:#455a64;padding:10px 14px" onclick="camApi('cam_giro?g=' + (parseInt(document.getElementById('camGiro').value) || 0))">Fijar escala</button>
+    </div>
+    <div id="camDistBox" style="display:none;margin-top:10px">4. <b>Experimental</b>, distancia por cámara: pon el robot frente a una pared y aprieta en varias distancias (100 a 600 mm). Usa el ToF frontal como regla.
+      <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">
+        <button style="background:#455a64;padding:10px 14px" onclick="camApi('cam_dist')">Agregar punto</button>
+        <button style="background:#475569;padding:6px 10px;font-size:14px" onclick="camApi('cam_dist?borrar=1')">Borrar puntos</button>
+      </div>
+    </div>
+    <div id="camCal" style="font-family:monospace;font-size:14px;margin-top:8px;white-space:pre-line"></div>
+  </details>
+</div>
+<div class="paso">
+  <div id="pasoTxt"></div>
+  <button id="pasoBtn" onclick="pasoGuardar()"></button>
+  <div class="nav"><button onclick="ir(-1)">◀ Atrás</button><button onclick="ir(1)">Saltar ▶</button></div>
+</div>
+<p>O guarda uno suelto:</p>
+<div class="botones" id="botones"></div>
+<div id="msg"></div>
+<script>
+const fondo = { PISO: "#777", ROJO: "#c62828", VERDE: "#2e7d32", AZUL: "#1565c0", AMAR: "#c79100" };
+let hechos = false, paso = 0, nombres = [];
+
+function verPaso() {
+  const t = document.getElementById("pasoTxt"), b = document.getElementById("pasoBtn");
+  if (!nombres.length) return;
+  if (paso >= nombres.length) {
+    t.innerHTML = "<b>¡Listo!</b> Pasa el sensor por cada color y revisa que arriba diga el nombre correcto. Si uno falla, dale Atrás y repítelo.";
+    b.style.display = "none";
+    return;
+  }
+  const n = nombres[paso];
+  t.innerHTML = `<b>Paso ${paso + 1} de ${nombres.length}:</b> pon el robot con el sensor encima del <b>${n}</b>, quieto, y aprieta el botón.`;
+  b.style.display = "";
+  b.style.background = fondo[n] || "#555";
+  b.textContent = "Guardar " + n;
+}
+
+function ir(d) { paso = Math.max(0, Math.min(nombres.length, paso + d)); verPaso(); }
+
+async function pasoGuardar() { await guardar(paso, nombres[paso]); ir(1); }
+
+function pinta(d) {
+  const [r, g, b, c] = d.v;
+  const k = 255 / Math.max(r, g, b, 0.01);
+  document.getElementById("muestra").style.background = `rgb(${r * k},${g * k},${b * k})`;
+  document.getElementById("color").textContent = d.color;
+  if (d.odo) {
+    const o = d.odo;
+    document.getElementById("ctlTxt").textContent = o.corriendo ? "· corriendo (" + (o.fase || "...") + ")" : "· quieto";
+    document.getElementById("ctlT").textContent = "⏱ " + (o.tiempo == null ? "—" : o.tiempo.toFixed(1) + " s") +
+      (o.t_meta != null ? "\n🟡 amarillo a los " + o.t_meta.toFixed(1) + " s" : o.tiempo != null && !o.corriendo ? "\nsin amarillo" : "");
+    document.getElementById("ctlLog").textContent = (o.log || []).length ? "Colores vistos:\n" +
+      o.log.map(([t, c, p]) => t.toFixed(1).padStart(6) + " s  " + c.padEnd(6) + " celda " + p.join(",")).join("\n") : "";
+  }
+  if (d.odo) {
+    const o = d.odo, p = o.paredes || 0, si = (b) => (p & b ? "pared" : "libre");
+    const mm = (x) => (x === null || x === undefined ? "—" : Math.round(x) + " mm");
+    document.getElementById("odo").textContent =
+      (o.fase ? "En corrida (datos de la última lectura del robot)" : p & 8 ? "Avanzando, faltan " + mm(o.falta) : "Quieto") + "\n" +
+      "Sensores: izq " + si(1) + " · frente " + si(2) + " (" + mm(o.frente > 2000 ? null : o.frente) + ") · der " + si(4) + "\n" +
+      "Último avance: " + mm(o.mm) + (o.saltos ? " · salto en ToF " + o.saltos : "") + "\n" +
+      "Fase " + (o.fase || "—") + " · celda " + o.pos + " · mapa " + o.celdas + " celdas · meta " + (o.meta || "sin encontrar");
+  }
+  document.getElementById("nums").textContent = `r ${r.toFixed(2)}  g ${g.toFixed(2)}  b ${b.toFixed(2)}  c ${c}`;
+  const cont = document.getElementById("botones");
+  if (!hechos) {
+    d.colores.forEach((n, i) => {
+      const bt = document.createElement("button");
+      bt.style.background = fondo[n] || "#555";
+      bt.onclick = () => guardar(i, n);
+      cont.appendChild(bt);
+    });
+    hechos = true;
+    nombres = d.colores;
+    verPaso();
+  }
+  d.colores.forEach((n, i) => {
+    const f = d.refs[i];
+    cont.children[i].innerHTML = `Es ${n}<small>${f[0]} ${f[1]} ${f[2]} ${f[3]}</small>`;
+  });
+}
+
+async function guardar(i, n) {
+  document.getElementById("msg").textContent = "Guardando " + n + "...";
+  const d = await (await fetch("/api/guardar?i=" + i)).json();
+  pinta(d);
+  document.getElementById("msg").textContent = n + " guardado ✔";
+}
+
+let tofOn = false;
+function verTof() {
+  tofOn = !tofOn;
+  document.getElementById("tofPanel").style.display = tofOn ? "" : "none";
+  document.getElementById("tofBtn").textContent = tofOn ? "Ocultar sensores ToF" : "Ver sensores ToF";
+  if (tofOn) tof();
+}
+
+function rayo(id, x0, y0, dx, dy, mm, pared) {
+  const largo = Math.min(mm, 400) / 2.5;          // 400 mm = 160 px
+  const l = document.getElementById(id);
+  l.setAttribute("x2", x0 + dx * largo);
+  l.setAttribute("y2", y0 + dy * largo);
+  l.setAttribute("stroke", mm >= 2000 ? "#555" : mm < pared ? "#e53935" : "#43a047");
+}
+
+async function tof() {
+  if (!tofOn) return;
+  try {
+    const d = await (await fetch("/api/tof")).json();
+    const t = (mm) => (mm >= 2000 ? "nada" : mm + " mm");
+    rayo("lF", 0, -54, 0, -1, d.frente, d.pared_f || d.pared);
+    rayo("lI", -43, -40, -1, 0, d.izq, d.pared);
+    rayo("lD", 43, -40, 1, 0, d.der, d.pared);
+    document.getElementById("tF").textContent = t(d.frente);
+    document.getElementById("accion").textContent = d.accion;
+    const fl = document.getElementById("flecha");
+    fl.setAttribute("transform", "rotate(" + d.rel * 90 + ")");
+    fl.querySelector("path").setAttribute("fill", d.accion.startsWith("Retrocede") || d.accion.startsWith("Frena") ? "#e53935" : "#1e88e5");
+    document.getElementById("tI").textContent = t(d.izq);
+    document.getElementById("tD").textContent = t(d.der);
+    document.getElementById("tofTxt").textContent =
+      "Rojo = pared (lados < " + d.pared + " mm, frente < " + (d.pared_f || d.pared) + " mm), verde = libre, gris = no ve nada\n" +
+      (d.crudos ? "Sin calibrar: izq " + d.crudos[0] + " · frente " + d.crudos[1] + " · der " + d.crudos[2] + " mm\n" : "") +
+      (d.mueve ? "\nAvanzando, faltan " + d.falta + " mm" : "");
+    if (d.cal) pintaCal(d.cal);
+  } catch (e) {}
+  setTimeout(tof, 150);
+}
+
+function pintaCal(c) {
+  document.getElementById("calTxt").textContent = Object.entries(c).map(([n, v]) =>
+    n + ": " + (Object.keys(v.puntos).length ? "a 100 mm leía " + Object.values(v.puntos)[0] + " mm → corrige " +
+    (v.b >= 0 ? "+" : "") + v.b + " mm" : "sin calibrar")).join("\n");
+}
+
+async function avPrueba() {
+  document.getElementById("msg").textContent = "Avanzando 10 cm...";
+  try {
+    const r = await (await fetch("/api/avance_prueba")).json();
+    document.getElementById("avTxt").textContent = r.ok ? "Avanzó con " + r.ms + " ms por celda. Mide y guarda." : "No se pudo (¿está corriendo?)";
+  } catch (e) {}
+  document.getElementById("msg").textContent = "Listo ✔";
+}
+
+async function avGuarda() {
+  const mm = parseInt(document.getElementById("avMm").value);
+  if (!(mm > 0)) return;
+  try {
+    const r = await (await fetch("/api/avance_cal?mm=" + mm)).json();
+    document.getElementById("avTxt").textContent = "Guardado: " + r.ms + " ms por celda (prueba otra vez hasta que avance 100 mm)";
+  } catch (e) {}
+}
+
+async function calTof(s, mm) {
+  document.getElementById("msg").textContent = mm ? "Midiendo sensor " + ["izq", "frente", "der"][s] + " a " + mm + " mm..." : "Borrando...";
+  try { pintaCal(await (await fetch("/api/tof_cal?s=" + s + "&mm=" + mm)).json()); } catch (e) {}
+  document.getElementById("msg").textContent = "Listo ✔";
+}
+
+async function ciclo() {
+  try { pinta(await (await fetch("/api/lectura")).json()); } catch (e) {}
+  setTimeout(ciclo, 300);
+}
+ciclo();
+
+function pintaCam(d) {
+  if (d.img) document.getElementById("cam").src = "data:image/jpeg;base64," + d.img;
+  document.getElementById("camExpTxt").textContent = d.exp ? "; amarillo = base de la pared por columna (experimental)" : "";
+  document.getElementById("camDistBox").style.display = d.exp ? "" : "none";
+  if (d.img) document.getElementById("camTxt").textContent =
+    "Blanco en el camino: " + Math.round(d.blanco * 100) + " %   umbral de gris: " + d.umbral + "\n" +
+    "Rumbo: " + (d.ang === null ? "no ve las 2 paredes" : (d.ang > 0 ? "gira " + d.ang + "° a la derecha" : d.ang < 0 ? "gira " + -d.ang + "° a la izquierda" : "derecho")) +
+    (d.exp ? "\nDistancias por columna: " + d.virtual.map((v) => (v === null ? "-" : v)).join(" · ") + " mm" +
+      "\nAbertura en la celda siguiente: " + (d.abre.length ? d.abre.map((r) => (r < 0 ? "izquierda" : "derecha")).join(" y ") : "ninguna") : "");
+  const c = d.cal;
+  if (c) document.getElementById("camCal").textContent =
+    "Exposición " + (c.expo || "automática") + (c.gain >= 0 ? " · ganancia " + c.gain : "") + " · sensibilidad " + (c.sens || 0) +
+    (d.leido && d.leido.expo !== undefined ? "  (la cámara dice: modo " + d.leido.modo + ", exp " + d.leido.expo + ", gan " + d.leido.gain + ")" : "") + "\nDerecho en x = " + c.x0 + " · escala " + c.k + " rad/px" +
+    (d.exp ? "\nPuntos (fila: mm) " + (Object.entries(c.filas).map(([y, m]) => y + ":" + m).join("  ") || "ninguno") : "");
+}
+
+async function control(a) {
+  document.getElementById("msg").textContent = { corre: "Iniciando...", alto: "Deteniendo...", borra: "Borrando mapa..." }[a];
+  try { await fetch("/api/control?a=" + a); } catch (e) {}
+  document.getElementById("msg").textContent = { corre: "Corrida iniciada ✔", alto: "Detenido ✔", borra: "Mapa borrado ✔" }[a];
+}
+
+async function camApi(q) {
+  document.getElementById("msg").textContent = "Cámara...";
+  try { pintaCam(await (await fetch("/api/" + q)).json()); } catch (e) {}
+  document.getElementById("msg").textContent = "Listo ✔";
+}
+
+async function camara() {
+  try { pintaCam(await (await fetch("/api/foto")).json()); } catch (e) {}
+  setTimeout(camara, 500);
+}
+camara();
+</script>
+</body>
+</html>
