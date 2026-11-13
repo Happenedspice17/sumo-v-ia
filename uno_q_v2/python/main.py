@@ -144,7 +144,8 @@ Y_COLOR = 34                             # mm del eje al sensor de color (adelan
 
 # ---------- Camara (OV9281 monocromatica, obturador global): asistencia, nunca decide sola ----------
 CAM_ID = 2                               # /dev/video0 y video1 son internos de la placa: nunca son la camara
-USAR_CAM = False                         # apagada por ahora: solo ToF
+USAR_CAM = True                          # v2: la abre y la muestra en la web
+CAM_ACTUA = False                        # False: solo se ve; no frena ni corrige el rumbo (sin probar junto con el rumbo por pared)
 EXPERIMENTAL = False                     # True: version experimental, ademas distancias y aberturas por camara
 ANCHO, ALTO = 320, 240
 ARCH_CAM = DATOS + "/camara.json"
@@ -679,8 +680,8 @@ def vision(img):
 
 
 def mira():
-    """Foto y vision antes de avanzar, o None sin camara."""
-    img = foto() if cam is not None else None
+    """Foto y vision antes de avanzar, o None sin camara (o con CAM_ACTUA apagado: solo se ve en la web)."""
+    img = foto() if CAM_ACTUA and cam is not None else None
     return vision(img) if img is not None else None
 
 
