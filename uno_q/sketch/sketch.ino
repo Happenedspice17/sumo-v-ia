@@ -234,6 +234,7 @@ int rpcOdo(int i) {
     case 13: return atorones;                                // veces que el ultimo giro se atoro
     case 14: { int l = levantado; levantado = 0; return l; } // lo levantaron (se borra al leerlo)
     case 15: return (int)(pico * 1000);                      // golpe maximo del ultimo avance (mg)
+    case 16: return signo ? (int)lroundf((signo * yaw - ref) * 10) : 0;   // desvio en decimas de grado (barrido de cuadrar)
     case 9: case 10: case 11: return crudo[i - 9];           // izq, frente, der sin calibrar
     case 6: return dist[0];
     case 7: return dist[2];

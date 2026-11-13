@@ -5,34 +5,39 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Calibrar colores</title>
 <style>
-  body { font-family: system-ui, sans-serif; margin: 0; padding: 16px; background: #f4f4f4; color: #222; }
+  body { font-family: system-ui, sans-serif; margin: 0; padding: 16px; background: #0f172a; color: #e2e8f0; }
   h1 { font-size: 22px; margin: 0 0 12px; }
-  .ahora { display: flex; gap: 16px; align-items: center; background: #fff; border-radius: 12px; padding: 16px; }
-  #muestra { width: 90px; height: 90px; border-radius: 12px; border: 2px solid #ccc; }
+  .ahora { display: flex; gap: 16px; align-items: center; background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 16px; }
+  #muestra { width: 90px; height: 90px; border-radius: 12px; border: 2px solid #475569; }
   #color { font-size: 36px; font-weight: 700; }
-  #nums { font-family: monospace; color: #555; }
+  #nums { font-family: monospace; color: #94a3b8; }
   p { margin: 16px 0 8px; }
   .botones { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
   button { font-size: 18px; padding: 16px 8px; border: 0; border-radius: 12px; color: #fff; cursor: pointer; }
   button small { display: block; font-size: 12px; opacity: .85; font-family: monospace; }
-  .paso { background: #fff; border-radius: 12px; padding: 16px; margin-top: 16px; font-size: 20px; }
+  .paso { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 16px; margin-top: 16px; font-size: 20px; }
   .paso #pasoBtn { width: 100%; font-size: 24px; margin: 12px 0; }
   .nav { display: flex; gap: 10px; }
-  .nav button { flex: 1; background: #888; font-size: 16px; padding: 10px; }
-  #msg { margin-top: 12px; font-weight: 600; color: #0a7a2f; min-height: 1.2em; }
+  .nav button { flex: 1; background: #475569; font-size: 16px; padding: 10px; }
+  #msg { margin-top: 12px; font-weight: 600; color: #4ade80; min-height: 1.2em; }
+  h1 { color: #38bdf8; }
+  b { color: #f8fafc; }
+  input, select { font-size: 16px; padding: 8px; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: #e2e8f0; }
+  #ctlT::first-line { font-size: 44px; font-weight: 800; }
+  #ctlT { white-space: pre-line; font-size: 18px; font-weight: 600; margin-top: 10px; font-family: monospace; color: #facc15; text-align: center; background: #0f172a; border-radius: 12px; padding: 10px; }
 </style>
 </head>
 <body>
 <div class="paso" style="margin-top:0">
-  <div><b>Corrida</b> <span id="ctlTxt" style="color:#555"></span></div>
+  <div><b>Corrida</b> <span id="ctlTxt" style="color:#94a3b8"></span></div>
   <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
     <button style="background:#2e7d32;flex:1" onclick="control('corre')">▶ Iniciar</button>
     <button style="background:#c62828;flex:1" onclick="control('alto')">■ Detener</button>
     <button style="background:#6d4c41;flex:1" onclick="if (confirm('¿Borrar el mapa y el conteo? (laberinto nuevo)')) control('borra')">Borrar mapa</button>
   </div>
-  <div id="ctlT" style="font-size:22px;font-weight:700;margin-top:8px;font-family:monospace">⏱ —</div>
-  <div id="ctlLog" style="font-family:monospace;font-size:14px;margin-top:4px;white-space:pre-line;color:#333"></div>
-  <div style="font-size:14px;color:#666;margin-top:6px">Igual que el botón D2: pon el robot en la celda de inicio, viendo al mismo lado, antes de Iniciar.</div>
+  <div id="ctlT">⏱ —</div>
+  <div id="ctlLog" style="font-family:monospace;font-size:14px;margin-top:4px;white-space:pre-line;color:#cbd5e1"></div>
+  <div style="font-size:14px;color:#94a3b8;margin-top:6px">Igual que el botón D2: pon el robot en la celda de inicio, viendo al mismo lado, antes de Iniciar.</div>
 </div>
 <h1>Calibrar colores</h1>
 <div class="ahora">
@@ -58,9 +63,9 @@
       <text id="tD" x="195" y="-50" font-size="20" fill="#fff" text-anchor="end"></text>
     </svg>
     <div style="margin-top:10px;font-size:20px">Qué haría: <b id="accion">...</b></div>
-    <div style="font-size:14px;color:#666">Simulación: tapa o acerca un sensor con la mano y mira qué decide. No mueve el robot.</div>
+    <div style="font-size:14px;color:#94a3b8">Simulación: tapa o acerca un sensor con la mano y mira qué decide. No mueve el robot.</div>
     <div id="tofTxt" style="font-family:monospace;font-size:15px;margin-top:8px;white-space:pre-line"></div>
-    <div style="margin-top:14px;border-top:1px solid #ccc;padding-top:10px">
+    <div style="margin-top:14px;border-top:1px solid #334155;padding-top:10px">
       <b>Calibrar distancia</b> (con el robot quieto): pon algo plano y blanco a <b>100 mm</b> de la cara del sensor (vernier) y aprieta ese sensor. Promedia 10 lecturas y corrige el desfase; si lo repites, reemplaza la calibración anterior de ese sensor.
       <div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap">
         <button style="background:#455a64;padding:10px 14px" onclick="calTof(0, 100)">Izq a 100 mm</button>
@@ -68,13 +73,13 @@
         <button style="background:#455a64;padding:10px 14px" onclick="calTof(2, 100)">Der a 100 mm</button>
       </div>
       <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
-        <button style="background:#888;padding:6px 10px;font-size:14px" onclick="calTof(0, 0)">Borrar izq</button>
-        <button style="background:#888;padding:6px 10px;font-size:14px" onclick="calTof(1, 0)">Borrar frente</button>
-        <button style="background:#888;padding:6px 10px;font-size:14px" onclick="calTof(2, 0)">Borrar der</button>
+        <button style="background:#475569;padding:6px 10px;font-size:14px" onclick="calTof(0, 0)">Borrar izq</button>
+        <button style="background:#475569;padding:6px 10px;font-size:14px" onclick="calTof(1, 0)">Borrar frente</button>
+        <button style="background:#475569;padding:6px 10px;font-size:14px" onclick="calTof(2, 0)">Borrar der</button>
       </div>
       <div id="calTxt" style="font-family:monospace;font-size:14px;margin-top:8px;white-space:pre-line"></div>
     </div>
-    <div style="margin-top:14px;border-top:1px solid #ccc;padding-top:10px">
+    <div style="margin-top:14px;border-top:1px solid #334155;padding-top:10px">
       <b>Calibrar avance</b> (sin encoders, por tiempo): pon el robot en el piso con espacio libre adelante y marca dónde está el eje. Aprieta <b>Avanzar 10 cm</b>, mide con regla cuánto avanzó de verdad y guárdalo: ajusta los ms por celda y se guarda en el robot.
       <div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap">
         <button style="background:#455a64;padding:10px 14px" onclick="avPrueba()">Avanzar 10 cm</button>
@@ -118,7 +123,7 @@
     <div id="camDistBox" style="display:none;margin-top:10px">4. <b>Experimental</b>, distancia por cámara: pon el robot frente a una pared y aprieta en varias distancias (100 a 600 mm). Usa el ToF frontal como regla.
       <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">
         <button style="background:#455a64;padding:10px 14px" onclick="camApi('cam_dist')">Agregar punto</button>
-        <button style="background:#888;padding:6px 10px;font-size:14px" onclick="camApi('cam_dist?borrar=1')">Borrar puntos</button>
+        <button style="background:#475569;padding:6px 10px;font-size:14px" onclick="camApi('cam_dist?borrar=1')">Borrar puntos</button>
       </div>
     </div>
     <div id="camCal" style="font-family:monospace;font-size:14px;margin-top:8px;white-space:pre-line"></div>
@@ -164,7 +169,7 @@ function pinta(d) {
     const o = d.odo;
     document.getElementById("ctlTxt").textContent = o.corriendo ? "· corriendo (" + (o.fase || "...") + ")" : "· quieto";
     document.getElementById("ctlT").textContent = "⏱ " + (o.tiempo == null ? "—" : o.tiempo.toFixed(1) + " s") +
-      (o.t_meta != null ? "   amarillo a los " + o.t_meta.toFixed(1) + " s" : o.tiempo != null && !o.corriendo ? "   sin amarillo" : "");
+      (o.t_meta != null ? "\n🟡 amarillo a los " + o.t_meta.toFixed(1) + " s" : o.tiempo != null && !o.corriendo ? "\nsin amarillo" : "");
     document.getElementById("ctlLog").textContent = (o.log || []).length ? "Colores vistos:\n" +
       o.log.map(([t, c, p]) => t.toFixed(1).padStart(6) + " s  " + c.padEnd(6) + " celda " + p.join(",")).join("\n") : "";
   }

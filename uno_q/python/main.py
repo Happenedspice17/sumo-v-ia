@@ -38,6 +38,43 @@ COLORES = ["PISO", "ROJO", "VERDE", "AZUL", "AMAR"]
 OBJETIVO = 4                             # se detiene al encontrar este color (4 = AMAR)
 DATOS = "/app/datos"                     # en una subcarpeta: archivos en la raiz de la app confunden a App Lab
 os.makedirs(DATOS, exist_ok=True)
+LOGS = DATOS + "/logs"                   # todo lo que se imprime, en archivos: uno por arranque y uno por corrida
+
+
+class Registro:
+    """Copia la salida a LOGS/NNNN_fecha_nombre.txt (guarda los ultimos 100). Si el disco falla, sigue sin archivo."""
+    def __init__(self, sal):
+        self.sal, self.f = sal, None
+
+    def nuevo(self, nombre):
+        try:
+            os.makedirs(LOGS, exist_ok=True)
+            vs = sorted(v for v in os.listdir(LOGS) if v[:4].isdigit())
+            for v in vs[:-99]:
+                os.remove(os.path.join(LOGS, v))
+            if self.f:
+                self.f.close()
+            n = int(vs[-1][:4]) + 1 if vs else 1
+            self.f = open(f"{LOGS}/{n:04d}_{time.strftime('%m%d_%H%M%S')}_{nombre}.txt", "w")
+        except OSError as e:
+            self.f = None
+            self.sal.write(f"Log a archivo fallo: {e!r}\n")
+
+    def write(self, t):
+        self.sal.write(t)
+        if self.f:
+            try:
+                self.f.write(t)
+                self.f.flush()
+            except OSError:
+                self.f = None
+
+    def flush(self):
+        self.sal.flush()
+
+
+sys.stdout = Registro(sys.stdout)
+sys.stdout.nuevo("arranque")
 ARCH_COL = DATOS + "/colores.json"
 ARCH_MAPA = DATOS + "/mapa.json"
 ARCH_TOF = DATOS + "/tof.json"
@@ -64,11 +101,12 @@ RECORRIDO = -3                           # voto de un paso por donde ya paso (-5
 CENTRO = 5                               # celdas de la esquina de salida a la meta (laberinto de 11 x 11)
 ESTRATEGIA = "pista"                     # "pista": trae el mapa de la pista y se ubica con lo que ven los ToF;
                                          # "brujula": sin mapa (respaldo); "mapa": Tremaux con el mapa que arma
-PERDIDAS_MAX = 5                         # pista: perdido estas veces = no es esta pista (o la cambiaron mucho): solo brujula
+PERDIDAS_MAX = 10                        # pista: perdido estas veces = no es esta pista (o la cambiaron mucho): solo brujula
 MALA = 0.01                              # pista: lectura que casi no cuadra con ninguna hipotesis (0.7^3 = 0.34 cuadra)
 CONFIANZA = 0.6                          # pista: con menos certeza de donde esta, decide con la brujula
 RUIDO = 0.6                              # brujula: azar en cada decision (rompe ciclos)
 CASTIGO = 1.0                            # brujula: castigo por cada vez que ya tomo esa salida desde esa celda aproximada
+BARRE, BARRE_PASO = 35, 7                # grados: barrido para cuadrarse con las paredes (cuadrar)
 CENTRA_F = 600                           # mm: tras avanzar, con pared enfrente a menos de esto se centra en la celda con ella
 PASILLO = 3                              # celdas maximas de un tiron con pared a ambos lados (1 = parar en cada celda)
 VOTO_MAX = 5                             # cada lectura vota pared (+1) o libre (-1); tope para que el mapa se corrija
@@ -204,10 +242,76 @@ def girar(rel):
     if rel:
         rpc("girar", rel)
         esperar()
+        mal = abs(rpc("odo", 8)) > 10 or rpc("odo", 13)   # giro chueco o atorado: el frente ya no es de fiar
         rel += verifica_giro()
+        if mal:
+            cuadrar()
         time.sleep(0.1)                  # ToF frescos: con la lectura de antes del giro el sketch cree que tiene
                                          # la pared enfrente y avanza 0 mm (paso en pista)
     rumbo = (rumbo + rel) % 4
+
+
+def cuadra_angulo(pts):
+    """pts = [(grados, izq, frente, der)] de un barrido en su lugar. Devuelve los grados donde el robot queda
+    perpendicular a las paredes, o None si el barrido no sirve. Frente a una pared (o entre 2), la lectura
+    es minima justo de frente: ajusta una parabola y toma su vertice. El cono del ToF aplana el minimo, por eso
+    barre +-35 grados; un ajuste malo (puntas de pared, aberturas) se descarta por su error."""
+    xs = [p[0] for p in pts]
+    if max(xs) - min(xs) < BARRE:        # no pudo girar (atorado): no hay barrido
+        return None
+    mx = sum(xs) / len(xs)
+    X = [x - mx for x in xs]
+    n, s2, s3, s4 = len(X), sum(x * x for x in X), sum(x ** 3 for x in X), sum(x ** 4 for x in X)
+    series = []
+    fr = [p[2] for p in pts]
+    if min(fr) < CELDA - D_FRENTE_TOF and max(fr) < 2 * (CELDA - D_FRENTE_TOF):   # pared enfrente, en su celda
+        series.append(fr)
+    if max(max(p[1], p[3]) for p in pts) < 300:                                   # pared a los 2 lados
+        series.append([p[1] + p[3] for p in pts])
+    num = den = 0
+    for ys in series:
+        sy, sxy, sx2y = sum(ys), sum(x * y for x, y in zip(X, ys)), sum(x * x * y for x, y in zip(X, ys))
+        a = (n * sx2y - s2 * sy) / (n * s4 - s2 * s2)
+        if a <= 0:
+            continue
+        b = (sxy - a * s3) / s2
+        c = (sy - a * s2) / n
+        rms = (sum((a * x * x + b * x + c - y) ** 2 for x, y in zip(X, ys)) / n) ** 0.5
+        x0 = mx - b / (2 * a)
+        if abs(x0) <= 0.7 * BARRE and rms <= 0.15 * (max(ys) - min(ys)):
+            num, den = num + a * x0, den + a
+    return num / den if den else None
+
+
+def cuadrar():
+    """Recupera el frente con las paredes (el MPU solo mide giro, no sabe donde es el frente): barre +-BARRE
+    grados en su lugar leyendo los ToF, y deja el rumbo deseado perpendicular a la pared. Unos 5 s; solo con MPU."""
+    if rpc("ajustar", -BARRE) == 2:      # sin MPU giro por tiempo y no sabe cuanto: regresa y no toca nada
+        esperar()
+        if rpc("ajustar", BARRE) == 2:
+            esperar()
+        return
+    a, pts, g = 0, [], -BARRE            # a = grados reales desde donde empezo
+    for _ in range(2 * BARRE // BARRE_PASO + 1):
+        if rpc("alinear", 180) == 2:
+            esperar()
+        a += g + rpc("odo", 16) / 10     # en decimas: con grados enteros el error se acumulaba (8 grados en el barrido)
+        ls = [[], [], []]
+        for _ in range(5):
+            time.sleep(0.03)
+            for l, i in zip(ls, (6, 5, 7)):
+                l.append(rpc("odo", i))
+        pts.append([a] + [sorted(l)[2] for l in ls])
+        g = BARRE_PASO
+        rpc("ajustar", g)
+    x0 = cuadra_angulo(pts)
+    rpc("ajustar", round((x0 or 0) - a) or 1)   # deseado = perpendicular a la pared (ajustar(0) no hace nada)
+    for _ in range(2):                   # el giro corta antes por la inercia: el segundo lo termina
+        if rpc("alinear", 180) == 2:
+            esperar()
+    time.sleep(0.1)
+    print("Cuadre: " + (f"el frente estaba a {x0:+.0f} grados, corregido" if x0 is not None
+                        else "sin pared clara para cuadrarme, sigo igual"), [tuple(p) for p in pts])
 
 
 def verifica_giro():
@@ -863,6 +967,7 @@ creencia = {}                            # (celda, h0) -> probabilidad; h0 = rum
 cambios = {}                             # (celda, lado) -> votos de que la pista cambio ahi
 perdidas = 0                             # veces que se perdio en esta corrida
 malas = 0                                # lecturas seguidas que no cuadran con ninguna hipotesis
+recuadra = False                         # se perdio: antes de seguir se cuadra con las paredes
 
 
 def loc_inicia():
@@ -914,8 +1019,9 @@ def loc_observa(lect):
         tot += p
     malas = malas + 1 if tot < MALA else 0   # lo que ve no cuadra con ninguna hipotesis
     if malas >= 2:                       # perdido: se vuelve a ubicar en toda la pista, con los 4 rumbos
-        global perdidas
+        global perdidas, recuadra
         perdidas += 1
+        recuadra = True
         malas = 0
         if perdidas >= PERDIDAS_MAX:     # no es esta pista (la cambiaron): sigue solo con la brujula
             print("Pista: no cuadra con el mapa, sigo con la brujula")
@@ -947,6 +1053,7 @@ def loc_mueve(k, pared=False):
     (el frontal ve puntas de pared antes y corta el avance)."""
     if not creencia:
         return
+    k = max(k, 0)                        # un avance negativo (retrocedio al centrarse) vaciaba la creencia: brujula para siempre
     nueva = {}
     for (c, h0), p in creencia.items():
         h = (h0 + rumbo) % 4
@@ -1049,7 +1156,7 @@ def decidir(izq, frente, der, abre=()):
 def buscar_color():
     """Maquina de estados: SENSA (3 ToF, 3 lecturas; ESCANEA con 5 tras un salto) -> DECIDE -> GIRA -> AVANZA.
     Todo se decide quieto. El color se revisa todo el tiempo; amarillo o un toque a D2 la terminan."""
-    global encontrado
+    global encontrado, recuadra
     encontrado = False
     estado(1)
     f, abre = "SENSA", []
@@ -1065,6 +1172,11 @@ def buscar_color():
             f = "DECIDE"
         elif f == "DECIDE":
             rel = decidir(*lect, abre=abre)
+            if recuadra:                 # se acaba de perder: recupera el frente y vuelve a leer antes de moverse
+                recuadra = False
+                cuadrar()
+                f = "SENSA"
+                continue
             print("ToF izq {} frente {} der {} en {}:".format(*lect, pos),
                   {1: "derecha", 0: "frente", -1: "izquierda", 2: "media vuelta"}[rel])
             f = "GIRA"
@@ -1205,6 +1317,7 @@ def loop():
     signo[:] = [0, 0]                    # la esquina de salida puede cambiar
     usos.clear()
     loc_inicia()
+    sys.stdout.nuevo("corrida")
     t = t_ini = time.time()
     t_meta = t_fin = None
     log_col.clear()

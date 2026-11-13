@@ -572,7 +572,7 @@ Valores tal como están en `sketch.ino` y `main.py`. Cambia uno a la vez y prueb
 | `PASILLO` | 3 | celdas | Máximo de un tirón en pasillo (1 = parar en cada celda) | Tieso: 4; pierde posición: 2 |
 | `ESTRATEGIA` | "pista" | — | Mapa cargado + autolocalización (o `"brujula"`, o `"mapa"`: Trémaux) | Otra pista: `"brujula"` o corrige `PISTA_H`/`PISTA_V` |
 | `CONFIANZA` | 0.6 | — | Certeza mínima de dónde está para seguir el mapa | — |
-| `PERDIDAS_MAX` / `MALA` | 5 / 0.01 | — | Perdido estas veces = otra pista: solo brújula (antes se re-ubica) | — |
+| `PERDIDAS_MAX` / `MALA` | 10 / 0.01 | — | Perdido estas veces = otra pista: solo brújula (antes se re-ubica) | — |
 | `RUIDO` / `CASTIGO` | 0.6 / 1.0 | — | Brújula: azar y castigo por salida repetida | Da vueltas en una zona: `CASTIGO` 1.5 |
 | `CENTRA_F` | 600 | mm | Tras avanzar, con pared enfrente a menos de esto se centra con ella (`centrar`) | 0 = apagado |
 | `CENTRO` | 5 | celdas | De la esquina de salida al centro (11 × 11) | Otro tamaño: (lado − 1) / 2 |
