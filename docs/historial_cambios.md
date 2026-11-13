@@ -993,6 +993,8 @@ Amarillo del tamaño real (unos 13.5 × 15 cm, 4 cm a la izquierda del centro de
 - Observación: ver de menos (1 o más celdas) pesa 0.25, porque puede ser una punta de pared; ver de más pesa 0.1 o 0.02. Una pared enfrente (0) sigue siendo estricta.
 - Movimiento: si al terminar hay pared enfrente, llegó al final del pasillo aunque los mm digan menos (`loc_mueve(k, pared)`).
 - `PERDIDAS_MAX` = 10 (antes 5; 13-nov): el mapa ya está verificado; si se pierde, se vuelve a ubicar en toda la pista en vez de rendirse.
+- 13-nov, `cuadrar()`: al perderse o tras un giro chueco/atorado, barre ±35° en su lugar (pasos de 7°) y deja el rumbo deseado perpendicular a la pared (vértice de la parábola de las lecturas del frontal, o de izq + der entre 2 paredes). El MPU-6050 solo mide giro; el frente absoluto lo dan las paredes. Sketch: `odo(16)` = desvío en décimas de grado (con enteros el ángulo del barrido se desfasaba 8°). Simulación (`uno_q/sim/barrido.py`, 1500 celdas al azar, chueco hasta ±25°): sirve en 39 % de las celdas (pared enfrente o a los 2 lados); error final mediana 1.4°, p90 4.9°. Sin probar en pista.
+- 13-nov: todo lo impreso se guarda en `/app/datos/logs/` (un archivo por arranque y uno por corrida, últimos 100). Web: tema oscuro y cronómetro grande. Un avance negativo ya no vacía la localización.
 - Simulador: rayos laterales del cono a ±12°, pero una cara casi paralela al rayo (pared lateral) no regresa luz; solo las puntas.
 
 Con el log real: antes perdido en la celda 9; ahora sigue ubicado hasta la 13, donde los laterales salen al revés que el mapa (izq 320, der 56) y se re-ubica. El simulador no reproduce la falla (100 % en la pista con y sin el cambio), así que falta probar en pista.
