@@ -392,7 +392,7 @@ stateDiagram-v2
 **Figura 7. La pista cargada en `main.py`.** Qué mirar: el amarillo (6, 6) está dentro de un cuarto con 2 entradas; el robot puede salir de cualquiera de las 4 esquinas.
 :::
 
-El robot trae el mapa de la pista (`PISTA_H`, `PISTA_V`, `PISTA_META` en `main.py`, sacado de las fotos; imagen en `docs/img/pista_mapa.png`). No sabe de qué esquina sale ni hacia dónde mira: empieza con 16 hipótesis (4 esquinas × 4 rumbos). En cada celda compara cuántas celdas libres ven los ToF a la izquierda, al frente y a la derecha (`(lectura − 41 o 30) / 180`) con las de cada hipótesis en el mapa, y las pesa (Bayes: igual 0.7, por 1 celda 0.12, más 0.02). Al avanzar mueve cada hipótesis *k* celdas, o *k* ± 1, porque la odometría no es exacta, sin atravesar paredes. Así la odometría solo sugiere y las paredes deciden dónde está. Con la hipótesis principal en 60 % o más (`CONFIANZA`) va por el camino más corto del mapa al amarillo. Si los ToF dicen pared donde el mapa dice paso (2 veces), corrige el mapa y busca otro camino. Si lo que ve no cuadra con ninguna hipótesis 2 lecturas seguidas (`MALA`), concluye que la pista no es la misma (`PERDIDAS_MAX` = 1) y sigue solo con la brújula. Sin certeza, también decide la brújula.
+El robot trae el mapa de la pista (`PISTA_H`, `PISTA_V`, `PISTA_META` en `main.py`, sacado de las fotos; imagen en `docs/img/pista_mapa.png`). No sabe de qué esquina sale ni hacia dónde mira: empieza con 16 hipótesis (4 esquinas × 4 rumbos). En cada celda compara cuántas celdas libres ven los ToF a la izquierda, al frente y a la derecha (`(lectura − 41 o 30) / 180`) con las de cada hipótesis en el mapa, y las pesa (Bayes: igual 0.7; ver de menos 0.25, porque el cono de unos 25° del ToF ve puntas de pared antes; ver 1 de más 0.1; lo demás 0.02; una pared enfrente es estricta). Al avanzar mueve cada hipótesis *k* celdas, o *k* ± 1, porque la odometría no es exacta, sin atravesar paredes; si termina con pared enfrente, la lleva al final del pasillo. Así la odometría solo sugiere y las paredes deciden dónde está. Con la hipótesis principal en 60 % o más (`CONFIANZA`) va por el camino más corto del mapa al amarillo. Si los ToF dicen pared donde el mapa dice paso (2 veces), corrige el mapa y busca otro camino. Si lo que ve no cuadra con ninguna hipótesis 2 lecturas seguidas (`MALA`), se vuelve a ubicar en toda la pista; a la 5.ª vez (`PERDIDAS_MAX`) concluye que la pista no es la misma y sigue solo con la brújula. Sin certeza, también decide la brújula.
 
 
 ::: figura
@@ -572,7 +572,7 @@ Valores tal como están en `sketch.ino` y `main.py`. Cambia uno a la vez y prueb
 | `PASILLO` | 3 | celdas | Máximo de un tirón en pasillo (1 = parar en cada celda) | Tieso: 4; pierde posición: 2 |
 | `ESTRATEGIA` | "pista" | — | Mapa cargado + autolocalización (o `"brujula"`, o `"mapa"`: Trémaux) | Otra pista: `"brujula"` o corrige `PISTA_H`/`PISTA_V` |
 | `CONFIANZA` | 0.6 | — | Certeza mínima de dónde está para seguir el mapa | — |
-| `PERDIDAS_MAX` / `MALA` | 1 / 0.01 | — | Perdido estas veces = otra pista: solo brújula | — |
+| `PERDIDAS_MAX` / `MALA` | 5 / 0.01 | — | Perdido estas veces = otra pista: solo brújula (antes se re-ubica) | — |
 | `RUIDO` / `CASTIGO` | 0.6 / 1.0 | — | Brújula: azar y castigo por salida repetida | Da vueltas en una zona: `CASTIGO` 1.5 |
 | `CENTRA_F` | 600 | mm | Tras avanzar, con pared enfrente a menos de esto se centra con ella (`centrar`) | 0 = apagado |
 | `CENTRO` | 5 | celdas | De la esquina de salida al centro (11 × 11) | Otro tamaño: (lado − 1) / 2 |

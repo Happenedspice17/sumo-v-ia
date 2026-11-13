@@ -64,7 +64,7 @@ RECORRIDO = -3                           # voto de un paso por donde ya paso (-5
 CENTRO = 5                               # celdas de la esquina de salida a la meta (laberinto de 11 x 11)
 ESTRATEGIA = "pista"                     # "pista": trae el mapa de la pista y se ubica con lo que ven los ToF;
                                          # "brujula": sin mapa (respaldo); "mapa": Tremaux con el mapa que arma
-PERDIDAS_MAX = 1                         # pista: perdido estas veces = es otra pista (o la cambiaron mucho): solo brujula
+PERDIDAS_MAX = 5                         # pista: perdido estas veces = no es esta pista (o la cambiaron mucho): solo brujula
 MALA = 0.01                              # pista: lectura que casi no cuadra con ninguna hipotesis (0.7^3 = 0.34 cuadra)
 CONFIANZA = 0.6                          # pista: con menos certeza de donde esta, decide con la brujula
 RUIDO = 0.6                              # brujula: azar en cada decision (rompe ciclos)
@@ -284,7 +284,7 @@ def avanzar(celdas=1):
         sig = vecino(pos, rumbo)
         celda(pos)[rumbo] = celda(sig)[(rumbo + 2) % 4] = -VOTO_MAX
         pos = sig
-    loc_mueve(n)
+    loc_mueve(n, rpc("odo", 5) < FRENTE_LIBRE)
     print(f"Avanzo {mm} mm -> {pos}" + (f", salto en ToF {saltos}" if saltos else ""))
     return saltos
 
@@ -908,7 +908,8 @@ def loc_observa(lect):
             if o is None:
                 p *= 0.7 if m >= 5 else 0.2 if m == 4 else 0.03
             else:
-                p *= 0.7 if min(m, 5) == min(o, 5) else 0.12 if abs(m - o) == 1 else 0.02
+                m, o = min(m, 5), min(o, 5)          # el cono (~25 grados) ve puntas de pared antes: ve de menos, casi nunca de mas
+                p *= 0.7 if m == o else 0.25 if 0 < o < m else 0.1 if o == m + 1 else 0.02
         creencia[(c, h0)] = p
         tot += p
     malas = malas + 1 if tot < MALA else 0   # lo que ve no cuadra con ninguna hipotesis
@@ -940,14 +941,20 @@ def loc_observa(lect):
                     del cambios[k]
 
 
-def loc_mueve(k):
-    """Avanzo ~k celdas (odometria): cada hipotesis avanza k (o k +- 1) por donde la pista deja pasar."""
+def loc_mueve(k, pared=False):
+    """Avanzo ~k celdas (odometria): cada hipotesis avanza k (o k +- 1) por donde la pista deja pasar.
+    pared: termino con pared enfrente, asi que llego al final del pasillo aunque los mm digan menos
+    (el frontal ve puntas de pared antes y corta el avance)."""
     if not creencia:
         return
     nueva = {}
     for (c, h0), p in creencia.items():
         h = (h0 + rumbo) % 4
-        run = tramo(c, h, k + 1)
+        run = tramo(c, h, k + 4)
+        if pared:
+            d = (c[0] + PDX[h] * run, c[1] + PDY[h] * run)
+            nueva[(d, h0)] = nueva.get((d, h0), 0) + p * (0.7 if abs(run - k) <= 1 else 0.2 if run - k <= 3 else 0.02)
+            continue
         for kk, pk in ((k, 0.7), (k - 1, 0.15), (k + 1, 0.15)):
             if kk < 0:
                 continue
