@@ -84,10 +84,12 @@ class Mapa:
         if nx: return s.vw(k, y)
         if ny: return s.hw(x, l)
         return False
-    def rayo(s, x, y, a, maxd=2000.0):
-        """Distancia a la primera cara de pared/poste por el rayo (a en rad, 0 = +y, horario)."""
+    def rayo(s, x, y, a, maxd=2000.0, roza=False):
+        """Distancia a la primera cara de pared/poste por el rayo (a en rad, 0 = +y, horario).
+        roza: si la cara es casi paralela al rayo (pared lateral) no regresa luz: maxd."""
         dx, dy = math.sin(a), math.cos(a)
         best = maxd
+        cara = None
         # lineas verticales
         if abs(dx) > 1e-6:
             k = math.floor(x / C) + (1 if dx > 0 else 0)
@@ -97,7 +99,7 @@ class Mapa:
                 if t > best: break
                 if t >= 0:
                     yy = y + t * dy
-                    if s.vw(k, yy): best = t; break
+                    if s.vw(k, yy): best = t; cara = abs(dx); break
                 k += 1 if dx > 0 else -1
                 if k < 0 or k > N: break
         if abs(dy) > 1e-6:
@@ -108,9 +110,11 @@ class Mapa:
                 if t > best: break
                 if t >= 0:
                     xx = x + t * dx
-                    if s.hw(xx, k): best = t; break
+                    if s.hw(xx, k): best = t; cara = abs(dy); break
                 k += 1 if dy > 0 else -1
                 if k < 0 or k > N: break
+        if roza and cara is not None and cara < 0.5:
+            return maxd
         return best
 
 # contorno del robot (cuadrado 120, esquinas R30), marco del robot: x derecha, y adelante, centro = eje
@@ -137,7 +141,7 @@ BASE = dict(
     # python
     PARED=120, FRENTE_LIBRE=120, VOTO_MAX=5, PASILLO=3, MUESTRAS=3, AGREGA="min", CENTRO_ON=True,
     # fisica
-    K_V=3.0, DEAD=40, TRACK=100.0, ASIM=0.03, TOF_SIG=0.03, TOF_FALLA=0.01, CONO=2, GYRO_BIAS=0.03,
+    K_V=3.0, DEAD=40, TRACK=100.0, ASIM=0.03, TOF_SIG=0.03, TOF_FALLA=0.01, CONO=12, GYRO_BIAS=0.03,
     VIB="normal", T_MAX=480.0,
 )
 
@@ -172,7 +176,7 @@ class Robot:
         c, sn = math.cos(s.th), math.sin(s.th)
         x = s.x + px * c + py * sn
         y = s.y - px * sn + py * c
-        d = min(s.M.rayo(x, y, s.th + a + math.radians(o)) * math.cos(math.radians(o)) for o in (-P["CONO"], 0, P["CONO"]))
+        d = min(s.M.rayo(x, y, s.th + a + math.radians(o), roza=bool(o)) * math.cos(math.radians(o)) for o in (-P["CONO"], 0, P["CONO"]))
         if r.random() < P["TOF_FALLA"]:
             return 9999 if r.random() < .7 else r.uniform(5, d)
         d += r.gauss(0, 2 + P["TOF_SIG"] * d)

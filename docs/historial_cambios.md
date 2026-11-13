@@ -982,6 +982,22 @@ Primer intento sin detectar "otra pista": 42 % en laberintos distintos; con la r
 Amarillo del tamaño real (unos 13.5 × 15 cm, 4 cm a la izquierda del centro de su celda) y solo cuenta con el sensor de color 2.5 cm dentro del parche: pista 98 % (24 s), brújula 95 % (41 s); entrada cerrada 92 % contra 74 %; odometría mala 80 % contra 70 %.
 :::
 
+## Etapa 53. Primera corrida con el mapa: el frontal ve puntas de pared (13-nov)
+
+::: ficha
+**Del equipo.** Calibrado todo (avance 65 mm → 1077 ms por celda; frontal −81 mm, medido 2 veces contra la misma pared). En pista se queda dando vueltas en una zona y nunca sale en 5 min.
+
+**Diagnóstico (log reproducido contra el mapa).** Salió de la esquina (10, 10) mirando al oeste y se ubicó bien en 1 lectura. Pero el ToF frontal tiene un cono de unos 25° y ve las puntas de las paredes laterales antes que la pared de enfrente: leyó 407 mm (una punta a 2.5 celdas) con la pared real a 4 celdas, y reportó 385 mm cuando avanzó 4 celdas. Lo mismo en (1, 2): "avancé 0 mm" con el frontal pasando de 258 a 25. Con eso la localización dio "no cuadra con el mapa" en la celda 9 y, con `PERDIDAS_MAX` = 1, siguió solo con la brújula, que con la odometría desfasada se cicla en una zona.
+
+**Cambio.**
+- Observación: ver de menos (1 o más celdas) pesa 0.25, porque puede ser una punta de pared; ver de más pesa 0.1 o 0.02. Una pared enfrente (0) sigue siendo estricta.
+- Movimiento: si al terminar hay pared enfrente, llegó al final del pasillo aunque los mm digan menos (`loc_mueve(k, pared)`).
+- `PERDIDAS_MAX` = 5: el mapa ya está verificado; si se pierde, se vuelve a ubicar en toda la pista en vez de rendirse.
+- Simulador: rayos laterales del cono a ±12°, pero una cara casi paralela al rayo (pared lateral) no regresa luz; solo las puntas.
+
+Con el log real: antes perdido en la celda 9; ahora sigue ubicado hasta la 13, donde los laterales salen al revés que el mapa (izq 320, der 56) y se re-ubica. El simulador no reproduce la falla (100 % en la pista con y sin el cambio), así que falta probar en pista.
+:::
+
 # Pruebas realizadas
 
 ::: corto
