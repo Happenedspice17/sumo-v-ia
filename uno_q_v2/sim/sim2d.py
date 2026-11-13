@@ -135,7 +135,7 @@ BASE = dict(
     # sketch
     MS_CELDA=700, MS_90=250, VEL_EXPLORA=140, VEL_LENTO=100, VEL_GIRO=130, VEL_MIN=80, AJUSTE_DER=-10,
     PARED_S=120, PARED_F=55, D_FRENTE=30, D_CERCA=5, FRENA_K=2, D_LADO=41, KC=0.8, KD=0.0, RANGO=250,
-    SALTO=120, N_SALTO=2, TRAS_SALTO=85, TRAS_CIERRA=115, BORDES=True, CARRIL_SI=75, CARRIL_NO=95, LAT_RUMBO=True, ROZA=True, KG=2.0, ADELANTO=6, DERIVA_CORR=True,
+    SALTO=120, N_SALTO=2, TRAS_SALTO=85, TRAS_CIERRA=115, BORDES=True, CARRIL_SI=75, CARRIL_NO=95, LAT_RUMBO=True, ROZA=True, KG=2.0, KI_RUMBO=0.5, KI_MIN=4.0, KG_LIM=20, ASIM_MED=-0.03, ADELANTO=6, DERIVA_CORR=True,
     CHOQUE="confirma", CHOQUE_G=1.5, CHOQUE_FUERTE=2.5, CONFIRMA_MS=250, RETRO_MS=450, VEL_RETRO=110, ATORADO_MS=400,
     MPU=True, ALINEAR=True, CARRIL=True, FIX_HECHO=True, ALIN_SENSA=False, STALL=False, ESQUIVA=True, CENTRA_F=250, ABRE=True, EST="brujula", CONOCE=False, PISTA=False, ESQ=-1, H0=-1, AMAR_W=135, AMAR_H=150, AMAR_DX=-40, AMAR_DY=-10, AMAR_MARGEN=25, CIERRA=False, CAMBIOS=0, MANO_N=25, RUIDO=0.6, PEN=1.0,
     # python
@@ -154,7 +154,8 @@ class Robot:
     def __init__(s, P, W, seed):
         s.P, s.M, s.r = P, Mapa(W), random.Random(seed * 7919 + 1)
         r = s.r
-        s.asim = 1 + r.gauss(-0.03, P["ASIM"])          # el izquierdo un poco mas debil (como en pista)
+        s.irumbo = 0.0
+        s.asim = 1 + r.gauss(P["ASIM_MED"], P["ASIM"])          # el izquierdo un poco mas debil (como en pista)
         s.bias = r.gauss(0, P["GYRO_BIAS"])             # grados/s de deriva del giroscopio
         s.t = 0.0
         s.choques = s.detectados = s.falsos = s.atorones = 0
@@ -321,6 +322,7 @@ class Robot:
         objetivo = max(s.dist[1] - total, P["D_FRENTE"]) if s.dist[1] < P["RANGO"] else -1
         saltos = 0; choque = 0; dmin = 9999; tbaja = s.t; vel = P["VEL_MIN"]
         s.lado = [d < (P["CARRIL_SI"] + P["CARRIL_NO"]) / 2 for d in s.dist]; s.nlado = [0] * 3
+        sdev = 0.0; ndev = 0
         s.cierres = 0; tlat = 0; lat0 = [0, 0]; latok = [False, False]; devlat = 0; nlat = 0
         tchoque = 0; fchoque = 0; pico = 0; tretro = 0
         ecen = None; decen = 0; tcen = 0; tpar = 0
@@ -343,6 +345,8 @@ class Robot:
                 st["t_ini"] = s.t - (st["total"] - f) * P["MS_CELDA"] / C / 1000
                 st["dur"] = max(st["total"] * P["MS_CELDA"] / C, 50) / 1000
         def fin():
+            if ndev > 20 and not choque and abs(sdev / ndev) >= P["KI_MIN"]:   # aprende entre avances: desvio medio de este
+                s.irumbo = max(-40, min(40, s.irumbo + P["KI_RUMBO"] * sdev / ndev))
             hecho = st["total"] - falta()
             s.frena()
             return hecho, saltos, choque
@@ -431,7 +435,9 @@ class Robot:
                 decen = (e - ecen) / (s.t - tcen); ecen, tcen = e, s.t
             corr = max(-40, min(40, P["KC"] * e + P["KD"] * decen)) + P["AJUSTE_DER"] / 2
             if P["MPU"] and P["KG"]:
-                corr += max(-20, min(20, P["KG"] * (s.yaw - s.ref)))
+                sdev += s.yaw - s.ref; ndev += 1
+                lim = P["KG_LIM"]
+                corr += max(-lim, min(lim, P["KG"] * (s.yaw - s.ref))) + s.irumbo
                 if P["LAT_RUMBO"]:                      # v2: rumbo con una pared lateral (port del sketch)
                     L2, R2 = s.dist[0] < P["CARRIL_SI"], s.dist[2] < P["CARRIL_SI"]
                     dev = s.yaw - s.ref

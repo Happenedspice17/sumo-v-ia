@@ -125,6 +125,12 @@ const uint8_t MPU_ADDR = 0x68;   // no "MPU": es una macro de CMSIS (la unidad d
 const float LSB_DPS = 65.5;   // +-500 grados/s
 const float ADELANTO = 6;     // grados: corta el giro antes por la inercia (calibrar: si se pasa, sube)
 const float KG = 2.0;         // PWM por grado de desvio en recta
+// v2: en pista se iba a la izquierda 5 a 15 grados en cada celda con la correccion ya al tope (un motor empuja menos).
+// Al terminar cada avance, si el desvio medio fue de KI_MIN grados o mas, suma KI_RUMBO PWM por grado a un ajuste fijo
+// que se queda para los siguientes avances (un AJUSTE_DER que se calibra solo). Tope 40 PWM.
+const float KI_RUMBO = 0.5, KI_MIN = 4;
+float iRumbo = 0, sDev = 0;
+long nDev = 0;
 bool mpuOk = false;
 float yaw = 0, bias = 0;      // grados con el signo del montaje
 int signo = 0;                // +1/-1 segun como quedo montado; lo aprende en el primer giro (0 = aun no)
@@ -350,6 +356,8 @@ void iniciaMov() {
     objetivo = dist[1] < RANGO && !soloTiempo ? max(dist[1] - (int)total, D_FRENTE) : -1;
     if (objetivo >= 0 && dist[1] - total < D_FRENTE) total = max(dist[1] - D_FRENTE, 0);   // pared antes: solo cuenta lo que cabe
     saltos = 0;
+    sDev = 0;
+    nDev = 0;
     cierres = 0;
     for (int i = 0; i < 3; i += 2) { lado[i] = dist[i] < (CARRIL_SI + CARRIL_NO) / 2; nLado[i] = 0; }
     tLat = 0;
@@ -416,7 +424,10 @@ void borde(int i, bool pared, long f) {
 
 void termina() {
   soloTiempo = false;
-  if (tipo == AVANZA) hecho = total - falta();
+  if (tipo == AVANZA) {
+    hecho = total - falta();
+    if (nDev > 20 && !choque && fabs(sDev / nDev) >= KI_MIN) iRumbo = constrain(iRumbo + KI_RUMBO * sDev / nDev, -40.0f, 40.0f);
+  }
   if (tipo == GIRA && mpuOk && !signo && fabs(yaw - yaw0) > 30) {
     signo = (yaw - yaw0) * dirL > 0 ? 1 : -1;   // primer giro: aprende hacia donde crece el yaw
     ref = signo * yaw0 + arg;
@@ -525,7 +536,10 @@ void control() {
   vel = min(vel + 6.0f, tope);
   float corr = centrado();
   if (mpuOk && signo) {
-    corr += constrain(KG * (signo * yaw - ref), -20.0f, 20.0f);   // sostiene el rumbo
+    // v2: sostiene el rumbo. iRumbo = lo aprendido de la diferencia entre motores (ver termina())
+    sDev += signo * yaw - ref;
+    nDev++;
+    corr += constrain(KG * (signo * yaw - ref), -20.0f, 20.0f) + iRumbo;
     // v2: rumbo con UNA pared lateral basta. En 300 ms junto a la misma pared, si su lectura cambio x mm mientras
     // avanzo a mm, el robot va chueco atan(x / a) respecto a la pared. El giroscopio dice otra cosa: la diferencia
     // es su deriva (o que lo pusieron chueco al salir). Corrige 30 % cada ventana, sin detenerse.
