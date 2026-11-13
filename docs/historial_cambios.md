@@ -992,7 +992,7 @@ Amarillo del tamaño real (unos 13.5 × 15 cm, 4 cm a la izquierda del centro de
 **Cambio.**
 - Observación: ver de menos (1 o más celdas) pesa 0.25, porque puede ser una punta de pared; ver de más pesa 0.1 o 0.02. Una pared enfrente (0) sigue siendo estricta.
 - Movimiento: si al terminar hay pared enfrente, llegó al final del pasillo aunque los mm digan menos (`loc_mueve(k, pared)`).
-- `PERDIDAS_MAX` = 5: el mapa ya está verificado; si se pierde, se vuelve a ubicar en toda la pista en vez de rendirse.
+- `PERDIDAS_MAX` = 10 (antes 5; 13-nov): el mapa ya está verificado; si se pierde, se vuelve a ubicar en toda la pista en vez de rendirse.
 - Simulador: rayos laterales del cono a ±12°, pero una cara casi paralela al rayo (pared lateral) no regresa luz; solo las puntas.
 
 Con el log real: antes perdido en la celda 9; ahora sigue ubicado hasta la 13, donde los laterales salen al revés que el mapa (izq 320, der 56) y se re-ubica. El simulador no reproduce la falla (100 % en la pista con y sin el cambio), así que falta probar en pista.

@@ -137,7 +137,7 @@ BASE = dict(
     PARED_S=120, PARED_F=55, D_FRENTE=30, D_CERCA=5, FRENA_K=2, D_LADO=41, KC=0.8, KD=0.0, RANGO=600,
     SALTO=120, N_SALTO=2, TRAS_SALTO=110, KG=2.0, ADELANTO=6, DERIVA_CORR=True,
     CHOQUE="confirma", CHOQUE_G=1.5, CHOQUE_FUERTE=2.5, CONFIRMA_MS=250, RETRO_MS=450, VEL_RETRO=110, ATORADO_MS=400,
-    MPU=True, ALINEAR=True, CARRIL=True, FIX_HECHO=True, ALIN_SENSA=False, STALL=False, ESQUIVA=True, CENTRA_F=600, ABRE=True, EST="brujula", CONOCE=False, PISTA=False, ESQ=-1, AMAR_W=135, AMAR_H=150, AMAR_DX=-40, AMAR_DY=-10, AMAR_MARGEN=25, CIERRA=False, CAMBIOS=0, MANO_N=25, RUIDO=0.6, PEN=1.0,
+    MPU=True, ALINEAR=True, CARRIL=True, FIX_HECHO=True, ALIN_SENSA=False, STALL=False, ESQUIVA=True, CENTRA_F=600, ABRE=True, EST="brujula", CONOCE=False, PISTA=False, ESQ=-1, H0=-1, AMAR_W=135, AMAR_H=150, AMAR_DX=-40, AMAR_DY=-10, AMAR_MARGEN=25, CIERRA=False, CAMBIOS=0, MANO_N=25, RUIDO=0.6, PEN=1.0,
     # python
     PARED=120, FRENTE_LIBRE=120, VOTO_MAX=5, PASILLO=3, MUESTRAS=3, AGREGA="min", CENTRO_ON=True,
     # fisica
@@ -162,7 +162,7 @@ class Robot:
         esq = r.choice(esqs) if P["ESQ"] < 0 else esqs[P["ESQ"]]
         s.x, s.y = (esq[0] + .5) * C + r.gauss(0, 5), (esq[1] + .5) * C + r.gauss(0, 5)
         hs = [h for h in range(4) if not W[esq][h]]
-        s.h0 = r.choice(hs)
+        s.h0 = r.choice(hs) if P["H0"] < 0 else P["H0"]      # H0: tambien viendo a una pared (prueba de tontos)
         s.th = math.radians(90 * s.h0 + r.gauss(0, 2))  # rumbo real (rad, 0 = +y, horario)
         s.yaw = 0.0                                     # yaw del giroscopio (grados, horario)
         s.ref = 0.0
@@ -506,7 +506,7 @@ def corrida(P, seed):
         return [sorted(l)[len(l) // 2] for l in lst]
     while rb.t < P["T_MAX"]:
         if rb.en_meta(): return dict(ok=1, t=rb.t, choques=rb.choques, det=rb.detectados, falsos=rb.falsos,
-                                     desfase=desfase, dec=decisiones)
+                                     desfase=desfase, dec=decisiones, perd=g["perdidas"], brujula=not g["creencia"])
         if P["ALIN_SENSA"]: rb.alinear(45)
         lect = tof3(P["MUESTRAS"])
         rb.t += 0.25                                              # rpc, decidir, prints
@@ -543,7 +543,7 @@ def corrida(P, seed):
                 rb.ref -= gg; rb.alinear(45)
         if P["CENTRA_F"]: rb.centra_frente(P["CENTRA_F"])
         k = round(hecho / C)
-        g["loc_mueve"](k)
+        g["loc_mueve"](k, rb.dist[1] < P["FRENTE_LIBRE"])
         for i in range(k):
             pos = g["pos"]; cel = g["celda"]
             if i:
@@ -551,7 +551,7 @@ def corrida(P, seed):
             sig = g["vecino"](pos, rumbo)
             cel(pos)[rumbo] = cel(sig)[(rumbo + 2) % 4] = -P["VOTO_MAX"]
             g["pos"] = sig
-    return dict(ok=0, t=rb.t, choques=rb.choques, det=rb.detectados, falsos=rb.falsos, desfase=desfase, dec=decisiones)
+    return dict(ok=0, t=rb.t, choques=rb.choques, det=rb.detectados, falsos=rb.falsos, desfase=desfase, dec=decisiones, perd=g["perdidas"], brujula=not g["creencia"])
 
 
 def lote(P, seeds):

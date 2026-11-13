@@ -64,7 +64,7 @@ RECORRIDO = -3                           # voto de un paso por donde ya paso (-5
 CENTRO = 5                               # celdas de la esquina de salida a la meta (laberinto de 11 x 11)
 ESTRATEGIA = "pista"                     # "pista": trae el mapa de la pista y se ubica con lo que ven los ToF;
                                          # "brujula": sin mapa (respaldo); "mapa": Tremaux con el mapa que arma
-PERDIDAS_MAX = 5                         # pista: perdido estas veces = no es esta pista (o la cambiaron mucho): solo brujula
+PERDIDAS_MAX = 10                        # pista: perdido estas veces = no es esta pista (o la cambiaron mucho): solo brujula
 MALA = 0.01                              # pista: lectura que casi no cuadra con ninguna hipotesis (0.7^3 = 0.34 cuadra)
 CONFIANZA = 0.6                          # pista: con menos certeza de donde esta, decide con la brujula
 RUIDO = 0.6                              # brujula: azar en cada decision (rompe ciclos)
@@ -947,6 +947,7 @@ def loc_mueve(k, pared=False):
     (el frontal ve puntas de pared antes y corta el avance)."""
     if not creencia:
         return
+    k = max(k, 0)                        # un avance negativo (retrocedio al centrarse) vaciaba la creencia: brujula para siempre
     nueva = {}
     for (c, h0), p in creencia.items():
         h = (h0 + rumbo) % 4
