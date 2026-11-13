@@ -445,7 +445,7 @@ class Robot:
                             if latok[0]: th += math.atan2(s.dist[0] - lat0[0], av); m += 1
                             if latok[1]: th -= math.atan2(s.dist[2] - lat0[1], av); m += 1
                             th = math.degrees(th / m); d = devlat / nlat - th
-                            if abs(th) < 20 and abs(d) < 15: s.ref += 0.3 * d
+                            if abs(th) < 25 and abs(d) < 30: s.ref += 0.3 * d
                             tlat = 0
                 elif P["DERIVA_CORR"] and L and R and abs(e) < 15 and abs(decen) < 15:
                     if not tpar: tpar = s.t

@@ -219,6 +219,14 @@ int rpcMoverT(int mm) {
   return rpcMover(mm, 0);
 }
 
+// v2: el signo del giroscopio depende de como quedo montado y no cambia. Antes se aprendia en el primer giro de cada
+// arranque, asi que el primer tramo iba sin rumbo (en pista se desvio ~18 grados en 27 cm). Python lo guarda y lo manda
+// al arrancar. s = 1 o -1 lo fija; 0 solo lo consulta.
+int rpcSigno(int s) {
+  if ((s == 1 || s == -1) && !ocupado) { signo = s; ref = signo * yaw; }
+  return signo;
+}
+
 int rpcSetMs(int ms) {
   if (ms >= 200 && ms <= 2000) msCelda = ms;
   return msCelda;
@@ -535,7 +543,7 @@ void control() {
         if (latOk[1]) { th -= atan2f(dist[2] - lat0[1], a); m++; }
         th = th / m * 57.3f;
         float d = devLat / nLat - th;
-        if (fabs(th) < 20 && fabs(d) < 15) ref += 0.3f * d;
+        if (fabs(th) < 25 && fabs(d) < 30) ref += 0.3f * d;   // hasta 30: en pista el rumbo deseado llego a quedar 21 grados chueco y ya no se corregia
         tLat = 0;
       }
     }
@@ -805,6 +813,7 @@ void setup() {
   Bridge.provide("centrar", rpcCentrar);
   Bridge.provide("mover_t", rpcMoverT);
   Bridge.provide("set_ms", rpcSetMs);
+  Bridge.provide("signo", rpcSigno);
   Bridge.provide("ocupado", rpcOcupado);
   Bridge.provide("color", rpcColor);
   Bridge.provide("arranque", rpcArranque);

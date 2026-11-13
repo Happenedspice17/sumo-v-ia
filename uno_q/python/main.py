@@ -153,7 +153,7 @@ colores = {}
 meta = None
 # Para la pagina web: durante una corrida lee esto (lo actualiza el robot) en vez de pedirle al Bridge
 corriendo = False
-t_ini = None                             # inicio de la corrida (time.time())
+t_ini = None                             # inicio de la corrida (time.monotonic())
 t_meta = None                            # segundos hasta el amarillo en la ultima corrida
 t_fin = None                             # duracion de la ultima corrida
 log_col = []                             # colores vistos en la corrida: tiempo, color, celda
@@ -216,7 +216,7 @@ def revisar_color(avanza):
     k = int((mm + Y_COLOR + CELDA / 2) // CELDA)
     cel = (pos[0] + DX[rumbo] * k, pos[1] + DY[rumbo] * k)
     global t_meta
-    t = round(time.time() - t_ini, 1) if t_ini else 0
+    t = round(time.monotonic() - t_ini, 1) if t_ini else 0
     if c == OBJETIVO:
         encontrado, meta = True, cel
         rpc("alto")
@@ -739,7 +739,7 @@ def estado_tof_cal():
 
 def api_lectura():
     mapa = {"pos": pos, "celdas": len(muros), "meta": meta, "fase": fase_act, "corriendo": corriendo,
-            "tiempo": round(time.time() - t_ini, 1) if corriendo and t_ini else t_fin, "t_meta": t_meta,
+            "tiempo": round(time.monotonic() - t_ini, 1) if corriendo and t_ini else t_fin, "t_meta": t_meta,
             "log": log_col[-15:]}
     if corriendo:                        # sin Bridge: no le quita tiempo al robot
         v = vivo["v"]
@@ -1321,7 +1321,7 @@ def loop():
     usos.clear()
     loc_inicia()
     sys.stdout.nuevo("corrida")
-    t = t_ini = time.time()
+    t = t_ini = time.monotonic()
     t_meta = t_fin = None
     log_col.clear()
     corriendo = True
@@ -1330,7 +1330,7 @@ def loop():
     finally:
         corriendo = False
         fase("")
-    t_fin = round(time.time() - t, 1)
+    t_fin = round(time.monotonic() - t, 1)
     guardar()
     estado(4 if ok else 0)
     print(f"Corrida: {t_fin} s" + (f", amarillo a los {t_meta} s" if t_meta is not None else ", sin amarillo") +
