@@ -27,6 +27,25 @@ Copia de `uno_q/` con otra idea de fondo: **sin encoders, los milímetros avanza
 
 Repetir: `cd sim && python3 partida.py 300 normal` (o `tontos`); v1 en las mismas condiciones: `MAIN=../../uno_q/python/main.py python3 partida.py 150 normal RANGO=600 CENTRA_F=600 BORDES=0 LAT_RUMBO=0 TRAS_SALTO=110`. Pruebas: `python3 repite.py --prueba`, `python3 barrido.py`.
 
+## Cámara (v2)
+
+La cámara ve desde arriba y hacia adelante, así que da lo que los ToF no: en cada columna de la imagen, el primer blanco desde abajo es la **base de la pared más cercana** en esa dirección; con la altura (162 mm) y la inclinación (40°) del lente ese pixel es un punto del piso en mm (`cam_piso`, `cam_puntos`). De esos puntos sale (`cam_ve`):
+
+| Dato | Para qué | Estado |
+|---|---|---|
+| Celdas libres al frente (0 a 4) | Ubicarse más allá de los 250 mm del frontal | **Activo** (`CAM_LOC`) |
+| Pared o abertura a cada lado de las 2 celdas de adelante | Ubicarse con lo que todavía no alcanzan los laterales | **Activo** (`CAM_LOC`) |
+| Qué tan chueco va respecto a las paredes | Enderezar antes de avanzar | Apagado (`CAM_RUMBO`): no mejora; el rumbo por pared lateral del sketch ya lo hace |
+| Algo blanco dentro de su celda que el frontal no ve | Ir lento | Apagado (`CAM_LENTO`): en simulación nunca se dispara |
+
+De cerca manda el ToF; la cámara solo pesa cuando el frontal dice "2 o más". Si la cámara falla o no está, todo sigue igual que sin ella.
+
+**Simulación** (`Robot.cam_pts` en `sim2d.py`: rayos sobre el piso con ruido de pixel, columnas sin dato, fotos malas y error de inclinación; `python3 camara.py` la prueba, también con imágenes dibujadas que pasan por el mismo código que la foto real):
+- Lo que ve: celdas libres al frente correctas en 99 %; pared/abertura de las celdas de adelante 94 % correctas cuando opina (no opina 30 % de las veces); ángulo con 0.2° de error típico, disponible 1 de cada 3 veces.
+- En corridas: sin diferencia medible en condiciones normales (98–100 % con y sin cámara). En la prueba de tontos, la salida arriba-derecha pasa de 94 % a 96–97 % y se pierde menos (0.7 → 0.5 veces por corrida). Arrancando sin saber dónde está (`PERDIDO=1`) llega igual, 97–100 %.
+
+**En pista hay que:** apretar "Calibrar inclinación" en la web (robot derecho frente a una pared a 15–40 cm) y revisar en la página que los puntos amarillos caigan en la base de las paredes y que "Celdas libres al frente" diga lo correcto. El modelo es de lente sin distorsión; un gran angular real curva las orillas, así que los lados pueden fallar más que en simulación. **Sin probar con fotos reales de la pista.**
+
 No simulado: la recalibración de deriva en reposo y el costo en tiempo de las llamadas de grabación.
 
 ---

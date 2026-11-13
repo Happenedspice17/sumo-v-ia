@@ -120,7 +120,9 @@
       <input id="camGiro" type="number" value="15" min="1" style="width:80px;font-size:18px;padding:6px"> °
       <button style="background:#455a64;padding:10px 14px" onclick="camApi('cam_giro?g=' + (parseInt(document.getElementById('camGiro').value) || 0))">Fijar escala</button>
     </div>
-    <div id="camDistBox" style="display:none;margin-top:10px">4. <b>Experimental</b>, distancia por cámara: pon el robot frente a una pared y aprieta en varias distancias (100 a 600 mm). Usa el ToF frontal como regla.
+    <div style="margin-top:10px">4. <b>Inclinación</b> (para que la cámara mida distancias): pon el robot derecho frente a una pared, a 15–40 cm, y aprieta. Usa el ToF frontal como regla.
+      <div style="margin-top:6px"><button style="background:#455a64;padding:10px 14px" onclick="camApi('cam_incl')">Calibrar inclinación</button></div></div>
+    <div id="camDistBox" style="display:none;margin-top:10px">5. <b>Experimental</b>, distancia por cámara: pon el robot frente a una pared y aprieta en varias distancias (100 a 600 mm). Usa el ToF frontal como regla.
       <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">
         <button style="background:#455a64;padding:10px 14px" onclick="camApi('cam_dist')">Agregar punto</button>
         <button style="background:#475569;padding:6px 10px;font-size:14px" onclick="camApi('cam_dist?borrar=1')">Borrar puntos</button>
@@ -291,6 +293,7 @@ function pintaCam(d) {
   if (d.img) document.getElementById("camTxt").textContent =
     "Blanco en el camino: " + Math.round(d.blanco * 100) + " %   umbral de gris: " + d.umbral + "\n" +
     "Rumbo: " + (d.ang === null ? "no ve las 2 paredes" : (d.ang > 0 ? "gira " + d.ang + "° a la derecha" : d.ang < 0 ? "gira " + -d.ang + "° a la izquierda" : "derecho")) +
+    (d.ve ? "\n" + d.ve : "") +
     (d.exp ? "\nDistancias por columna: " + d.virtual.map((v) => (v === null ? "-" : v)).join(" · ") + " mm" +
       "\nAbertura en la celda siguiente: " + (d.abre.length ? d.abre.map((r) => (r < 0 ? "izquierda" : "derecha")).join(" y ") : "ninguna") : "");
   const c = d.cal;

@@ -142,6 +142,9 @@ BASE = dict(
     PARED=120, FRENTE_LIBRE=120, VOTO_MAX=5, PASILLO=3, MUESTRAS=3, AGREGA="min", CENTRO_ON=True,
     # fisica
     K_V=3.0, DEAD=40, TRACK=100.0, ASIM=0.03, TOF_SIG=0.03, TOF_FALLA=0.01, CONO=12, GYRO_BIAS=0.03,
+    # camara (v2): CAM la usa; fotos malas, columnas sin dato, ruido en pixeles de la base, error de inclinacion (grados)
+    PERDIDO=False,     # arranca sin saber donde esta (cualquier celda, cualquier rumbo): mide que tan rapido se ubica
+    CAM=True, CAM_LOC=True, CAM_RUMBO=False, CAM_LENTO=False, CAM_FALLA=0.02, CAM_COL_FALLA=0.05, CAM_PX=1.0, CAM_INCL_ERR=0.0,
     VIB="normal", T_MAX=480.0,
 )
 
@@ -168,6 +171,7 @@ class Robot:
         s.ref = 0.0
         s.th0 = s.th
         s.vL = s.vR = 0.0
+        s.incl_err = r.gauss(0, P["CAM_INCL_ERR"])       # la camara no quedo a la inclinacion del CAD
 
     # --- sensores ---
     def tof_real(s, i):
@@ -181,6 +185,34 @@ class Robot:
             return 9999 if r.random() < .7 else r.uniform(5, d)
         d += r.gauss(0, 2 + P["TOF_SIG"] * d)
         return 9999 if d > 2000 else max(1, int(d))
+
+    def cam_pts(s):
+        """Lo que daria cam_puntos() de main.py con la foto de ahora: por columna, la base de la pared mas cercana
+        (rayo sobre el piso), con ruido de pixel; None = foto mala. La camara real esta inclinada: todas las columnas
+        salen de un punto atras del lente (a CAM_H * tan(inclinacion)); las de la orilla cruzan la pared lateral
+        antes de entrar a la imagen (None: base fuera de la imagen)."""
+        P, r = s.P, s.r
+        if r.random() < P["CAM_FALLA"]: return None
+        k, x0, alto = G["camcal"]["k"], G["camcal"]["x0"], G["ALTO"]
+        H, Y0 = G["CAM_H"], G["CAM_Y0"]
+        p = math.radians(G["CAM_INCL"] + s.incl_err)            # inclinacion real (la del codigo es la nominal)
+        oy = Y0 - H * math.tan(p)
+        c, sn = math.cos(s.th), math.sin(s.th)
+        out = []
+        for u in G["cam_cols"]():
+            if r.random() < P["CAM_COL_FALLA"]: out.append(None); continue
+            az = math.atan((u - x0) * k * math.cos(p))
+            sx = -oy * math.tan(az)                              # la linea de la columna a la altura del eje
+            wx, wy = s.x + sx * c, s.y - sx * sn
+            if s.M.dentro(wx, wy) or (abs(sx) > 1 and s.M.rayo(s.x, s.y, s.th + math.copysign(math.pi / 2, sx)) < abs(sx)):
+                out.append(None); continue                       # ya cruzo la pared lateral: ve su cara, no su base
+            d = s.M.rayo(wx, wy, s.th + az)
+            if d >= 1900: out.append(G["cam_lejos"](u)); continue
+            x, y = sx + d * math.sin(az), d * math.cos(az)
+            z = (y - Y0) * math.cos(p) + H * math.sin(p)
+            v = alto / 2 + (H * math.cos(p) - (y - Y0) * math.sin(p)) / z / k + r.gauss(0, P["CAM_PX"])
+            out.append(None if v >= alto - 2 else G["cam_piso"](u, round(v)))
+        return out
 
     def lee_tofs(s, avanzando, f_falta):
         """Como tofLee(): cambio brusco confirmado en N_SALTO lecturas; avisa saltos."""
@@ -515,7 +547,11 @@ def corrida(P, seed):
     g["CENTRO"] = 5 if P["CENTRO_ON"] else 0
     g["ESTRATEGIA"] = P["EST"] if P["EST"] in ("mapa", "pista") else "brujula"
     g["RUIDO"], g["CASTIGO"] = P["RUIDO"], P["PEN"]
+    g["CAM_LOC"], g["camv"] = P["CAM_LOC"], None
     g["usos"].clear(); random.seed(seed); g["loc_inicia"]()
+    if P["PERDIDO"]:
+        g["creencia"].clear()
+        g["creencia"].update({((x, y), h): 1 / (4 * N * N) for x in range(N) for y in range(N) for h in range(4)})
     if P["CONOCE"]:                                              # el usuario eligio la esquina en el menu
         esq = rb.celda_real(); v = (1 if esq[0] == 0 else -1, 1 if esq[1] == 0 else -1)
         for _ in range(rb.h0): v = (-v[1], v[0])
@@ -541,6 +577,11 @@ def corrida(P, seed):
                                      desfase=desfase, dec=decisiones, perd=g["perdidas"], brujula=not g["creencia"])
         if P["ALIN_SENSA"]: rb.alinear(45)
         lect = tof3(P["MUESTRAS"])
+        def mira():
+            pts = rb.cam_pts() if P["CAM"] else None
+            g["camv"] = g["cam_ve"](pts) if pts else None
+            return g["camv"]
+        mira()
         rb.t += 0.25                                              # rpc, decidir, prints
         g["anota"](*lect); g["ubica"](*lect); g["vistas"].add(g["pos"])
         if a_python(rb.celda_real()) != g["pos"]: desfase += 1
@@ -560,8 +601,11 @@ def corrida(P, seed):
         g["rumbo"] = (g["rumbo"] + rel) % 4
         rumbo = g["rumbo"]
         n = P["PASILLO"] if rel == 0 and lect[0] < P["PARED"] and lect[2] < P["PARED"] else 1
+        v = mira()                                                # como avanzar(): la camara despues de girar
+        if P["CAM_RUMBO"] and v and v["ang"] is not None and abs(v["ang"]) >= g["ANG_MIN"]:
+            rb.ref = rb.yaw + round(v["ang"])                     # rpc ajustar
         if P["ALINEAR"]: rb.alinear(45)
-        hecho, saltos, choque = rb.mover(int(C * n))
+        hecho, saltos, choque = rb.mover(int(C * n), bool(P["CAM_LENTO"] and v and v["estorbo"]))
         abre = [r for r, b in ((-1, 1), (1, 4)) if saltos & b]
         if rb.en_meta(): continue
         if choque:                                                # vuelve_al_carril
