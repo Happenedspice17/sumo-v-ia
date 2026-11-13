@@ -145,7 +145,15 @@ Y_COLOR = 34                             # mm del eje al sensor de color (adelan
 # ---------- Camara (OV9281 monocromatica, obturador global): asistencia, nunca decide sola ----------
 CAM_ID = 2                               # /dev/video0 y video1 son internos de la placa: nunca son la camara
 USAR_CAM = True                          # v2: la abre y la muestra en la web
-CAM_ACTUA = False                        # False: solo se ve; no frena ni corrige el rumbo (sin probar junto con el rumbo por pared)
+# v2: que hace el robot con lo que ve la camara (cada cosa se prende sola; todo en False = solo se ve en la web)
+CAM_LOC = True                           # ubicarse: celdas libres al frente (hasta VE_CAM) y pared/abertura de las 2 celdas de adelante
+CAM_RUMBO = False                        # rumbo: endereza con las bases de las paredes antes de avanzar. Apagado: en simulacion
+                                         # no mejora (el rumbo por pared lateral del sketch ya lo hace) y sube un poco los choques
+CAM_LENTO = False                        # algo blanco dentro de su celda que el frontal no ve: lento. Apagado: en simulacion nunca se dispara
+CAM_H, CAM_Y0, CAM_INCL = 162, 32, 40    # CAD: mm del lente al piso, mm del lente adelante del eje, grados hacia abajo
+CAM_COLS = 61                            # columnas de la imagen donde busca la base de la pared
+VE_CAM = 4                               # celdas libres al frente que distingue la camara (a 4 celdas un pixel ya son ~40 mm)
+camv = None                              # lo ultimo que dedujo la camara (cam_ve) o None
 EXPERIMENTAL = False                     # True: version experimental, ademas distancias y aberturas por camara
 ANCHO, ALTO = 320, 240
 ARCH_CAM = DATOS + "/camara.json"
@@ -385,12 +393,10 @@ def avanzar(celdas=1):
     Antes, la camara: blanco en el camino -> lento; rumbo chueco -> lo corrige. Devuelve los ToF que saltaron (0 = ninguno)."""
     global pos
     v = mira()
-    lento = v is not None and v["blanco"] >= BLANCO_MAX
-    if lento:                            # blanco en el camino: lento; el frontal hace el doble check
-        f = rpc("odo", 5)
-        print(f"Camara: blanco adelante ({v['blanco']:.2f}), " + (f"el frontal lo confirma a {f} mm"
-              if f < D_FRENTE_TOF + CELDA else "el frontal no ve nada (punto ciego?)") + ": voy lento")
-    if v and v["ang"] is not None and abs(v["ang"]) >= ANG_MIN:
+    lento = bool(CAM_LENTO and v and v["estorbo"])
+    if lento:
+        print("Camara: algo blanco en mi celda que el frontal no ve: voy lento")
+    if CAM_RUMBO and v and v["ang"] is not None and abs(v["ang"]) >= ANG_MIN:
         print(f"Camara: rumbo chueco, corrijo {v['ang']:+.0f} grados")
         if rpc("ajustar", round(v["ang"])) == 2:
             esperar()
@@ -662,6 +668,88 @@ def aberturas(bs, fuga):
     return out
 
 
+# ---------- v2: la camara como mapa del piso ----------
+# Piso negro y paredes blancas: en cada columna de la imagen, el primer blanco desde abajo es la BASE de la pared mas
+# cercana en esa direccion. Con la altura y la inclinacion del lente, ese pixel es un punto del piso (mm). Con esos
+# puntos ve lo que los ToF no: cuantas celdas libres hay al frente, si las 2 celdas de adelante tienen pared a cada
+# lado, y que tan chueco va respecto a las paredes.
+def cam_piso(u, v):
+    """Punto del piso (x a la derecha, y adelante del eje; mm) del pixel (u, v); None si mira arriba del horizonte."""
+    f, p = 1 / camcal["k"], math.radians(camcal.get("incl", CAM_INCL))
+    xc, yc = (u - camcal["x0"]) / f, (v - ALTO / 2) / f
+    baja = math.sin(p) + yc * math.cos(p)
+    if baja < 0.05:
+        return None
+    k = CAM_H / baja
+    return k * xc, k * (math.cos(p) - yc * math.sin(p)) + CAM_Y0
+
+
+def cam_pixel(x, y):
+    """Inversa de cam_piso: pixel (u, v) donde se ve el punto del piso (x, y)."""
+    f, p = 1 / camcal["k"], math.radians(camcal.get("incl", CAM_INCL))
+    z = (y - CAM_Y0) * math.cos(p) + CAM_H * math.sin(p)
+    return camcal["x0"] + f * x / z, ALTO / 2 + f * (CAM_H * math.cos(p) - (y - CAM_Y0) * math.sin(p)) / z
+
+
+def cam_cols():
+    return [round(8 + i * (ANCHO - 17) / (CAM_COLS - 1)) for i in range(CAM_COLS)]
+
+
+def cam_lejos(u):
+    """Punto a 3 m en la direccion de la columna u (no se ve pared en esa columna)."""
+    t = (u - camcal["x0"]) * camcal["k"] * math.cos(math.radians(camcal.get("incl", CAM_INCL)))
+    return 3000 * t, 3000.0
+
+
+def cam_puntos(b):
+    """Por columna: punto del piso de la base de la pared; cam_lejos si no hay blanco; None si el blanco llega al
+    borde de abajo (la base queda fuera de la imagen: pared pegada o pared lateral)."""
+    out = []
+    for u in cam_cols():
+        y = fila_pared(b, u)
+        out.append(cam_lejos(u) if y is None else None if y >= b.shape[0] - 2 else cam_piso(u, y))
+    return out
+
+
+def cam_ve(pts):
+    """De los puntos del piso: {"ang": grados a girar (derecha +) para quedar paralelo a las paredes, o None;
+    "frente": celdas libres al frente (0..VE_CAM) o None; "lados": {1: [izq, der], 2: [izq, der]} con True pared,
+    False abertura, None no se sabe, para las 2 celdas de adelante; "estorbo": blanco dentro de su propia celda}."""
+    M = CELDA // 2 - 6                   # 84 mm del centro del carril a la cara de la pared
+    reales = [q for q in pts if q and q[1] < 2500]
+    ang = None
+    pend = []
+    for s in (-1, 1):                    # la base de cada pared lateral es una recta x = a*y + c: a = lo chueco
+        l = sorted((y, x) for x, y in reales if M - 45 <= s * x <= M + 45 and y < 420)
+        if len(l) >= 4 and l[-1][0] - l[0][0] >= 90:
+            n, sy, sx = len(l), sum(q[0] for q in l), sum(q[1] for q in l)
+            syy, sxy = sum(q[0] ** 2 for q in l), sum(q[0] * q[1] for q in l)
+            a = (n * sxy - sy * sx) / (n * syy - sy * sy)
+            c = (sx - a * sy) / n
+            if max(abs(a * y + c - x) for y, x in l) < 15:
+                pend.append(a)
+    if pend:
+        ang = math.degrees(math.atan(sum(pend) / len(pend)))
+        if abs(ang) > ANG_MAX:
+            ang = None
+    t = math.radians(ang or 0)           # endereza los puntos antes de compararlos con la reticula
+    ct, st = math.cos(t), math.sin(t)
+    P = [q and (q[0] * ct - q[1] * st, q[0] * st + q[1] * ct) for q in pts]
+    centro = [q[1] for q in P if q and abs(q[0]) < 40]
+    frente = min(VE_CAM, max(0, round((min(centro) - M) / CELDA))) if len(centro) >= 2 else None
+    lados = {}
+    for j in (1, 2):
+        y0, y1, fila = CELDA * j - 65, CELDA * j + 65, []
+        for s in (-1, 1):
+            pared = sum(1 for q in P if q and y0 <= q[1] <= y1 and abs(s * q[0] - M) <= 30)
+            # rayos que cruzan la linea de esa pared dentro de la celda j y siguen de largo: ahi no hay pared
+            pasa = sum(1 for q in P if q and s * q[0] > M + 60 and y0 <= q[1] * M / (s * q[0]) <= y1)
+            fila.append(True if pared >= 2 and pared > pasa else False if pasa >= 2 and pasa > pared else None)
+        lados[j] = fila
+    estorbo = any(abs(x) < 50 and 75 < y < M - 30 for x, y in reales)
+    return {"ang": ang, "frente": frente, "lados": lados, "estorbo": estorbo}
+
+
 def vision(img):
     """Todo lo de la camara con una sola foto."""
     g = contraste(cv2.medianBlur(img if img.ndim == 2 else cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), 5))
@@ -680,9 +768,11 @@ def vision(img):
 
 
 def mira():
-    """Foto y vision antes de avanzar, o None sin camara (o con CAM_ACTUA apagado: solo se ve en la web)."""
-    img = foto() if CAM_ACTUA and cam is not None else None
-    return vision(img) if img is not None else None
+    """v2: foto y lo que deduce la camara (cam_ve) en camv; None sin camara."""
+    global camv
+    img = foto() if USAR_CAM and cam is not None else None
+    camv = cam_ve(cam_puntos(vision(img)["b"])) if img is not None else None
+    return camv
 
 
 # ---------- Dashboard (http://<ip de la Q>:7000) ----------
@@ -839,15 +929,20 @@ def api_foto():
             cv2.line(img, (int(a * h + c), h - 1), (int(xf), int(yf)), (255, 128, 0), 2)
         cv2.circle(img, (int(xf), int(yf)), 5, (255, 128, 0), -1)
     cv2.line(img, (int(camcal["x0"]), 0), (int(camcal["x0"]), h // 3), (255, 255, 255), 1)
-    if EXPERIMENTAL:                         # amarillo: base de la pared en cada columna
-        for c in COLS:
-            y = fila_pared(v["b"], int(c * w))
-            if y is not None:
-                cv2.circle(img, (int(c * w), y), 4, (0, 255, 255), -1)
+    for u in cam_cols():                     # amarillo: base de la pared en cada columna (lo que usa cam_ve)
+        y = fila_pared(v["b"], u)
+        if y is not None and y < h - 2:
+            cv2.circle(img, (u, y), 2, (0, 255, 255), -1)
+    ve = cam_ve(cam_puntos(v["b"]))
+    si = {True: "pared", False: "abierto", None: "?"}
+    txt = (f"Celdas libres al frente: {'?' if ve['frente'] is None else ve['frente']}"
+           + "".join(f" · celda +{j}: izq {si[ve['lados'][j][0]]}, der {si[ve['lados'][j][1]]}" for j in (1, 2))
+           + f" · chueco: {'?' if ve['ang'] is None else format(ve['ang'], '+.0f') + ' grados'}"
+           + f" · inclinacion {camcal.get('incl', CAM_INCL):.1f}")
     img = cv2.resize(img, (160, 120))
     ok, buf = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 40])
     return limpio({"img": base64.b64encode(buf).decode(), "blanco": round(v["blanco"], 2), "umbral": v["umbral"],
-                   "ang": v["ang"], "virtual": v.get("virtual"), "abre": v.get("abre"), "exp": EXPERIMENTAL,
+                   "ve": txt, "ang": v["ang"], "virtual": v.get("virtual"), "abre": v.get("abre"), "exp": EXPERIMENTAL,
                    "cal": camcal, "leido": cam_leido})
 
 
@@ -908,6 +1003,20 @@ def api_cam_dist(borrar: int = 0):
     return guarda_cam()
 
 
+def api_cam_incl():
+    """v2: calibra la inclinacion real de la camara. Robot derecho frente a una pared a 15-40 cm: la base de la pared
+    en la columna central debe caer donde dice el ToF frontal."""
+    img = foto() if cam is not None else None
+    y = fila_pared(vision(img)["b"], int(camcal["x0"])) if img is not None else None
+    f = sorted(rpc("odo", 5) for _ in range(5))[2]
+    if y is None or y >= ALTO - 2 or not 100 <= f <= 450:
+        return {"error": "pon el robot derecho frente a una pared, con el frontal entre 100 y 450 mm", **guarda_cam()}
+    d = f + 54 - CAM_Y0                  # del lente a la base de la pared (el frontal va 54 mm adelante del eje)
+    camcal["incl"] = round(math.degrees(math.atan(CAM_H / d) - math.atan((y - ALTO / 2) * camcal["k"])), 1)
+    print(f"Camara: base de la pared en la fila {y} con el frontal a {f} mm -> inclinacion {camcal['incl']} grados")
+    return guarda_cam()
+
+
 def limpio(x):
     """Pasa tipos de numpy a tipos de Python para que FastAPI los pueda mandar."""
     return json.loads(json.dumps(x, default=lambda o: o.item() if hasattr(o, "item") else str(o)))
@@ -927,6 +1036,7 @@ ui.expose_api("GET", "/api/cam_cero", api_cam_cero)
 ui.expose_api("GET", "/api/cam_sens", api_cam_sens)
 ui.expose_api("GET", "/api/cam_giro", api_cam_giro)
 ui.expose_api("GET", "/api/cam_dist", api_cam_dist)
+ui.expose_api("GET", "/api/cam_incl", api_cam_incl)
 
 
 # ---------- Estrategia ----------
@@ -1038,14 +1148,29 @@ def loc_observa(lect):
         return
     obs = leidas(lect)
     global malas
-    tot = 0
+    tot = tot2 = 0                       # tot: solo ToF (para saber si esta perdido); tot2: con la camara
     for (c, h0), p in creencia.items():
         for rel, o in zip((-1, 0, 1), obs):
             m = tramo(c, (h0 + rumbo + rel) % 4, VE)
             m = min(m, VE)               # el patron pared / abertura de la celda; ve de menos (puntas) mas que de mas
             p *= 0.7 if m == o else 0.25 if 0 < o < m else 0.1 if o == m + 1 else 0.02
-        creencia[(c, h0)] = p
         tot += p
+        if CAM_LOC and camv:             # v2: lo que la camara ve adelante, mas alla de los ToF
+            h = (h0 + rumbo) % 4
+            m = tramo(c, h, VE_CAM)
+            f = camv["frente"]
+            if f is not None and obs[1] >= VE:   # de cerca manda el ToF
+                p *= 0.6 if m == f else 0.25 if abs(m - f) == 1 else 0.05
+            n = c
+            for j in (1, 2):
+                if m < j:                # la pista dice pared antes de esa celda: la camara no la veria
+                    break
+                n = (n[0] + PDX[h], n[1] + PDY[h])
+                for rel, ve in zip((-1, 1), camv["lados"][j]):
+                    if ve is not None:
+                        p *= 0.75 if ve == pmuros[n][(h + rel) % 4] else 0.25
+        creencia[(c, h0)] = p
+        tot2 += p
     malas = malas + 1 if tot < MALA else 0   # lo que ve no cuadra con ninguna hipotesis
     if malas >= 2:                       # perdido: se vuelve a ubicar en toda la pista, con los 4 rumbos
         global perdidas, recuadra
@@ -1061,7 +1186,7 @@ def loc_observa(lect):
         creencia.update({((x, y), h0): 1 / (4 * PN * PN) for x in range(PN) for y in range(PN) for h0 in range(4)})
         return loc_observa(lect)
     for k in creencia:
-        creencia[k] = creencia[k] / tot if tot else 1 / len(creencia)
+        creencia[k] = creencia[k] / tot2 if tot2 else 1 / len(creencia)
     (c, h0), pm = max(creencia.items(), key=lambda kv: kv[1])
     if pm >= CONFIANZA:                  # seguro de donde esta: lo que no cuadra es que la pista cambio
         for rel, o in zip((-1, 0, 1), obs):
@@ -1209,6 +1334,7 @@ def buscar_color():
         fase(f)
         if f in ("SENSA", "ESCANEA"):
             lect = tof3(5 if f == "ESCANEA" else 3)
+            mira()
             anota(*lect)
             ubica(*lect)
             vistas.add(pos)
