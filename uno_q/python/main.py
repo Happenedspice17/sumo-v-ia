@@ -72,6 +72,9 @@ class Registro:
     def flush(self):
         self.sal.flush()
 
+    def __getattr__(self, n):            # isatty, encoding...: uvicorn (WebUI) se los pide a sys.stdout
+        return getattr(self.sal, n)
+
 
 sys.stdout = Registro(sys.stdout)
 sys.stdout.nuevo("arranque")

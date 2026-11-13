@@ -72,6 +72,9 @@ class Registro:
     def flush(self):
         self.sal.flush()
 
+    def __getattr__(self, n):            # isatty, encoding...: uvicorn (WebUI) se los pide a sys.stdout
+        return getattr(self.sal, n)
+
 
 crudo_f = None                           # v2: grabacion de la corrida (CSV) para reproducirla con sim/repite.py
 t_crudo = 0
