@@ -85,7 +85,7 @@ def graba(tipo, *v):
     movimiento), por decision (D), giro (G) y avance (M). Es lo que el robot VIO, para compararlo con lo que HIZO."""
     if crudo_f:
         try:
-            crudo_f.write(f"{time.time() - (t_ini or 0):.2f},{tipo}," + ",".join(str(x) for x in v) + "\n")
+            crudo_f.write(f"{time.monotonic() - (t_ini or 0):.2f},{tipo}," + ",".join(str(x) for x in v) + "\n")
             if tipo != "S":
                 crudo_f.flush()
         except (OSError, ValueError):
@@ -94,8 +94,8 @@ def graba(tipo, *v):
 
 def graba_s(avanza=False):
     global t_crudo
-    if crudo_f and time.time() - t_crudo >= 0.04:
-        t_crudo = time.time()
+    if crudo_f and time.monotonic() - t_crudo >= 0.04:
+        t_crudo = time.monotonic()
         p = rpc("odo", 18)               # los 3 ToF en una llamada (cada uno hasta 1023 mm)
         graba("S", p >> 20, p >> 10 & 1023, p & 1023, rpc("odo", 16), rpc("odo", 0) if avanza else 0)
 
@@ -105,6 +105,7 @@ sys.stdout.nuevo("arranque")
 ARCH_COL = DATOS + "/colores.json"
 ARCH_MAPA = DATOS + "/mapa.json"
 ARCH_TOF = DATOS + "/tof.json"
+ARCH_MPU = DATOS + "/mpu.json"           # v2: signo del giroscopio (se aprende una vez, en el primer giro)
 ARCH_AVANCE = DATOS + "/avance.json"     # ms por celda calibrados en la web (avance de prueba)
 TOF_NOM = ["izq", "frente", "der"]
 tof_cal = {n: {} for n in TOF_NOM}       # sensor -> {mm reales: lectura cruda promedio}
@@ -146,11 +147,16 @@ Y_COLOR = 34                             # mm del eje al sensor de color (adelan
 CAM_ID = 2                               # /dev/video0 y video1 son internos de la placa: nunca son la camara
 USAR_CAM = True                          # v2: la abre y la muestra en la web
 # v2: que hace el robot con lo que ve la camara (cada cosa se prende sola; todo en False = solo se ve en la web)
-CAM_LOC = True                           # ubicarse: celdas libres al frente (hasta VE_CAM) y pared/abertura de las 2 celdas de adelante
+CAM_LOC = False                          # APAGADO tras la corrida del 13-nov (8 perdidas; el piso negro brillante refleja la luz y la
+                                         # camara ve paredes falsas). La camara sigue mirando y lo que ve queda en el CSV (linea C)
+                                         # para compararlo con el mapa antes de volver a confiar en ella. Ubicarse: celdas libres al frente (hasta VE_CAM) y pared/abertura de las 2 celdas de adelante
 CAM_RUMBO = False                        # rumbo: endereza con las bases de las paredes antes de avanzar. Apagado: en simulacion
                                          # no mejora (el rumbo por pared lateral del sketch ya lo hace) y sube un poco los choques
 CAM_LENTO = False                        # algo blanco dentro de su celda que el frontal no ve: lento. Apagado: en simulacion nunca se dispara
 CAM_H, CAM_Y0, CAM_INCL = 162, 32, 40    # CAD: mm del lente al piso, mm del lente adelante del eje, grados hacia abajo
+CAM_ALTO_MIN = 14                        # filas: un blanco mas bajo que esto no es pared, es un reflejo en el piso
+CAMBIA_MAPA = False                      # corregir el mapa cuando lo que ve no cuadra. Apagado: en pista "cambio" 2 paredes que no
+                                         # habian cambiado (lecturas malas) y se quedo con un mapa falso; la pista esta verificada
 CAM_COLS = 61                            # columnas de la imagen donde busca la base de la pared
 VE_CAM = 4                               # celdas libres al frente que distingue la camara (a 4 celdas un pixel ya son ~40 mm)
 camv = None                              # lo ultimo que dedujo la camara (cam_ve) o None
@@ -189,7 +195,7 @@ colores = {}
 meta = None
 # Para la pagina web: durante una corrida lee esto (lo actualiza el robot) en vez de pedirle al Bridge
 corriendo = False
-t_ini = None                             # inicio de la corrida (time.time())
+t_ini = None                             # inicio de la corrida (time.monotonic(): el reloj de la placa salta al tomar la hora de la red; en pista le sumo 525 s a una corrida)
 t_meta = None                            # segundos hasta el amarillo en la ultima corrida
 t_fin = None                             # duracion de la ultima corrida
 log_col = []                             # colores vistos en la corrida: tiempo, color, celda
@@ -252,7 +258,7 @@ def revisar_color(avanza):
     k = int((mm + Y_COLOR + CELDA / 2) // CELDA)
     cel = (pos[0] + DX[rumbo] * k, pos[1] + DY[rumbo] * k)
     global t_meta
-    t = round(time.time() - t_ini, 1) if t_ini else 0
+    t = round(time.monotonic() - t_ini, 1) if t_ini else 0
     if c == OBJETIVO:
         encontrado, meta = True, cel
         rpc("alto")
@@ -701,12 +707,29 @@ def cam_lejos(u):
     return 3000 * t, 3000.0
 
 
+def base_pared(b, x):
+    """Como fila_pared, pero salta los reflejos: la base de una pared es un blanco que sigue hacia arriba al menos
+    CAM_ALTO_MIN filas (una pared se ve alta); un reflejo de la luz en el piso brillante es una mancha baja."""
+    col = b[:, max(x - 2, 0):x + 3].mean(axis=1) > 0.5
+    y = len(col) - 1
+    while y >= 0:
+        if col[y]:
+            y0 = y
+            while y >= 0 and col[y]:
+                y -= 1
+            if y0 - y >= CAM_ALTO_MIN or y < 0:
+                return y0
+        else:
+            y -= 1
+    return None
+
+
 def cam_puntos(b):
     """Por columna: punto del piso de la base de la pared; cam_lejos si no hay blanco; None si el blanco llega al
     borde de abajo (la base queda fuera de la imagen: pared pegada o pared lateral)."""
     out = []
     for u in cam_cols():
-        y = fila_pared(b, u)
+        y = base_pared(b, u)
         out.append(cam_lejos(u) if y is None else None if y >= b.shape[0] - 2 else cam_piso(u, y))
     return out
 
@@ -861,7 +884,7 @@ def estado_tof_cal():
 
 def api_lectura():
     mapa = {"pos": pos, "celdas": len(muros), "meta": meta, "fase": fase_act, "corriendo": corriendo,
-            "tiempo": round(time.time() - t_ini, 1) if corriendo and t_ini else t_fin, "t_meta": t_meta,
+            "tiempo": round(time.monotonic() - t_ini, 1) if corriendo and t_ini else t_fin, "t_meta": t_meta,
             "log": log_col[-15:]}
     if corriendo:                        # sin Bridge: no le quita tiempo al robot
         v = vivo["v"]
@@ -930,7 +953,7 @@ def api_foto():
         cv2.circle(img, (int(xf), int(yf)), 5, (255, 128, 0), -1)
     cv2.line(img, (int(camcal["x0"]), 0), (int(camcal["x0"]), h // 3), (255, 255, 255), 1)
     for u in cam_cols():                     # amarillo: base de la pared en cada columna (lo que usa cam_ve)
-        y = fila_pared(v["b"], u)
+        y = base_pared(v["b"], u)
         if y is not None and y < h - 2:
             cv2.circle(img, (u, y), 2, (0, 255, 255), -1)
     ve = cam_ve(cam_puntos(v["b"]))
@@ -1112,6 +1135,7 @@ creencia = {}                            # (celda, h0) -> probabilidad; h0 = rum
 cambios = {}                             # (celda, lado) -> votos de que la pista cambio ahi
 perdidas = 0                             # veces que se perdio en esta corrida
 malas = 0                                # lecturas seguidas que no cuadran con ninguna hipotesis
+ult_rel = 0                              # ultima decision en la pista (para no dar medias vueltas en cadena)
 recuadra = False                         # se perdio: antes de seguir se cuadra con las paredes
 
 
@@ -1188,7 +1212,7 @@ def loc_observa(lect):
     for k in creencia:
         creencia[k] = creencia[k] / tot2 if tot2 else 1 / len(creencia)
     (c, h0), pm = max(creencia.items(), key=lambda kv: kv[1])
-    if pm >= CONFIANZA:                  # seguro de donde esta: lo que no cuadra es que la pista cambio
+    if CAMBIA_MAPA and pm >= CONFIANZA:  # seguro de donde esta: lo que no cuadra es que la pista cambio
         for rel, o in zip((-1, 0, 1), obs):
             h = (h0 + rumbo + rel) % 4
             n = (c[0] + PDX[h], c[1] + PDY[h])
@@ -1302,7 +1326,15 @@ def decidir(izq, frente, der, abre=()):
     if ESTRATEGIA == "pista":
         loc_observa((izq, frente, der))
         rel = por_pista(izq, frente, der)
-        return brujula(izq, frente, der) if rel is None else rel
+        global ult_rel
+        if rel == 2 and ult_rel == 2 and salidas(izq, frente, der)[0] != 2:
+            # en pista dio 5 medias vueltas seguidas entre 2 paredes con los lados libres: creia estar en otro lado.
+            # Dos medias vueltas seguidas con otra salida libre = no confiar en la ruta: decide la brujula
+            print("Pista: otra media vuelta con salidas libres; no me creo la ruta, decide la brujula")
+            rel = None
+        rel = brujula(izq, frente, der) if rel is None else rel
+        ult_rel = rel
+        return rel
     if ESTRATEGIA == "brujula":
         return brujula(izq, frente, der)
     # un paso por donde ya paso cuenta como libre aunque un ToF diga pared (robot descentrado o chueco):
@@ -1342,6 +1374,11 @@ def buscar_color():
         elif f == "DECIDE":
             rel = decidir(*lect, abre=abre)
             graba("D", *lect, pos[0], pos[1], rumbo, rel)
+            if camv:                     # lo que vio la camara en esta celda (aunque no se use): frente, lados +1 y +2, angulo
+                graba("C", camv["frente"], *camv["lados"][1], *camv["lados"][2],
+                      None if camv["ang"] is None else round(camv["ang"], 1), int(camv["estorbo"]))
+            top = max(creencia.items(), key=lambda kv: kv[1]) if creencia else None
+            graba("B", *(top[0][0] + (top[0][1], round(top[1], 2)) if top else ("brujula",)), perdidas)
             if recuadra:                 # se acaba de perder: recupera el frente y vuelve a leer antes de moverse
                 recuadra = False
                 cuadrar()
@@ -1416,6 +1453,10 @@ def iniciar():
     global ms_celda
     ms_celda = (lee(ARCH_AVANCE) or {}).get("ms_celda", ms_celda)
     rpc("set_ms", ms_celda)
+    sg = (lee(ARCH_MPU) or {}).get("signo", 0)
+    if sg:
+        print(f"MPU: signo guardado {sg:+d}: rumbo sostenido desde el primer avance")
+        rpc("signo", sg)
     camcal.update(lee(ARCH_CAM) or {})
     cargar()
     for c in range(1, len(COLORES)):
@@ -1486,6 +1527,8 @@ def loop():
     pos, rumbo, encontrado = (0, 0), 0, False   # cada corrida empieza en la misma celda viendo al mismo lado
     signo[:] = [0, 0]                    # la esquina de salida puede cambiar
     usos.clear()
+    global ult_rel
+    ult_rel = 0
     loc_inicia()
     sys.stdout.nuevo("corrida")
     global crudo_f
@@ -1495,7 +1538,7 @@ def loop():
         crudo_f = open(sys.stdout.f.name[:-4] + "_crudo.csv", "w") if sys.stdout.f else None
     except OSError:
         crudo_f = None
-    t = t_ini = time.time()
+    t = t_ini = time.monotonic()
     t_meta = t_fin = None
     log_col.clear()
     corriendo = True
@@ -1504,8 +1547,12 @@ def loop():
     finally:
         corriendo = False
         fase("")
-    t_fin = round(time.time() - t, 1)
+    t_fin = round(time.monotonic() - t, 1)
     guardar()
+    sg = rpc("signo", 0)
+    if sg and sg != (lee(ARCH_MPU) or {}).get("signo"):
+        escribe(ARCH_MPU, {"signo": sg})
+        print(f"MPU: signo {sg:+d} guardado para los siguientes arranques")
     estado(4 if ok else 0)
     print(f"Corrida: {t_fin} s" + (f", amarillo a los {t_meta} s" if t_meta is not None else ", sin amarillo") +
           f", marcas {cuenta[1:]}")
