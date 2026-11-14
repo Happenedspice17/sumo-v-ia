@@ -2,6 +2,13 @@
 
 Copia de `uno_q/` con otra idea de fondo: **sin encoders, los milímetros avanzados son una suposición; las paredes no**. Se carga completa (sketch, `python/main.py`, `assets/index.html`) como otra app de App Lab ("Laberinto v2"). `uno_q/` queda como estaba. **Sin probar en pista.**
 
+**Resultado en competencia: 2.º lugar.** La mejor corrida llegó al amarillo en 2:06.4.
+
+- Video de esa corrida (37 s, a 4x): [`docs/video/corrida2.mp4`](../docs/video/corrida2.mp4)
+- Animación interactiva: [`docs/corrida2.html`](../docs/corrida2.html) (ábrela en el navegador)
+
+El recorrido del video es una **reconstrucción**: el camino más probable sobre el mapa que cuadra con lo que leyeron los láser en cada decisión y con cada avance, saliendo de una esquina y terminando en el amarillo (`sim/reconstruye.py`, con los datos en `sim/corridas/corrida2.csv`). El robot no tiene encoders, así que no hay una trayectoria medida. Para rehacerlo: `python3 reconstruye.py corridas/corrida2.csv datos.json`, incrustar el JSON en `corrida_plantilla.html`, `node graba_video.js pagina.html cuadros/ 4 30` y `ffmpeg`.
+
 | # | Cambio | Dónde |
 |---|---|---|
 | 1 | **Orillas de pared = regla.** Cada orilla de pared lateral (se acaba o empieza) está en una orilla de celda. Se acaba: para al centro de esa celda (`TRAS_SALTO`). Empieza: lo que falta se ajusta al centro de celda más cercano (`TRAS_CIERRA`). El tiempo solo dice cuántas celdas | sketch `borde()` |
