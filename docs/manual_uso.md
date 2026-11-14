@@ -6,8 +6,8 @@ author:
   - Manuel Harari López
   - Víctor Miguel Vázquez
   - Carlos Emiliano Escamilla Garibay
-date: 12 de noviembre de 2026
-version: Revisión B8 · documento 3.0
+date: 14 de noviembre de 2026
+version: Versión final (v2) · documento 4.0
 ---
 
 # 1. Antes de empezar
@@ -22,7 +22,8 @@ El robot **no se mueve solo**. Lo prendes, esperas a que la pantalla diga `LISTO
 - [ ] Ruedas giran libres
 - [ ] Sensores limpios
 - [ ] MPU-6050 firme y plano (2 tornillos o cinta doble cara), cables amarrados
-- [ ] Cámara y hub USB conectados, con el cargador del hub
+- [ ] Cámara y hub USB conectados, con el cargador del hub (la placa en modo host USB: ver capítulo 8)
+- [ ] Colores calibrados **en la pista de hoy** (4.1): en la competencia un color mal calibrado nos costó puntos
 - [ ] Robot quieto en una esquina del laberinto (cualquiera: se ubica solo)
 - [ ] Laberinto nuevo: borra el mapa antes de empezar (capítulo 3)
 :::
@@ -31,9 +32,10 @@ El robot **no se mueve solo**. Lo prendes, esperas a que la pantalla diga `LISTO
 
 | Parte | Carpeta | Nota |
 |---|---|---|
-| Sketch (STM32) | `sketch/` | Siempre este, con MPU-6050 |
-| Python (Linux) | `python/` | Un solo `main.py` |
-| Cámara | `python/main.py` | Hoy apagada (`USAR_CAM = False`, la pantalla dice `SIN CAM`). `True` la enciende; con `EXPERIMENTAL = True` además mide distancias y ve aberturas |
+| App completa | `uno_q_v2/` | **La versión final.** Se carga entera como app de App Lab ("Laberinto v2"). `uno_q/` es la versión anterior y no se toca |
+| Sketch (STM32) | `uno_q_v2/sketch/` | Con MPU-6050 |
+| Python (Linux) | `uno_q_v2/python/main.py` | Un solo archivo |
+| Cámara | `python/main.py` | Encendida (`USAR_CAM = True`) pero **solo mira y graba**: no decide nada (`CAM_LOC = False`). El piso negro brillante reflejaba luz y parecía pared |
 | Salida | — | Cualquier esquina del laberinto de 11 × 11: el robot deduce solo hacia dónde queda el centro |
 
 ::: tip
@@ -104,7 +106,7 @@ El robot trae el mapa de la pista: se ubica solo y va al amarillo por el camino 
 # 4. Cómo calibrar desde la página web
 
 ::: corto
-Todo se calibra desde el celular: colores, sensores de distancia, avance y cámara (la cámara hoy está apagada: 4.3 solo si la enciendes). No necesitas cables ni reprogramar. Lo que calibras se guarda en el robot y se carga solo en cada arranque. Sigue el orden: primero distancia, luego cámara (usa el frontal como regla).
+Todo se calibra desde el celular: colores, sensores de distancia, avance y cámara (la cámara solo graba; calíbrala si quieres revisar qué ve). No necesitas cables ni reprogramar. Lo que calibras se guarda en el robot y se carga solo en cada arranque. Sigue el orden: primero distancia, luego cámara (usa el frontal como regla).
 :::
 
 1. Prende el robot normal y espera a que suba `PY`.
@@ -115,9 +117,10 @@ Todo se calibra desde el celular: colores, sensores de distancia, avance y cáma
 | Corrida (arriba) | Iniciar, detener y borrar el mapa sin tocar el robot |
 | Asistente de colores | Calibrar los 5 colores del piso (4.1) |
 | Ver sensores ToF → Calibrar distancia | Calibrar los 3 sensores de distancia con el vernier (4.2) |
-| Cámara → Calibrar cámara | Exposición, rumbo derecho, escala y (experimental) distancia (4.3) |
+| Cámara → Calibrar cámara | Exposición, rumbo derecho, escala e inclinación (4.3) |
 | Ver sensores ToF (dibujo) | Ver en vivo lo que mide cada sensor y qué haría el robot, sin moverlo |
 | Cámara | Ver si el camino sale blanco (pared) o negro (capítulo 5) |
+| Cronómetro (grande, arriba) | Tiempo de la corrida en curso; se queda con el tiempo final al llegar al amarillo |
 | Dónde está | Fase, celda, celdas mapeadas, meta y último avance durante la corrida |
 
 ::: figura
@@ -125,10 +128,10 @@ Todo se calibra desde el celular: colores, sensores de distancia, avance y cáma
 flowchart LR
   A[4.1 Colores<br/>una vez por pista] --> B[4.2 Distancia<br/>3 ToF a 100 mm]
   B --> C[4.3 Cámara<br/>exposición, derecho, escala]
-  C --> D[Experimental:<br/>distancia por cámara]
+  C --> D[Inclinación<br/>frente a una pared]
   B -. el frontal sirve de regla .-> D
 ```
-**Figura 2. Orden de calibración.** Qué mirar: la distancia por cámara depende del ToF frontal, así que el paso 4.2 va antes.
+**Figura 2. Orden de calibración.** Qué mirar: la inclinación de la cámara usa el ToF frontal como regla, así que el paso 4.2 va antes.
 :::
 
 ## 4.1 Colores (una vez por pista)
@@ -172,7 +175,7 @@ Los umbrales (`PARED`, `D_FRENTE`, `FRENTE_LIBRE`) se ajustaron con lecturas sin
 4. Repite hasta que avance 100 mm (±5).
 
 ::: tip
-Solo se usa cuando el frontal no ve pared a menos de 600 mm. Con pared enfrente, el robot mide con el ToF y se centra con ella (`centrar`).
+Solo se usa cuando no hay pared a menos de 250 mm adelante. Entre orillas de pared lateral, las orillas son la regla y el tiempo solo dice cuántas celdas.
 :::
 
 ## 4.3 Cámara (una vez, o si mueves la cámara)
@@ -181,13 +184,13 @@ Solo se usa cuando el frontal no ve pared a menos de 600 mm. Con pared enfrente,
 2. **Exposición:** escribe un número y aprieta **Aplicar** hasta que el piso salga negro y las paredes blancas, sin manchas. Empieza en 100 (10 ms). 0 la deja automática.
 3. **Derecho:** pon el robot derecho y centrado en un pasillo largo y aprieta **Está derecho**.
 4. **Escala:** gíralo a mano **15° a la derecha** (con transportador) y aprieta **Fijar escala**. Al regresarlo derecho, abajo de la imagen debe decir "Rumbo: derecho" o 1-2°.
-5. **Solo experimental:** pon el robot frente a una pared a 100, 200, 300, 400 y 600 mm y aprieta **Agregar punto** en cada una. El ToF frontal hace de regla, así que calíbralo antes (4.2).
+5. **Inclinación:** robot derecho frente a una pared a 15–40 cm → **Calibrar inclinación**. El ToF frontal hace de regla, así que calíbralo antes (4.2). Revisa que los puntos amarillos de la imagen caigan en la base de las paredes.
 
 ::: checklist
 - [ ] Exposición
 - [ ] Derecho
 - [ ] Escala (15°)
-- [ ] Distancia (solo experimental)
+- [ ] Inclinación
 :::
 
 ::: tip
@@ -197,7 +200,7 @@ No tienes que medir la inclinación de la cámara: estos pasos miden todo con el
 # 5. Cómo revisar la cámara
 
 ::: corto
-Solo si encendiste la cámara (`USAR_CAM = True`). La página muestra lo que ve. En un pasillo libre, el camino debe salir **verde**. Si sale rojo, ajusta la exposición. Durante una corrida verás la última foto que tomó el robot, no video en vivo.
+La cámara está encendida pero **solo mira y graba**: el robot no decide con ella. La página muestra lo que ve y, debajo, "Celdas libres al frente". Durante una corrida verás la última foto, no video en vivo.
 :::
 
 | Marca en la imagen | Qué significa |
@@ -205,10 +208,10 @@ Solo si encendiste la cámara (`USAR_CAM = True`). La página muestra lo que ve.
 | Camino **rojo** | Ve blanco (pared) en el piso por donde va a pasar. El robot va lento |
 | Camino **verde** | Ve negro (piso libre). El robot va normal |
 | Líneas **azules** | Las bases de las 2 paredes y su punto de fuga. Si el punto queda a un lado de la línea blanca, el robot va chueco y lo corrige antes de avanzar |
-| Puntos **amarillos** (solo experimental) | Dónde empieza la pared en 5 columnas; abajo dice a cuántos mm y si ve una abertura en la celda siguiente |
+| Puntos **amarillos** | La base de la pared más cercana en cada columna, en mm sobre el piso. Deben caer donde la pared toca el piso; un reflejo del piso brillante da puntos falsos muy bajos (se descartan los de menos de `CAM_ALTO_MIN` = 14 filas) |
 
 ::: ajuste
-Camino rojo sobre piso libre: revisa primero la exposición (4.3). Si sigue, ajusta `ZONA_PASO` (la parte del piso que mira) o sube `BLANCO_MAX` (cuánto blanco tolera antes de ir lento), en `python/main.py`.
+Camino rojo sobre piso libre: revisa primero la exposición (4.3). Si sigue, es un reflejo: baja la luz de la sala o sube `CAM_ALTO_MIN` en `python/main.py`. Para que la cámara vuelva a ayudar a ubicarse (`CAM_LOC = True`), hazlo solo si los puntos caen bien.
 :::
 
 # 6. Cómo ajustar el movimiento
@@ -232,15 +235,16 @@ Calibra con la batería cargada. Cambia **un número a la vez** en `sketch/sketc
 | Se ve tieso en pasillos largos | `PASILLO` (main.py) | 3 | Súbelo a 4 |
 | Pierde la posición en pasillos largos | `PASILLO` (main.py) | 3 | Bájalo a 2 (1 = parar en cada celda) |
 | Laberinto de otro tamaño | `CENTRO` (main.py) | 5 | (lado − 1) / 2 |
-| Se queda antes del centro de la celda al abrirse un lado | `TRAS_SALTO` | 110 mm | Súbelo 5 |
-| Se pasa del centro de la celda al abrirse un lado | `TRAS_SALTO` | 110 mm | Bájalo 5 |
-| Tras avanzar va y viene frente a la pared | `CENTRA_F` (main.py) | 600 mm | Bájalo a 300; 0 lo apaga |
+| Se queda antes del centro de la celda al abrirse un lado | `TRAS_SALTO` | 85 mm | Súbelo 5 (sirve de 75 a 95) |
+| Se pasa del centro de la celda al abrirse un lado | `TRAS_SALTO` | 85 mm | Bájalo 5 |
+| Tras avanzar va y viene frente a la pared | `CENTRA_F` (main.py) | 250 mm | Bájalo a 150; 0 lo apaga |
+| Sigue chueco entre movimientos | `KI_RUMBO` | 0.5 | Aprende el desbalance de motores entre avances; bájalo si oscila |
 | Se va a la derecha | `AJUSTE_DER` | −10 | Súbelo 5 |
 | Se va a la izquierda | `AJUSTE_DER` | −10 | Bájalo 5 |
 | Zigzaguea entre paredes | `KC` | 0.8 | Bájalo, por ejemplo a 0.5 |
 
 ::: ajuste
-Con MPU-6050 el robot sostiene el rumbo solo en recta, así que `AJUSTE_DER` casi no hace falta. Si se desvía o gira de más o de menos, revisa primero `ADELANTO`.
+Con MPU-6050 y una pared lateral el robot sostiene el rumbo, y entre movimientos aprende el desbalance de sus motores (`KI_RUMBO`), así que `AJUSTE_DER` casi no hace falta. Si se desvía o gira de más o de menos, revisa primero `ADELANTO`.
 :::
 
 ::: tip
@@ -250,13 +254,14 @@ Para ver por qué gira o avanza, usa **Ver sensores ToF** en la página: dibuja 
 # 7. Cómo correr el laberinto
 
 ::: corto
-Pon el robot en cualquier esquina y dale un toque corto. Con la pista cargada se ubica solo comparando lo que ven sus sensores con el mapa, y va al amarillo por el camino más corto. Si repites desde la misma esquina, la segunda corrida usa la meta guardada (`RAPIDO`).
+Pon el robot en cualquier esquina y dale un toque corto. Con la pista cargada se ubica solo comparando lo que ven sus sensores con el mapa, y va al amarillo por el camino más corto. Si duda de dónde está, se detiene, se **cuadra** (gira ±35° buscando el ángulo donde queda paralelo a la pared) y se vuelve a ubicar; puede perderse hasta 10 veces por corrida antes de rendirse a la brújula.
 :::
 
 1. **Mantén D2 por 2 s** y suelta (borra las pruebas).
 2. Pon el robot quieto en **una esquina**, en cualquier orientación.
 3. Dale un **toque corto**. Busca el amarillo y se detiene solo en `META`.
-4. Para repetir, regrésalo **a la misma esquina y posición** y dale **toque corto**: va directo por la ruta guardada (`RAPIDO`).
+4. Para repetir, regrésalo a una esquina y dale **toque corto**: se vuelve a ubicar y va por el camino más corto. El mapa guardado no se usa para corregir la pista (`CAMBIA_MAPA = False`).
+5. Cada corrida deja su registro en `/app/datos/logs/` (texto y un `..._crudo.csv` con las lecturas): bájalos por ADB o SSH y se pueden reproducir en simulación.
 
 ::: figura
 ```mermaid
@@ -281,7 +286,7 @@ stateDiagram-v2
 :::
 
 ::: cuidado
-Entre intentos del mismo laberinto **no borres**: así recuerda el camino. Borra solo cuando cambies de laberinto.
+Borra el mapa solo cuando cambies de laberinto. Antes de la competencia: colores calibrados en esa pista, batería cargada y hub con su cargador.
 :::
 
 # 8. Qué hacer si…
@@ -309,16 +314,20 @@ Busca el síntoma en la tabla. La mayoría de los problemas se arreglan con una 
 | `SIN CAM` en la pantalla | Hub sin cargador o cámara fuera del hub | Conecta el cargador del hub y la cámara al hub. El robot funciona sin cámara, pero no revisa el piso |
 | La cámara sale negra | Cámara conectada después de Run | Conecta cámara y hub **antes** de darle Run; el hub con su cargador |
 | La página no abre | Otra red o IP equivocada | Usa el mismo WiFi que la placa y la IP que muestra App Lab con `:7000` |
+| La página no abre y el log dice `no attribute 'isatty'` | Versión vieja del registro de logs | Usa `uno_q_v2/python/main.py` actual |
+| `lsusb` no ve la cámara | La placa está en modo dispositivo USB | Modo host: puente VOL_DOWN–GND de JCTL al encender, o por SSH `echo host > /sys/kernel/debug/usb/4e00000.usb/mode`. Fijo: unidad `usb-host-mode.service` de systemd que hace lo mismo al arrancar |
+| El tiempo de la corrida sale absurdo (cientos de s de más) | La placa ajustó su reloj de red a media corrida | Ya no pasa (usa `time.monotonic()`); si el log y tu cronómetro difieren, manda el tuyo |
 | Se pierde o el mapa está mal | Mapa viejo o con errores | Mantén D2 por 2 s para borrar y empieza de nuevo |
 | Pantalla negra | Arranque en curso o batería baja | Espera; si sigue, revisa la batería |
 | Las primeras celdas va hacia un lado raro | Todavía no sabe en qué esquina está: decide con la brújula | Es normal; en pocas celdas se ubica y toma el camino corto |
 | Nunca se ubica y da vueltas | La pista no es la del mapa cargado | Usa `ESTRATEGIA = "brujula"` en `main.py`, o actualiza `PISTA_H` / `PISTA_V` |
+| Choca en una abertura al pasar | Centrado jalado por la pared del pasillo perpendicular | Ya corregido en v2 (el centrado solo usa paredes de su carril, < 95 mm). Si pasa, revisa `CARRIL_SI` / `CARRIL_NO` |
 | La segunda corrida va a un lugar equivocado | Cambiaste de esquina y usó la meta guardada | Borra el mapa (D2 más de 2 s) al cambiar de esquina |
 
 # 9. Control de versiones
 
 ::: corto
-Hoy hay un solo sketch (con MPU-6050) y un solo Python. La estrategia (`ESTRATEGIA`) y la cámara (`USAR_CAM`, `EXPERIMENTAL`) son banderas dentro de `main.py`.
+La versión final es `uno_q_v2/` (un sketch y un Python). `uno_q/` queda como la versión anterior. La estrategia y la cámara son banderas dentro de `main.py` (`ESTRATEGIA`, `USAR_CAM`, `CAM_LOC`, `CAM_RUMBO`, `CAM_LENTO`).
 :::
 
 | Revisión | Qué cambió para quien lo usa |
@@ -328,10 +337,11 @@ Hoy hay un solo sketch (con MPU-6050) y un solo Python. La estrategia (`ESTRATEG
 | B5 | El MPU se usa completo: se endereza antes de avanzar, verifica giros, se recupera de choques y se detiene si lo levantan |
 | B6 | Queda un solo sketch, `sketch/` (con MPU-6050). `sketch_sin_mpu/` se quitó del repositorio |
 | B7 | Queda un solo Python. La versión experimental de la cámara es `EXPERIMENTAL = True` en `main.py` |
-| **B8** | **Sale de cualquier esquina y se ubica solo con el mapa de la pista; cámara apagada; avance calibrable en la web** |
+| B8 | Sale de cualquier esquina y se ubica solo con el mapa de la pista; avance calibrable en la web |
+| **v2 final** | **Orillas de pared como regla de avance, frontal solo de cerca, rumbo con pared lateral, barrido para cuadrarse al perderse, cámara como sombra, logs crudos y modo host USB. 2.º lugar: 2:06.4 al amarillo** |
 
 ::: tip
-Si algún día hace falta la versión sin MPU, está en el commit `2e01996` del repositorio (carpeta `uno_q/sketch_sin_mpu/`). El detalle está en el manual técnico, capítulo "Control de versiones".
+La versión sin MPU está en el commit `2e01996` (carpeta `uno_q/sketch_sin_mpu/`). El detalle está en el manual técnico, capítulo "Control de versiones". El video de la corrida de 2:06.4 está en `docs/video/corrida2.mp4`.
 :::
 
 # 10. Glosario

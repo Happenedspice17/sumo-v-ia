@@ -6,14 +6,14 @@ author:
   - Manuel Harari López
   - Víctor Miguel Vázquez
   - Carlos Emiliano Escamilla Garibay
-date: 12 de noviembre de 2026
-version: Revisión B8 · documento 3.0
+date: 14 de noviembre de 2026
+version: Versión final (v2) · documento 4.0
 ---
 
 # Cómo leer esta bitácora
 
 ::: corto
-La bitácora cuenta cómo se construyó el robot del 19 de octubre al 12 de noviembre de 2026: 52 etapas, de la primera versión con encoders a un robot que trae el mapa de la pista y se ubica solo, con reglas elegidas en un simulador. Hubo dos iteraciones sobre el mismo chasis: A (ATmega328p, respaldo) y B (Arduino UNO Q, la actual).
+La bitácora cuenta cómo se construyó el robot del 19 de octubre al 14 de noviembre de 2026: 52 etapas más la versión final (v2), que quedó en 2.º lugar en la competencia (2:06.4 al amarillo), de la primera versión con encoders a un robot que trae el mapa de la pista y se ubica solo, con reglas elegidas en un simulador. Hubo dos iteraciones sobre el mismo chasis: A (ATmega328p, respaldo) y B (Arduino UNO Q, la actual).
 :::
 
 Este documento cuenta cómo se construyó el robot de laberinto de Microcontroladores 2, del 19 de octubre al 11 de noviembre de 2026, a partir del historial de commits del repositorio, de los análisis de la última sesión de trabajo (11-nov), que no quedaron en commits, y de las respuestas del equipo sobre sus pruebas en pista. El robot recorre un laberinto de celdas de 18 cm, encuentra una marca amarilla (la meta), cuenta marcas de color en el piso y en una segunda corrida debe ir por el camino más corto que conoce.

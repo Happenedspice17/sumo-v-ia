@@ -7,14 +7,14 @@ author:
   - Manuel Harari López
   - Víctor Miguel Vázquez
   - Carlos Emiliano Escamilla Garibay
-date: 12 de noviembre de 2026
-version: Revisión B8
+date: 14 de noviembre de 2026
+version: Versión final (v2)
 ---
 
 # El reto y nuestra respuesta
 
 ::: corto
-El robot sale de **cualquier esquina** de un laberinto de 11 × 11 celdas y llega a la **marca amarilla** del centro, donde se detiene solo. En el camino cuenta las marcas de color del piso. No sabe de qué esquina sale ni hacia dónde mira: **se ubica solo** comparando lo que ven sus sensores con el mapa de la pista. Lo construimos en 52 etapas, del 19 de octubre al 12 de noviembre.
+El robot sale de **cualquier esquina** de un laberinto de 11 × 11 celdas y llega a la **marca amarilla** del centro, donde se detiene solo. En el camino cuenta las marcas de color del piso. No sabe de qué esquina sale ni hacia dónde mira: **se ubica solo** comparando lo que ven sus sensores con el mapa de la pista. Lo construimos en 52 etapas más una segunda versión (v2) hecha tras las primeras pruebas en pista, del 19 de octubre al 14 de noviembre. **En la competencia quedó en 2.º lugar: llegó al amarillo en 6:23 y luego en 2:06.4.**
 :::
 
 :::: cifras
@@ -22,10 +22,10 @@ El robot sale de **cualquier esquina** de un laberinto de 11 × 11 celdas y lleg
 **16** ubicaciones posibles al arrancar; el robot descubre cuál es la suya
 :::
 ::: cifra
-**98 %** llegadas al amarillo en la pista simulada (200 corridas)
+**98–100 %** llegadas al amarillo en la pista simulada (300 corridas por salida)
 :::
 ::: cifra
-**200** laberintos simulados con física, ruido y deriva para elegir cada regla
+**2:06.4** mejor tiempo real al amarillo, sin encoders
 :::
 ::: cifra
 **0** encoders: el avance se mide con láser
@@ -43,9 +43,9 @@ Este manual explica **qué hace distinto a este robot**. No es una lista de piez
 | Lo que pide el reto | Nuestra respuesta | Página |
 |---|---|---|
 | Que nada se salga de control | Dos procesadores: el STM32 ejecuta y frena solo; Linux decide | 3 |
-| Moverse celda por celda sin encoders | Avance medido con el láser frontal y la geometría exacta del chasis | 5 |
+| Moverse celda por celda sin encoders | Las orillas de las paredes laterales hacen de regla; el láser frontal solo de cerca | 5 |
 | Girar 90° de verdad y no chocar | MPU-6050: rumbo absoluto, giros verificados, choque confirmado | 6 |
-| Saber dónde está sin odometría confiable | Autolocalización en el mapa de la pista, con brújula de respaldo | 7 |
+| Saber dónde está sin odometría confiable | Autolocalización en el mapa de la pista; si se pierde, se cuadra con la pared y se re-ubica (hasta 10 veces) | 7 |
 | Elegir reglas con datos, no a ojo | Simulador 2D con las funciones reales del robot | 8 |
 | Ajustar en la pista, sin laptop | Calibración completa desde el celular | 9 |
 
@@ -79,7 +79,7 @@ flowchart LR
   O <--> STM
   STM <--> BR <--> LNX
   STM --> H["L298N<br/>2 motores"]
-  CAM["Cámara OV9281<br/>(apagada por ahora)"] -.-> LNX
+  CAM["Cámara OV9281<br/>(solo mira y graba)"] -.-> LNX
   LNX <--> WEB["Web :7000<br/>celular"]
 ```
 **Figura 1. Arquitectura.** Qué mirar: todo lo de tiempo real cuelga del STM32; Linux decide y sirve la página web.
@@ -126,18 +126,18 @@ Diseñamos el chasis en OpenSCAD, con medidas reales de cada pieza, y comprobamo
 # Movimiento sin encoders
 
 ::: corto
-Los motores N20 no traen encoder y el tiempo deriva con la batería. Por eso el robot **mide la celda con el láser frontal**: anota la distancia al arrancar y para cuando bajó 180 mm. Solo si no ve pared a menos de 600 mm avanza por tiempo, calibrado desde la web.
+Los motores no traen encoder y el tiempo deriva con la batería. En la pista real vimos que el láser frontal, con su cono de 25°, ve las paredes laterales desde 300–400 mm y engaña al avance. Por eso la versión final usa **las orillas de las paredes laterales como regla**: cada una está en una orilla de celda, y el robot para al centro de la celda donde se acaba una pared. El tiempo solo dice cuántas celdas; el frontal solo vale a menos de 250 mm.
 :::
 
 ::: {.figura .alta}
 ```mermaid
 %%{init: {'flowchart': {'nodeSpacing': 18, 'rankSpacing': 22, 'padding': 6}, 'themeVariables': {'fontSize': '15px'}}}%%
 flowchart LR
-  A(["mover(mm)"]) --> B{"¿Pared a<br/>menos de 600 mm?"}
+  A(["mover(mm)"]) --> B{"¿Pared a<br/>menos de 250 mm?"}
   B -- Sí --> D["Por distancia:<br/>baja 180 mm"]
   B -- No --> T["Por tiempo"]
   T -- aparece pared --> D
-  D -- "se abre un lado<br/>(confirmado)" --> S["+110 mm:<br/>centro de esa celda"]
+  D -- "se acaba una pared<br/>lateral (2 lecturas)" --> S["+85 mm:<br/>centro de esa celda"]
   D -- "llega a 30 mm" --> F(["Alto"])
   S --> F
   T -- tiempo cumplido --> F
@@ -149,10 +149,12 @@ flowchart LR
 | Técnica | Cómo funciona | Por qué |
 |---|---|---|
 | **Alto en el centro exacto** | Para a 30 mm reales de la pared; si queda a menos de 25 mm, retrocede. Desde 130 mm frena en proporción | 30 mm es la lectura con el eje justo al centro de la celda (del CAD) |
-| **Centrar con la pared** | Tras cada avance, con pared enfrente a menos de 600 mm, se acerca o aleja hasta 30 mm + *k* × 180 | Cada avance empieza desde el centro: sin esto, 58 % de llegadas en simulación contra 90 % |
+| **Centrar con la pared** | Tras cada avance, con pared enfrente a menos de 250 mm, se acerca o aleja hasta 30 mm + *k* × 180 | Cada avance empieza desde el centro: sin esto, 58 % de llegadas en simulación contra 90 % |
 | **Cuenta solo lo que cabe** | Si la pared está más cerca que lo pedido, reporta lo que realmente avanzó | El simulador encontró que antes reportaba 180 mm sin moverse: el mapa se recorría una celda |
-| **Cambios bruscos** | Si un ToF cambia 120 mm o más **y la siguiente lectura lo confirma**, se abrió un lado: avanza 110 mm más (124 del CAD menos lo que tarda en confirmar) | Ninguna puerta lateral se pasa de largo; una lectura mala no dispara nada |
-| **Centrado en el carril** | Control proporcional sobre la diferencia de los laterales (con una pared, sobre 41 mm), saturado a ±40 PWM | La ganancia derivativa se quitó: en simulación torcía el rumbo |
+| **Orillas de pared** | Pared de su carril: lateral < 75 mm; se acaba: > 95 mm, confirmado en 2 lecturas; avanza 85 mm más y para al centro de esa celda. Si empieza una pared, se ajusta al centro de celda más cercano | Ninguna abertura se pasa de largo; una lectura mala no dispara nada |
+| **Centrado en el carril** | Control proporcional sobre la diferencia de los laterales (con una pared, sobre 41 mm), saturado a ±40 PWM, **solo con paredes de su carril** | Al pasar una abertura, el lateral ve la pared del pasillo de al lado a 80–120 mm y jalaba al robot hacia ella hasta chocar |
+| **Rumbo con una pared** | En ventanas de 300 ms, lo que cambia la lectura lateral frente a lo avanzado es el ángulo real; la diferencia con el giroscopio es deriva y se corrige 30 % | Sin detenerse y con una sola pared |
+| **Motores desbalanceados** | Entre movimientos aprende cuánto jala hacia un lado y lo compensa | Un integral continuo empeoraba la simulación; entre movimientos, no |
 | **Pasillos de un tirón** | Con pared a ambos lados avanza hasta 3 celdas seguidas; si se abre un lado, para ahí | Menos paradas y un movimiento más fluido |
 
 # MPU-6050: giros reales, choques confirmados
@@ -166,7 +168,8 @@ El giroscopio da giros de 90° reales y rumbo recto. El acelerómetro detecta ch
 | **Rumbo absoluto** | Cada giro va a un ángulo deseado acumulado (`ref` ± 90°): el error de un giro se corrige en el siguiente, no se acumula. Corta 6° antes por la inercia |
 | **Aprende su montaje** | El signo del sensor se descubre en el primer giro; el sesgo del giroscopio se mide al encender (200 muestras). Funciona como sea que se atornille, siempre que vaya plano |
 | **Giros verificados** | Antes de avanzar se endereza si se desvió 3° a 45°. Si un giro quedó a más de 10°, Python lo termina (2 intentos) |
-| **Corrige su propia deriva** | Con 2 paredes, centrado y paralelo durante 300 ms, toma el rumbo del pasillo como verdad y corrige la mitad del error del giroscopio |
+| **Corrige su propia deriva** | Con una pared lateral toma el ángulo medido como verdad y corrige 30 % por ventana; quieto, vuelve a medir el sesgo del giroscopio |
+| **Cuadrarse al perderse** | Gira ±35° en pasos de 7° mirando la pared, ajusta una parábola a la distancia y queda paralelo en su vértice |
 | **Giro atorado** | 400 ms girando sin moverse 2° significa una esquina trabada: retrocede 200 ms y sigue (hasta 2 veces) |
 | **Robot levantado** | Aceleración vertical bajo 0.8 g durante 150 ms: apaga motores y termina la corrida |
 
@@ -213,21 +216,34 @@ flowchart TB
 | Situación | Qué hace el robot |
 |---|---|
 | **Cada lectura** | Una hipótesis que coincide en las 3 direcciones pesa 0.7³; una que falla por 1 celda pesa 0.12 en esa dirección; más, 0.02 |
-| **Ubicación segura** (≥ 60 %) | Va por el camino más corto del mapa al amarillo |
-| **El mapa no coincide** | Si los ToF ven pared donde el mapa dice paso 2 veces, corrige el mapa y busca otro camino |
+| **Ubicación segura** (≥ 60 %) | Va por la ruta más segura del mapa al amarillo (cada celda 1, +0.5 por lado sin pared, +1 por giro; en esta pista casi igual a la más corta) |
+| **Qué distingue cada láser** | Solo 0, 1 o "2 o más" celdas libres: más lejos la distancia no dice nada del pasillo |
+| **Se pierde** | Se detiene, se cuadra con la pared y se re-ubica en toda la pista; puede perderse hasta 10 veces antes de rendirse a la brújula |
+| **El mapa no coincide** | En la versión final **no corrige el mapa** (`CAMBIA_MAPA = False`): en pista "cambió" 2 paredes que estaban bien por lecturas falsas |
 | **Otra pista** | Si nada cuadra con ninguna hipótesis, concluye que la pista cambió y sigue solo con la **brújula**: la salida libre que más apunta al centro, con castigo por repetir y algo de azar para romper ciclos |
 
-| Caso (200 corridas simuladas) | Pista (mapa + ubicación) | Solo brújula |
+| Caso (versión anterior, 200 corridas) | Pista (mapa + ubicación) | Solo brújula |
 |---|---|---|
 | Pista real | **98 %, 23 s** | 96 %, 39 s |
 | Odometría mala | **82 %** | 71 % |
 | Entrada del cuarto central cerrada | **92 %, 25 s** | 74 %, 56 s |
 | Otro laberinto (el mapa no sirve) | 84 % | 86 % |
 
+**Versión final (v2), pista real, 300 corridas por salida.** Con el simulador corregido para que el frontal vea las paredes laterales (`ROZA`) se reprodujo por fin la falla de pista:
+
+| Salida | Versión anterior | v2 final |
+|---|---|---|
+| Abajo-derecha, viendo izquierda | 76 % | 100 %, 19 s |
+| Abajo-derecha, viendo arriba | 81 % | 99 %, 23 s |
+| Abajo-izquierda, viendo arriba | 59 % | 99 %, 23 s |
+| Arriba-izquierda, viendo derecha | 60 % | 99 %, 26 s |
+| Arriba-izquierda, viendo abajo | 67 % | 100 %, 24 s |
+| Arriba-derecha, viendo izquierda | 34 % | 98 %, 28 s |
+
 # Un simulador para elegir las reglas
 
 ::: corto
-En vez de afinar a ojo en la pista, construimos un **simulador 2D** que usa las **funciones reales** de `main.py`. Probamos cada regla en 200 laberintos parecidos a la pista. Lo que más pesa no son los umbrales de los láser: es **no perder la celda**.
+En vez de afinar a ojo en la pista, construimos un **simulador 2D** que usa las **funciones reales** de `main.py`. Probamos cada regla en 200 laberintos parecidos a la pista; la versión final se afinó contra la pista real, ya con los registros de las corridas. Lo que más pesa no son los umbrales de los láser: es **no perder la celda**.
 :::
 
 | El simulador modela | Cómo |
@@ -237,6 +253,8 @@ En vez de afinar a ojo en la pista, construimos un **simulador 2D** que usa las 
 | **MPU-6050** | Giroscopio con deriva y golpes de vibración sacados de los logs reales |
 | **Choques** | Por contacto del cuerpo con las paredes y los postes |
 | **Laberintos** | 11 × 11 con isla central de 3 × 3 y 2 entradas, algunos bucles, salida en una esquina al azar |
+| **Cono del frontal** | Ve las paredes laterales desde lejos (`ROZA`), como en los logs de pista: sin eso el simulador no reproducía la falla real |
+| **Cámara** | Rayos sobre el piso con ruido de píxel, columnas sin dato y error de inclinación |
 
 | Variante (cambia una regla) | Llega | Celda perdida |
 |---|---|---|
@@ -250,6 +268,10 @@ En vez de afinar a ojo en la pista, construimos un **simulador 2D** que usa las 
 
 ::: ajuste
 **Lo que no importó (±5 puntos):** el umbral de pared lateral entre 90 y 150 mm, el de frente libre entre 90 y 160 mm, mínimo o mediana de 3 lecturas, el umbral de salto entre 80 y 180 mm, los votos por pared entre 3 y 8, y el umbral de choque entre 0.8 y 2.5 g con vibración normal. Saber qué **no** mover también ahorró horas de pista.
+:::
+
+::: tip
+**La corrida de 2:06.4, reconstruida.** Con lo que graba el robot (lecturas a ~20 Hz, decisiones, giros y avances) se calculó el camino más probable sobre el mapa: `docs/video/corrida2.mp4` y `docs/corrida2.html`. Es una reconstrucción; sin encoders no hay trayectoria medida.
 :::
 
 ::: tip
@@ -268,7 +290,8 @@ Todo lo que depende de la pista se calibra desde una página web que sirve el pr
 | **Distancia de los ToF** | Un punto a 100 mm con vernier por sensor: corrige el desfase en el STM32, antes de cualquier decisión |
 | **Avance sin encoders** | Avanza 10 cm por tiempo, mides con regla y guardas: ajusta los milisegundos por celda |
 | **Simulador "qué haría"** | Dibuja en vivo lo que mide cada ToF y qué decidiría el robot, sin moverlo |
-| **Corrida** | Iniciar, detener, borrar el mapa, fase, celda, meta y cronómetro |
+| **Corrida** | Iniciar, detener, borrar el mapa, fase, celda, meta y cronómetro grande |
+| **Cámara** | Imagen, puntos de las bases de las paredes en mm, "celdas libres al frente" y calibración de inclinación |
 
 **Clasificación de color.** El TCS34725 va dentro de una capucha impresa, con su propio LED. Normalizamos la cromaticidad (*r / (r + g + b)*), que no cambia con la intensidad de la luz, y sumamos un término logarítmico de brillo con peso pequeño, que separa colores de tono parecido como blanco y amarillo:
 
@@ -277,7 +300,7 @@ Todo lo que depende de la pista se calibra desde una página web que sirve el pr
 Un color cuenta solo si se ve 3 veces seguidas y en la transición piso → color: nunca se cuenta dos veces el mismo cuadro.
 
 ::: cuidado
-**La cámara está lista, pero apagada.** Una OV9281 monocromática de obturador global mide el rumbo por el punto de fuga del pasillo (±0.1° en imágenes sintéticas) y detecta blanco con umbral automático (Otsu). La apagamos para depender solo de los láser mientras validamos la autolocalización; se enciende con una línea (`USAR_CAM = True`).
+**La cámara solo mira y graba.** Una OV9281 monocromática de obturador global ve la base de la pared más cercana en cada columna y, con su altura e inclinación, la convierte en mm sobre el piso: así ve lo que los láser no (celdas libres al frente, aberturas de las celdas de adelante). En simulación no mejoró de forma medible en condiciones normales, y en pista el piso negro brillante reflejó la luz y produjo paredes falsas (8 pérdidas en una corrida), así que su decisión quedó apagada (`CAM_LOC = False`) y se conserva el registro. Para encender la placa en modo host USB (detectar la cámara) se usa un servicio de systemd.
 :::
 
 
@@ -294,10 +317,13 @@ Lo más valioso no fue una pieza, sino la forma de trabajar: medir antes de supo
 | **Un número geométrico no sirve si el sensor no lo alcanza** | Un primer `D_FRENTE` de 55 mm nunca se cumplía: el VL53L0X sin calibrar "nunca llegaba a 50". Hoy los umbrales están en milímetros reales, con el sensor calibrado |
 | **Cada sensor necesita un papel y una jerarquía** | La cámara pasó de mandar a encarecer, a desempatar y a asistir. Todo se ordenó cuando los ToF quedaron como autoridad sobre las paredes |
 | **Una lectura mala no debe cambiar nada sola** | La menor de 3 lecturas, saltos confirmados en 2 lecturas, choques confirmados con el ToF |
+| **Una simulación que no reproduce la falla no sirve** | El simulador mostraba 98 % mientras la pista fallaba. Al agregar que el frontal ve las paredes laterales, reprodujo la falla (34–81 %) y guió la v2 (98–100 %) |
+| **Calibra lo que puntúa** | Quedamos 2.º; los colores no estaban bien calibrados y se perdieron puntos. Calibrar colores en la pista de hoy va primero en la lista |
+| **Los registros valen más que la intuición** | Los logs de las dos corridas mostraron un reloj que saltó 525 s, falsos cambios de mapa y medias vueltas encadenadas |
 | **Quitar código también es ingeniería** | Alinear con giros de 5° volvía al robot muy lento y se quitó. Una reescritura quitó unos 500 renglones de `main.py` sin perder capacidad |
 
 ::: cuidado
-**Lo que mejoraríamos:** encoders en cuadratura para los tramos sin pared, y un puente H MOSFET (TB6612FNG o DRV8833) en lugar del L298N, que pierde 2–3 V y deja 4.5–5 V a los motores. Los porcentajes de este manual son de simulación; la pista real es la prueba final.
+**Lo que mejoraríamos:** encoders en cuadratura para los tramos sin pared, y un puente H MOSFET (TB6612FNG o DRV8833) en lugar del L298N, que pierde 2–3 V y deja 4.5–5 V a los motores. Los porcentajes de este manual son de simulación; la prueba real fue la competencia (2.º lugar, 2:06.4), y la v2 no se volvió a probar en pista después de los últimos ajustes.
 :::
 
 | Glosario | |

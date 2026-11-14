@@ -1,6 +1,6 @@
 # Arduino UNO Q v2 (laberinto sin encoders)
 
-Copia de `uno_q/` con otra idea de fondo: **sin encoders, los milímetros avanzados son una suposición; las paredes no**. Se carga completa (sketch, `python/main.py`, `assets/index.html`) como otra app de App Lab ("Laberinto v2"). `uno_q/` queda como estaba. **Sin probar en pista.**
+Copia de `uno_q/` con otra idea de fondo: **sin encoders, los milímetros avanzados son una suposición; las paredes no**. Se carga completa (sketch, `python/main.py`, `assets/index.html`) como otra app de App Lab ("Laberinto v2"). `uno_q/` queda como estaba. **Probada en la competencia** (corridas de 6:23 y 2:06.4); los ajustes posteriores a esas corridas no se volvieron a probar en pista.
 
 **Resultado en competencia: 2.º lugar.** La mejor corrida llegó al amarillo en 2:06.4.
 
@@ -61,9 +61,9 @@ No simulado: la recalibración de deriva en reposo y el costo en tiempo de las l
 
 **Robot de laberinto · Microcontroladores 2**
 Manuel Harari López · Víctor Miguel Vázquez · Carlos Emiliano Escamilla Garibay
-12 de noviembre de 2026 · Revisión B8
+14 de noviembre de 2026 · Versión final (v2)
 
-> Versión actual del robot. Documentación completa: [manual técnico](../docs/pdf/manual_tecnico.pdf) · [manual de uso](../docs/pdf/manual_uso.pdf) · [bitácora](../docs/pdf/historial_cambios.pdf)
+> Versión final del robot (la descripción de abajo es la base; los cambios de la v2 están en la tabla de arriba y en los manuales). Documentación completa: [manual técnico](../docs/pdf/manual_tecnico.pdf) · [manual de uso](../docs/pdf/manual_uso.pdf) · [bitácora](../docs/pdf/historial_cambios.pdf)
 
 **Contenido:** [Arquitectura](#-arquitectura) · [Conexiones](#-conexiones) · [Programación](#-programación-arduino-app-lab) · [Calibración](#️-calibración) · [Funcionamiento](#️-funcionamiento) · [Glosario](#-glosario)
 
@@ -168,7 +168,7 @@ Con el hub conectado al USB-C, App Lab se conecta por WiFi (el puerto no puede i
 
    **Sensores**: enciende con el botón presionado. La OLED muestra `r g b c`, el color detectado y las 3 distancias. Con el robot centrado en una celda los laterales deben leer ~41 mm (`D_LADO`) y el frontal ~30 mm (`D_FRENTE`), si los ToF están calibrados.
 2. **Distancia (VL53L0X)**: en la web, "Ver sensores ToF" → "Calibrar distancia". Pon una pared a **100 mm** de la cara del sensor (vernier) y aprieta "Izq/Frente/Der a 100 mm" (promedia 10 lecturas). Corrige solo el desfase: `real = crudo + b`, con un punto por sensor; repetirlo reemplaza el anterior. (El ajuste de recta `real = a·crudo + b` con varios puntos sigue en el código si algún día hace falta.) Se guarda en `/app/datos/tof.json`, se manda al STM32 (`set_tof`) en cada arranque y el panel muestra la lectura sin calibrar (`odo(9..11)`).
-3. **Avance**: con pared enfrente a menos de 600 mm (`RANGO`) avanza por distancia y no hay que calibrar. Sin pared a la vista avanza por tiempo: calíbralo en la web (**Calibrar avance**: avanza 10 cm por tiempo, mides con regla y guardas; ajusta `msCelda`), y `MS_90` para giros de 90°. Calibra con la batería cargada. Si se desvía, ajusta `AJUSTE_DER`.
+3. **Avance**: con pared enfrente a menos de 250 mm (`RANGO`) avanza por distancia y no hay que calibrar. Sin pared a la vista avanza por orillas de pared y tiempo: calíbralo en la web (**Calibrar avance**: avanza 10 cm por tiempo, mides con regla y guardas; ajusta `msCelda`), y `MS_90` para giros de 90°. Calibra con la batería cargada. Si se desvía, ajusta `AJUSTE_DER`.
 4. **Cámara** (innomaker U20CAM-9281M, monocromática; no ve colores, el amarillo lo detecta el TCS34725). En la web, "Calibrar cámara": (1) exposición fija hasta que el piso salga negro y las paredes blancas; (2) robot derecho y centrado en un pasillo largo → "Está derecho"; (3) girado a mano unos 15° a la derecha → "Fijar escala"; (4, solo experimental) frente a una pared a varias distancias (100 a 600 mm) → "Agregar punto", usa el ToF frontal como regla. Se guarda en `/app/datos/camara.json`. La inclinación de la cámara no importa: todo se mide con el robot real. La página web muestra la imagen (160 × 120) con el camino en rojo si ve blanco o verde si ve negro. Ajusta `ZONA_PASO` para que en un pasillo libre salga verde.
 
 > [!IMPORTANT]
