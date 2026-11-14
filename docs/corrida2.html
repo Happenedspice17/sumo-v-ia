@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Corrida 2 · robot de laberinto</title>
+<style>
+  html, body { margin: 0; background: #0b1120; height: 100%; }
+  body { display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: system-ui, sans-serif; color: #cbd5e1; }
+  canvas { height: min(100vh, 177.8vw); aspect-ratio: 9 / 16; display: block; }
+  #ctl { position: fixed; bottom: 8px; left: 0; right: 0; text-align: center; font-size: 14px; }
+  #ctl button { font-size: 14px; padding: 6px 12px; border-radius: 8px; border: 0; background: #334155; color: #fff; margin: 0 3px; cursor: pointer; }
+</style>
+</head>
+<body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<div id="ctl"><button onclick="t0 = performance.now(); pausa = false">Reiniciar</button><button onclick="vel = vel == 4 ? 1 : 4; t0 = performance.now() - tAct / vel * 1000">Velocidad x1 / x4</button></div>
+<script>
+const D = {"n": 11, "meta": [6, 6], "estados": [[[0, 0], 2], [[0, 1], 2], [[0, 2], 2], [[1, 2], 1], [[1, 1], 0], [[1, 1], 0], [[1, 2], 2], [[0, 2], 3], [[1, 2], 1], [[1, 2], 1], [[1, 3], 2], [[1, 1], 0], [[1, 3], 2], [[3, 3], 1], [[4, 3], 1], [[4, 3], 1], [[4, 4], 2], [[4, 4], 1], [[6, 4], 1], [[6, 4], 2], [[6, 4], 2], [[4, 4], 3], [[4, 3], 0], [[4, 4], 2], [[4, 5], 2], [[4, 3], 0], [[3, 3], 3], [[3, 6], 2], [[3, 6], 1], [[3, 6], 1], [[3, 6], 2], [[4, 6], 1], [[4, 6], 1], [[4, 7], 2], [[4, 8], 2], [[5, 8], 1], [[6, 8], 1], [[6, 7], 0], [[6, 6], 0]], "eventos": [[36.6, "Crey\u00f3 que una pared hab\u00eda cambiado (no era cierto)"], [42.02, "Perdido: barre para cuadrarse y se vuelve a ubicar"], [93.5, "Choque con una punta de pared: retrocede y esquiva"], [97.4, "Choque: pared izquierda a 29 mm, se aleja"], [105.87, "Perdido: barre para cuadrarse (el frente estaba a -6 grados)"], [115.6, "Marca ROJA"], [126.4, "AMARILLO: meta a los 126.4 s"]], "pasos": [{"t": 0.46, "lect": [281, 822, 34], "rumbo": 0, "rel": 0, "tg": 0.47, "rumbo2": 0, "tm": 2.4, "mm": 266, "n": 1, "pared": false}, {"t": 2.86, "lect": [16, 336, 129], "rumbo": 0, "rel": 0, "tg": 2.88, "rumbo2": 0, "tm": 4.34, "mm": 88, "n": 0, "pared": false}, {"t": 4.79, "lect": [76, 222, 115], "rumbo": 0, "rel": 0, "tg": 4.8, "rumbo2": 0, "tm": 6.77, "mm": 112, "n": 1, "pared": true}, {"t": 7.26, "lect": [149, 41, 197], "rumbo": 0, "rel": -1, "tg": 8.11, "rumbo2": 3, "tm": 9.86, "mm": 128, "n": 1, "pared": true}, {"t": 10.31, "lect": [190, 28, 10], "rumbo": 3, "rel": -1, "tg": 11.03, "rumbo2": 2, "tm": 12.62, "mm": 147, "n": 1, "pared": true}, {"t": 13.1, "lect": [19, 24, 83], "rumbo": 2, "rel": 2, "tg": 14.34, "rumbo2": 0, "tm": 17.27, "mm": 159, "n": 1, "pared": false}, {"t": 17.74, "lect": [10, 213, 313], "rumbo": 0, "rel": 1, "tg": 18.47, "rumbo2": 1, "tm": 20.12, "mm": 174, "n": 1, "pared": true}, {"t": 20.47, "lect": [258, 4, 353], "rumbo": 1, "rel": -1, "tg": 21.14, "rumbo2": 0, "tm": 23.21, "mm": 172, "n": 1, "pared": true}, {"t": 23.66, "lect": [292, 25, 61], "rumbo": 0, "rel": -1, "tg": 24.35, "rumbo2": 3, "tm": 26.39, "mm": 242, "n": 1, "pared": true}, {"t": 26.84, "lect": [227, 30, 376], "rumbo": 3, "rel": 1, "tg": 27.68, "rumbo2": 0, "tm": 28.73, "mm": 62, "n": 0, "pared": true}, {"t": 29.05, "lect": [514, 22, 99], "rumbo": 0, "rel": 2, "tg": 30.27, "rumbo2": 2, "tm": 32.6, "mm": 190, "n": 1, "pared": true}, {"t": 33.06, "lect": [59, 28, 28], "rumbo": 2, "rel": 2, "tg": 34.39, "rumbo2": 0, "tm": 36.44, "mm": 218, "n": 1, "pared": true}, {"t": 36.89, "lect": [264, 23, 22], "rumbo": 0, "rel": -1, "tg": 37.49, "rumbo2": 3, "tm": 39.06, "mm": 168, "n": 1, "pared": false}, {"t": 39.49, "lect": [27, 304, 283], "rumbo": 3, "rel": 0, "tg": 39.52, "rumbo2": 3, "tm": 41.48, "mm": 213, "n": 1, "pared": false}, {"t": 42.01, "lect": [21, 290, 448], "rumbo": 3, "rel": 0}, {"t": 47.94, "lect": [50, 201, 204], "rumbo": 3, "rel": 1, "tg": 48.7, "rumbo2": 0, "tm": 51.24, "mm": 104, "n": 1, "pared": false}, {"t": 51.62, "lect": [364, 329, 324], "rumbo": 0, "rel": -1, "tg": 52.5, "rumbo2": 3, "tm": 53.72, "mm": 143, "n": 1, "pared": false}, {"t": 54.2, "lect": [183, 373, 356], "rumbo": 3, "rel": 0, "tg": 54.21, "rumbo2": 3, "tm": 58.54, "mm": 156, "n": 1, "pared": true}, {"t": 59.03, "lect": [879, 26, 28], "rumbo": 3, "rel": 2, "tg": 60.52, "rumbo2": 1, "tm": 61.71, "mm": 78, "n": 0, "pared": true}, {"t": 62.07, "lect": [133, 26, 366], "rumbo": 1, "rel": -1, "tg": 62.81, "rumbo2": 0, "tm": 63.81, "mm": 89, "n": 0, "pared": true}, {"t": 64.25, "lect": [40, 22, 437], "rumbo": 0, "rel": 1, "tg": 65.08, "rumbo2": 1, "tm": 68.23, "mm": 151, "n": 1, "pared": true}, {"t": 68.71, "lect": [326, 28, 189], "rumbo": 1, "rel": 1, "tg": 69.67, "rumbo2": 2, "tm": 71.66, "mm": 266, "n": 1, "pared": true}, {"t": 72.13, "lect": [24, 27, 136], "rumbo": 2, "rel": 2, "tg": 73.47, "rumbo2": 0, "tm": 76.04, "mm": 143, "n": 1, "pared": false}, {"t": 76.5, "lect": [475, 280, 25], "rumbo": 0, "rel": 0, "tg": 76.52, "rumbo2": 0, "tm": 78.95, "mm": 245, "n": 1, "pared": true}, {"t": 79.32, "lect": [76, 30, 25], "rumbo": 0, "rel": 2, "tg": 80.93, "rumbo2": 2, "tm": 81.75, "mm": 40, "n": 0, "pared": true}, {"t": 82.13, "lect": [337, 27, 38], "rumbo": 2, "rel": -1, "tg": 82.99, "rumbo2": 1, "tm": 87.9, "mm": 72, "n": 0, "pared": false}, {"t": 88.36, "lect": [470, 267, 29], "rumbo": 1, "rel": -1, "tg": 88.93, "rumbo2": 0, "tm": 90.49, "mm": 117, "n": 1, "pared": true}, {"t": 90.92, "lect": [194, 21, 309], "rumbo": 0, "rel": -1, "tg": 91.67, "rumbo2": 3, "tm": 95.14, "mm": 20, "n": 0, "pared": false}, {"t": 95.61, "lect": [49, 243, 49], "rumbo": 3, "rel": 0, "tg": 95.62, "rumbo2": 3, "tm": 98.79, "mm": 0, "n": 0, "pared": false}, {"t": 99.27, "lect": [33, 202, 67], "rumbo": 3, "rel": 0, "tg": 99.29, "rumbo2": 3, "tm": 102.85, "mm": 173, "n": 1, "pared": true}, {"t": 103.33, "lect": [171, 27, 43], "rumbo": 3, "rel": -1, "tg": 104.13, "rumbo2": 2, "tm": 105.49, "mm": 135, "n": 1, "pared": true}, {"t": 105.86, "lect": [24, 22, 51], "rumbo": 2, "rel": 2}, {"t": 111.82, "lect": [26, 24, 447], "rumbo": 2, "rel": 1, "tg": 112.59, "rumbo2": 3, "tm": 114.24, "mm": 211, "n": 1, "pared": false}, {"t": 114.62, "lect": [30, 273, 63], "rumbo": 3, "rel": 0, "tg": 114.63, "rumbo2": 3, "tm": 116.92, "mm": 208, "n": 1, "pared": true}, {"t": 117.36, "lect": [482, 18, 75], "rumbo": 3, "rel": -1, "tg": 118.0, "rumbo2": 2, "tm": 119.4, "mm": 178, "n": 1, "pared": false}, {"t": 119.78, "lect": [24, 319, 94], "rumbo": 2, "rel": 0, "tg": 119.8, "rumbo2": 2, "tm": 122.38, "mm": 150, "n": 1, "pared": true}, {"t": 122.85, "lect": [513, 28, 14], "rumbo": 2, "rel": -1, "tg": 123.42, "rumbo2": 1, "tm": 124.54, "mm": 140, "n": 1, "pared": false}, {"t": 125.01, "lect": [260, 507, 286], "rumbo": 1, "rel": 0, "tg": 125.04, "rumbo2": 1, "tm": 126.53, "mm": 144, "n": 1, "pared": false}], "muros": [[0, 0, [true, false, false, true]], [0, 1, [false, true, false, true]], [0, 2, [false, false, false, true]], [0, 3, [false, true, false, true]], [0, 4, [false, false, true, true]], [0, 5, [true, false, true, true]], [0, 6, [true, true, false, true]], [0, 7, [false, false, false, true]], [0, 8, [false, true, false, true]], [0, 9, [false, false, false, true]], [0, 10, [false, true, true, true]], [1, 0, [true, true, true, false]], [1, 1, [true, true, false, true]], [1, 2, [false, true, false, false]], [1, 3, [false, false, true, true]], [1, 4, [true, false, true, false]], [1, 5, [true, false, false, false]], [1, 6, [false, true, true, true]], [1, 7, [true, false, true, false]], [1, 8, [true, false, false, true]], [1, 9, [false, true, false, false]], [1, 10, [false, true, true, true]], [2, 0, [true, true, false, true]], [2, 1, [false, false, true, true]], [2, 2, [true, false, false, true]], [2, 3, [false, false, true, false]], [2, 4, [true, true, false, false]], [2, 5, [false, true, false, false]], [2, 6, [false, false, false, true]], [2, 7, [false, true, false, false]], [2, 8, [false, false, false, false]], [2, 9, [false, true, false, true]], [2, 10, [false, true, true, true]], [3, 0, [true, false, true, true]], [3, 1, [true, false, true, false]], [3, 2, [true, false, true, false]], [3, 3, [true, false, false, false]], [3, 4, [false, true, false, true]], [3, 5, [false, true, false, true]], [3, 6, [false, false, true, false]], [3, 7, [true, true, false, true]], [3, 8, [false, true, false, false]], [3, 9, [false, false, false, true]], [3, 10, [false, false, true, true]], [4, 0, [true, false, true, false]], [4, 1, [true, false, true, false]], [4, 2, [true, true, true, false]], [4, 3, [true, false, false, false]], [4, 4, [false, false, false, true]], [4, 5, [false, true, true, true]], [4, 6, [true, true, false, false]], [4, 7, [false, true, false, true]], [4, 8, [false, false, true, true]], [4, 9, [true, false, true, false]], [4, 10, [true, true, true, false]], [5, 0, [true, false, true, false]], [5, 1, [true, true, false, false]], [5, 2, [false, false, true, true]], [5, 3, [true, true, true, false]], [5, 4, [true, false, true, false]], [5, 5, [true, false, false, true]], [5, 6, [false, false, false, true]], [5, 7, [false, false, true, true]], [5, 8, [true, false, true, false]], [5, 9, [true, false, false, false]], [5, 10, [false, false, true, true]], [6, 0, [true, false, false, false]], [6, 1, [false, true, false, true]], [6, 2, [false, false, false, false]], [6, 3, [false, true, false, true]], [6, 4, [false, true, true, false]], [6, 5, [true, true, false, false]], [6, 6, [false, false, false, false]], [6, 7, [false, false, false, false]], [6, 8, [false, true, true, false]], [6, 9, [true, false, true, false]], [6, 10, [true, false, true, false]], [7, 0, [true, false, true, false]], [7, 1, [true, false, true, true]], [7, 2, [true, false, false, false]], [7, 3, [false, true, false, true]], [7, 4, [false, false, false, true]], [7, 5, [false, true, false, true]], [7, 6, [false, true, false, false]], [7, 7, [false, true, true, false]], [7, 8, [true, false, false, true]], [7, 9, [false, true, false, false]], [7, 10, [false, false, true, false]], [8, 0, [true, true, false, false]], [8, 1, [false, false, true, false]], [8, 2, [true, false, true, false]], [8, 3, [true, false, false, true]], [8, 4, [false, true, false, false]], [8, 5, [false, false, false, true]], [8, 6, [false, true, false, true]], [8, 7, [false, false, false, true]], [8, 8, [false, true, false, false]], [8, 9, [false, true, true, true]], [8, 10, [true, false, true, false]], [9, 0, [true, false, false, true]], [9, 1, [false, false, true, false]], [9, 2, [true, false, true, false]], [9, 3, [true, false, true, false]], [9, 4, [true, false, false, true]], [9, 5, [false, true, true, false]], [9, 6, [true, true, false, true]], [9, 7, [false, false, false, false]], [9, 8, [false, true, false, true]], [9, 9, [false, true, true, true]], [9, 10, [true, false, true, false]], [10, 0, [true, true, true, false]], [10, 1, [true, true, true, false]], [10, 2, [true, true, true, false]], [10, 3, [true, true, true, false]], [10, 4, [true, true, true, false]], [10, 5, [true, true, false, true]], [10, 6, [false, true, false, true]], [10, 7, [false, true, false, false]], [10, 8, [false, true, true, true]], [10, 9, [true, true, false, true]], [10, 10, [false, true, true, false]]]};
+const cv = document.getElementById("c"), g = cv.getContext("2d");
+const W = 1080, H = 1920, N = D.n, CEL = 90, MX = (W - N * CEL) / 2, MY = 470;
+const P = D.pasos, E = D.estados, FIN = P[P.length - 1].tm, TMETA = D.eventos[D.eventos.length - 1][0];
+const ang = (h) => h * Math.PI / 2;
+const cx = (c) => MX + (c[0] + .5) * CEL, cy = (c) => MY + (c[1] + .5) * CEL;
+const suave = (u) => u < 0 ? 0 : u > 1 ? 1 : u * u * (3 - 2 * u);
+function giro(a, b) { let d = (b - a) % (2 * Math.PI); if (d > Math.PI) d -= 2 * Math.PI; if (d < -Math.PI) d += 2 * Math.PI; return d; }
+
+// pose del robot en el segundo t de la corrida: gira entre la decision y el giro, avanza entre el giro y el fin del avance
+function pose(t) {
+  let i = 0;
+  while (i + 1 < P.length && P[i + 1].t <= t) i++;
+  const p = P[i], [a, ha] = E[i], [b, hb] = E[i + 1];
+  if (p.tm === undefined) {                      // perdido: barre a los lados en su lugar
+    const dur = (P[i + 1] ? P[i + 1].t : FIN) - p.t, u = (t - p.t) / dur;
+    return { x: cx(a), y: cy(a), th: ang(ha) + Math.sin(u * Math.PI * 2) * 0.6 * (u < 1 ? 1 : 0), i, barre: true };
+  }
+  const ug = suave((t - p.t - 0.25) / Math.max(p.tg - p.t - 0.25, 0.05)), um = suave((t - p.tg - 0.15) / Math.max(p.tm - p.tg - 0.15, 0.05));
+  return { x: cx(a) + (cx(b) - cx(a)) * um, y: cy(a) + (cy(b) - cy(a)) * um, th: ang(ha) + giro(ang(ha), ang(hb)) * ug, i };
+}
+
+function rect(x, y, w, h, r, c) { g.fillStyle = c; g.beginPath(); g.roundRect(x, y, w, h, r); g.fill(); }
+function texto(s, x, y, px, c, al, peso) { g.font = (peso || 600) + " " + px + "px system-ui, sans-serif"; g.fillStyle = c; g.textAlign = al || "center"; g.fillText(s, x, y); }
+function reloj(s) { const m = Math.floor(s / 60); return m + ":" + (s - m * 60).toFixed(1).padStart(4, "0"); }
+
+function dibuja(t) {
+  t = Math.max(0, Math.min(t, FIN));
+  const q = pose(t), llego = t >= TMETA;
+  g.fillStyle = "#0b1120"; g.fillRect(0, 0, W, H);
+  texto("ROBOT DE LABERINTO", W / 2, 120, 62, "#38bdf8", "center", 800);
+  texto("Corrida 2 en competencia · 2.º lugar", W / 2, 185, 40, "#e2e8f0");
+  texto("3 láser, giroscopio y sensor de color · sin encoders", W / 2, 240, 30, "#94a3b8", "center", 500);
+  // cronometro
+  rect(W / 2 - 250, 280, 500, 140, 28, "#111c33");
+  texto(reloj(Math.min(t, TMETA)), W / 2, 385, 110, llego ? "#4ade80" : "#facc15", "center", 800);
+  // pista
+  rect(MX - 14, MY - 14, N * CEL + 28, N * CEL + 28, 18, "#05080f");
+  const mc = D.meta, pulso = llego ? 1 : 0.55 + 0.25 * Math.sin(t * 3);
+  g.globalAlpha = pulso; rect(MX + mc[0] * CEL + 12, MY + mc[1] * CEL + 12, CEL - 24, CEL - 24, 10, "#facc15"); g.globalAlpha = 1;
+  // rastro
+  g.strokeStyle = "#22d3ee"; g.lineWidth = 9; g.lineCap = g.lineJoin = "round"; g.globalAlpha = 0.55; g.beginPath();
+  g.moveTo(cx(E[0][0]), cy(E[0][0]));
+  for (let k = 1; k <= q.i; k++) g.lineTo(cx(E[k][0]), cy(E[k][0]));
+  g.lineTo(q.x, q.y); g.stroke(); g.globalAlpha = 1;
+  // paredes
+  g.strokeStyle = "#f8fafc"; g.lineWidth = 7; g.lineCap = "round"; g.beginPath();
+  for (const [x, y, m] of D.muros) {
+    const X = MX + x * CEL, Y = MY + y * CEL;
+    if (m[0]) { g.moveTo(X, Y); g.lineTo(X + CEL, Y); }
+    if (m[3]) { g.moveTo(X, Y); g.lineTo(X, Y + CEL); }
+    if (m[1] && x == N - 1) { g.moveTo(X + CEL, Y); g.lineTo(X + CEL, Y + CEL); }
+    if (m[2] && y == N - 1) { g.moveTo(X, Y + CEL); g.lineTo(X + CEL, Y + CEL); }
+  }
+  g.stroke();
+  // salida
+  texto("SALIDA", cx(E[0][0]), MY - 30, 26, "#94a3b8");
+  // robot y sus 3 laser (lo que leyo en la ultima decision)
+  g.save(); g.translate(q.x, q.y); g.rotate(q.th);
+  const esc = CEL / 180, L = P[q.i].lect, quieto = t < (P[q.i].tg === undefined ? 1e9 : P[q.i].tg);
+  if (quieto && !llego) {
+    g.lineWidth = 5;
+    [[-43, -40, -Math.PI / 2, L[0], 120], [0, -54, 0, L[1], 120], [43, -40, Math.PI / 2, L[2], 120]].forEach(([px, py, a, d, lim]) => {
+      const dd = Math.min(d, 450) * esc;
+      g.strokeStyle = d < lim ? "#f87171" : "#4ade80"; g.beginPath(); g.moveTo(px * esc, py * esc);
+      g.lineTo(px * esc + Math.sin(a) * dd, py * esc - Math.cos(a) * dd); g.stroke();
+    });
+  }
+  rect(-30, -30, 60, 60, 14, "#ffb300");
+  g.fillStyle = "#0b1120"; g.beginPath(); g.moveTo(0, -22); g.lineTo(13, -2); g.lineTo(-13, -2); g.closePath(); g.fill();
+  g.restore();
+  // lo que esta pasando
+  const REL = { 0: "de frente", 1: "gira a la derecha", "-1": "gira a la izquierda", 2: "media vuelta" };
+  let ev = null;
+  for (const [te, s] of D.eventos) if (t >= te && t < te + 4.5) ev = s;
+  const y0 = MY + N * CEL + 60;
+  rect(60, y0, W - 120, 150, 24, ev ? "#3b1d1d" : "#111c33");
+  if (llego) { rect(60, y0, W - 120, 150, 24, "#14532d"); texto("¡META! Amarillo a los " + reloj(TMETA), W / 2, y0 + 95, 54, "#bbf7d0", "center", 800); }
+  else if (ev) texto(ev, W / 2, y0 + 92, ev.length > 44 ? 32 : 40, "#fecaca");
+  else texto(q.barre ? "Se vuelve a ubicar" : "Decide: " + REL[P[q.i].rel], W / 2, y0 + 95, 48, "#e2e8f0");
+  // contadores
+  const perd = D.eventos.filter(([te, s]) => te <= t && s.startsWith("Perdido")).length, choq = D.eventos.filter(([te, s]) => te <= t && s.startsWith("Choque")).length;
+  [["decisiones", q.i + 1], ["veces perdido", perd], ["choques", choq]].forEach(([n, v], k) => {
+    const x = 60 + k * (W - 120) / 3 + (W - 120) / 6;
+    texto(String(v), x, y0 + 222, 66, "#f8fafc", "center", 800); texto(n, x, y0 + 262, 27, "#94a3b8", "center", 500);
+  });
+  texto("Verde: láser ve libre · rojo: pared · azul: por dónde pasó", W / 2, H - 78, 26, "#94a3b8", "center", 500);
+  texto("Reconstrucción aproximada a partir del registro del robot", W / 2, H - 38, 24, "#64748b", "center", 500);
+}
+
+let vel = 4, t0 = performance.now(), tAct = 0, pausa = false;
+function cuadro() { tAct = Math.min((performance.now() - t0) / 1000 * vel, FIN + 4); dibuja(tAct); requestAnimationFrame(cuadro); }
+if (new URLSearchParams(location.search).has("captura")) { document.getElementById("ctl").style.display = "none"; window.dibuja = dibuja; window.FIN = FIN; dibuja(0); }
+else cuadro();
+</script>
+</body>
+</html>

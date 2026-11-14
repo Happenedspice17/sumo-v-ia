@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Corrida 2 · robot de laberinto</title>
+<style>
+  html, body { margin: 0; background: #0b1120; height: 100%; }
+  body { display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: system-ui, sans-serif; color: #cbd5e1; }
+  canvas { height: min(100vh, 177.8vw); aspect-ratio: 9 / 16; display: block; }
+  #ctl { position: fixed; bottom: 8px; left: 0; right: 0; text-align: center; font-size: 14px; }
+  #ctl button { font-size: 14px; padding: 6px 12px; border-radius: 8px; border: 0; background: #334155; color: #fff; margin: 0 3px; cursor: pointer; }
+</style>
+</head>
+<body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<div id="ctl"><button onclick="t0 = performance.now(); pausa = false">Reiniciar</button><button onclick="vel = vel == 4 ? 1 : 4; t0 = performance.now() - tAct / vel * 1000">Velocidad x1 / x4</button></div>
+<script>
+const D = /*DATOS*/null;
+const cv = document.getElementById("c"), g = cv.getContext("2d");
+const W = 1080, H = 1920, N = D.n, CEL = 90, MX = (W - N * CEL) / 2, MY = 470;
+const P = D.pasos, E = D.estados, FIN = P[P.length - 1].tm, TMETA = D.eventos[D.eventos.length - 1][0];
+const ang = (h) => h * Math.PI / 2;
+const cx = (c) => MX + (c[0] + .5) * CEL, cy = (c) => MY + (c[1] + .5) * CEL;
+const suave = (u) => u < 0 ? 0 : u > 1 ? 1 : u * u * (3 - 2 * u);
+function giro(a, b) { let d = (b - a) % (2 * Math.PI); if (d > Math.PI) d -= 2 * Math.PI; if (d < -Math.PI) d += 2 * Math.PI; return d; }
+
+// pose del robot en el segundo t de la corrida: gira entre la decision y el giro, avanza entre el giro y el fin del avance
+function pose(t) {
+  let i = 0;
+  while (i + 1 < P.length && P[i + 1].t <= t) i++;
+  const p = P[i], [a, ha] = E[i], [b, hb] = E[i + 1];
+  if (p.tm === undefined) {                      // perdido: barre a los lados en su lugar
+    const dur = (P[i + 1] ? P[i + 1].t : FIN) - p.t, u = (t - p.t) / dur;
+    return { x: cx(a), y: cy(a), th: ang(ha) + Math.sin(u * Math.PI * 2) * 0.6 * (u < 1 ? 1 : 0), i, barre: true };
+  }
+  const ug = suave((t - p.t - 0.25) / Math.max(p.tg - p.t - 0.25, 0.05)), um = suave((t - p.tg - 0.15) / Math.max(p.tm - p.tg - 0.15, 0.05));
+  return { x: cx(a) + (cx(b) - cx(a)) * um, y: cy(a) + (cy(b) - cy(a)) * um, th: ang(ha) + giro(ang(ha), ang(hb)) * ug, i };
+}
+
+function rect(x, y, w, h, r, c) { g.fillStyle = c; g.beginPath(); g.roundRect(x, y, w, h, r); g.fill(); }
+function texto(s, x, y, px, c, al, peso) { g.font = (peso || 600) + " " + px + "px system-ui, sans-serif"; g.fillStyle = c; g.textAlign = al || "center"; g.fillText(s, x, y); }
+function reloj(s) { const m = Math.floor(s / 60); return m + ":" + (s - m * 60).toFixed(1).padStart(4, "0"); }
+
+function dibuja(t) {
+  t = Math.max(0, Math.min(t, FIN));
+  const q = pose(t), llego = t >= TMETA;
+  g.fillStyle = "#0b1120"; g.fillRect(0, 0, W, H);
+  texto("ROBOT DE LABERINTO", W / 2, 120, 62, "#38bdf8", "center", 800);
+  texto("Corrida 2 en competencia · 2.º lugar", W / 2, 185, 40, "#e2e8f0");
+  texto("3 láser, giroscopio y sensor de color · sin encoders", W / 2, 240, 30, "#94a3b8", "center", 500);
+  // cronometro
+  rect(W / 2 - 250, 280, 500, 140, 28, "#111c33");
+  texto(reloj(Math.min(t, TMETA)), W / 2, 385, 110, llego ? "#4ade80" : "#facc15", "center", 800);
+  // pista
+  rect(MX - 14, MY - 14, N * CEL + 28, N * CEL + 28, 18, "#05080f");
+  const mc = D.meta, pulso = llego ? 1 : 0.55 + 0.25 * Math.sin(t * 3);
+  g.globalAlpha = pulso; rect(MX + mc[0] * CEL + 12, MY + mc[1] * CEL + 12, CEL - 24, CEL - 24, 10, "#facc15"); g.globalAlpha = 1;
+  // rastro
+  g.strokeStyle = "#22d3ee"; g.lineWidth = 9; g.lineCap = g.lineJoin = "round"; g.globalAlpha = 0.55; g.beginPath();
+  g.moveTo(cx(E[0][0]), cy(E[0][0]));
+  for (let k = 1; k <= q.i; k++) g.lineTo(cx(E[k][0]), cy(E[k][0]));
+  g.lineTo(q.x, q.y); g.stroke(); g.globalAlpha = 1;
+  // paredes
+  g.strokeStyle = "#f8fafc"; g.lineWidth = 7; g.lineCap = "round"; g.beginPath();
+  for (const [x, y, m] of D.muros) {
+    const X = MX + x * CEL, Y = MY + y * CEL;
+    if (m[0]) { g.moveTo(X, Y); g.lineTo(X + CEL, Y); }
+    if (m[3]) { g.moveTo(X, Y); g.lineTo(X, Y + CEL); }
+    if (m[1] && x == N - 1) { g.moveTo(X + CEL, Y); g.lineTo(X + CEL, Y + CEL); }
+    if (m[2] && y == N - 1) { g.moveTo(X, Y + CEL); g.lineTo(X + CEL, Y + CEL); }
+  }
+  g.stroke();
+  // salida
+  texto("SALIDA", cx(E[0][0]), MY - 30, 26, "#94a3b8");
+  // robot y sus 3 laser (lo que leyo en la ultima decision)
+  g.save(); g.translate(q.x, q.y); g.rotate(q.th);
+  const esc = CEL / 180, L = P[q.i].lect, quieto = t < (P[q.i].tg === undefined ? 1e9 : P[q.i].tg);
+  if (quieto && !llego) {
+    g.lineWidth = 5;
+    [[-43, -40, -Math.PI / 2, L[0], 120], [0, -54, 0, L[1], 120], [43, -40, Math.PI / 2, L[2], 120]].forEach(([px, py, a, d, lim]) => {
+      const dd = Math.min(d, 450) * esc;
+      g.strokeStyle = d < lim ? "#f87171" : "#4ade80"; g.beginPath(); g.moveTo(px * esc, py * esc);
+      g.lineTo(px * esc + Math.sin(a) * dd, py * esc - Math.cos(a) * dd); g.stroke();
+    });
+  }
+  rect(-30, -30, 60, 60, 14, "#ffb300");
+  g.fillStyle = "#0b1120"; g.beginPath(); g.moveTo(0, -22); g.lineTo(13, -2); g.lineTo(-13, -2); g.closePath(); g.fill();
+  g.restore();
+  // lo que esta pasando
+  const REL = { 0: "de frente", 1: "gira a la derecha", "-1": "gira a la izquierda", 2: "media vuelta" };
+  let ev = null;
+  for (const [te, s] of D.eventos) if (t >= te && t < te + 4.5) ev = s;
+  const y0 = MY + N * CEL + 60;
+  rect(60, y0, W - 120, 150, 24, ev ? "#3b1d1d" : "#111c33");
+  if (llego) { rect(60, y0, W - 120, 150, 24, "#14532d"); texto("¡META! Amarillo a los " + reloj(TMETA), W / 2, y0 + 95, 54, "#bbf7d0", "center", 800); }
+  else if (ev) texto(ev, W / 2, y0 + 92, ev.length > 44 ? 32 : 40, "#fecaca");
+  else texto(q.barre ? "Se vuelve a ubicar" : "Decide: " + REL[P[q.i].rel], W / 2, y0 + 95, 48, "#e2e8f0");
+  // contadores
+  const perd = D.eventos.filter(([te, s]) => te <= t && s.startsWith("Perdido")).length, choq = D.eventos.filter(([te, s]) => te <= t && s.startsWith("Choque")).length;
+  [["decisiones", q.i + 1], ["veces perdido", perd], ["choques", choq]].forEach(([n, v], k) => {
+    const x = 60 + k * (W - 120) / 3 + (W - 120) / 6;
+    texto(String(v), x, y0 + 222, 66, "#f8fafc", "center", 800); texto(n, x, y0 + 262, 27, "#94a3b8", "center", 500);
+  });
+  texto("Verde: láser ve libre · rojo: pared · azul: por dónde pasó", W / 2, H - 78, 26, "#94a3b8", "center", 500);
+  texto("Reconstrucción aproximada a partir del registro del robot", W / 2, H - 38, 24, "#64748b", "center", 500);
+}
+
+let vel = 4, t0 = performance.now(), tAct = 0, pausa = false;
+function cuadro() { tAct = Math.min((performance.now() - t0) / 1000 * vel, FIN + 4); dibuja(tAct); requestAnimationFrame(cuadro); }
+if (new URLSearchParams(location.search).has("captura")) { document.getElementById("ctl").style.display = "none"; window.dibuja = dibuja; window.FIN = FIN; dibuja(0); }
+else cuadro();
+</script>
+</body>
+</html>
