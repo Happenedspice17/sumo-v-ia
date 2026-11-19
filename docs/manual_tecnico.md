@@ -6,24 +6,27 @@ author:
   - Manuel Harari López
   - Víctor Miguel Vázquez
   - Carlos Emiliano Escamilla Garibay
-date: 12 de noviembre de 2026
-version: Revisión B8 · documento 3.0
+date: 19 de noviembre de 2026
+version: Revisión B9 · documento 4.0
 ---
 
 # 1. Qué hace el robot
 
 ::: corto
-El robot sale de una esquina del laberinto y llega al cuadro **amarillo** del centro, donde se detiene solo. Avanza celda por celda mirando con tres sensores láser dónde hay pared. Trae el mapa de la pista y se ubica en él con lo que ven los láser, así que no depende de saber cuánto avanzó. En el camino cuenta los cuadros de colores.
+El robot sale de una esquina del laberinto y llega al cuadro **amarillo** del centro, donde se detiene solo. Avanza celda por celda mirando con tres sensores láser dónde hay pared. Trae el mapa de la pista y se ubica en él con lo que ven los láser, así que no depende de saber cuánto avanzó. La versión que compitió (**v2**, carpeta `uno_q_v2/`) lleva esa idea más lejos: sin encoders, los milímetros avanzados son una suposición; las paredes no. Quedó en **2.º lugar**, con su mejor corrida al amarillo en **2:06.4**.
 :::
 
 | Aspecto | Valor |
 |---|---|
+| Versión de referencia | **v2** (`uno_q_v2/`, app de App Lab "Laberinto v2"). Su antecesora, v1 (`uno_q/`), queda en el repositorio como estaba (revisión B8) |
+| Repositorio | <https://github.com/Happenedspice17/sumo-v-ia> |
 | Laberinto | Celdas de 180 mm. La meta es el cuadro amarillo; no se supone un tamaño de laberinto fijo |
 | Robot | Diferencial con dos ruedas motrices y un patín, huella ≤ 120 mm |
 | Laberinto de la pista | 11 × 11 celdas; el amarillo al centro, dentro de un cuarto con 2 entradas; salida en cualquier esquina |
-| Estrategia (`ESTRATEGIA = "pista"`) | Trae el mapa de la pista y se ubica en él con lo que ven los ToF (autolocalización); va por el camino más corto al amarillo. Si duda o la pista cambió, decide con la brújula (capítulo 9) |
-| Simulación | 200 laberintos con física de motores, ToF con ruido y giroscopio con deriva: 98 % de llegadas en la pista real (capítulo 9.4) |
-| Cámara | Apagada por ahora (`USAR_CAM = False`); el capítulo 7 describe lo que hace al encenderla |
+| Estrategia (`ESTRATEGIA = "pista"`) | Trae el mapa de la pista y se ubica en él con el patrón pared/abertura que ven los ToF (autolocalización); va por la ruta **más segura** al amarillo (Dijkstra). Si duda, decide con la brújula (capítulo 9) |
+| Simulación | Pista real, 300 corridas por salida: v2 llega 98–100 % (v1, en las mismas condiciones, 34–81 %) (capítulo 9.5) |
+| Competencia | 2.º lugar; mejor corrida 2:06.4. Video `docs/video/corrida2.mp4` y animación `docs/corrida2.html` (reconstrucción, capítulo 12.1) |
+| Cámara | Encendida (`USAR_CAM = True`) solo para verla en la web y grabar lo que ve; no mueve al robot (`CAM_LOC`, `CAM_RUMBO`, `CAM_LENTO` en `False`; capítulo 7) |
 
 ::: tip
 Este manual es de referencia. Para operar el robot (encender, calibrar, resolver fallas) usa el **Manual de uso**. La bitácora completa de decisiones está en la **Bitácora de diseño**.
@@ -71,7 +74,7 @@ Separar los dominios aísla la latencia no determinista de Linux (planificador, 
 ::: tip
 **Respaldo:** si el UNO Q falla, el mismo chasis acepta un UNO R3 (ATmega328P) con firmware *bare-metal* propio (carpeta `atmega328p/`) que hace todo en un solo chip, sin Arduino core. Este manual describe la versión del UNO Q.
 
-**Un solo sketch, con MPU-6050:** `uno_q/sketch/`. La versión sin MPU (`sketch_sin_mpu/`) se retiró del repositorio para no confundir; queda en el historial de git (capítulo 13).
+**Dos versiones del UNO Q, cada una con un solo sketch (con MPU-6050) y un solo Python:** `uno_q_v2/` (v2, la de referencia y la que compitió) y `uno_q/` (v1, su antecesora). Se cargan como apps distintas de App Lab. La versión sin MPU (`sketch_sin_mpu/`) se retiró del repositorio para no confundir; queda en el historial de git (capítulo 13).
 :::
 
 # 3. Protocolo RPC (Bridge)
@@ -85,7 +88,8 @@ Linux llama funciones que expone el STM32 por el Bridge (RPC MessagePack, enruta
 | `mover(mm, lento)` | Avanza hasta *mm* (una celda = 180 mm). Si `lento` es 1 usa `VEL_LENTO`. No bloquea; devuelve 0 si ya hay un movimiento en curso |
 | `girar(k)` | Gira en sitio *k* × 90°; el signo indica el sentido (2 = media vuelta) |
 | `ajustar(g)` | Corrige el rumbo *g* grados (derecha +) con lo que mide la cámara. Con MPU y sentido conocido no gira: mueve el rumbo deseado y la recta lo sostiene (devuelve 1). Si no, gira en su lugar (devuelve 2: hay que esperar) |
-| `centrar(lim)` | Con pared enfrente a menos de *lim* mm: avanza o retrocede a `VEL_MIN` hasta que el frontal lea `D_FRENTE` + *k* × 180 (centro de la celda), máximo 1 s. Python lo pide tras cada avance con `CENTRA_F` = 600. Devuelve 2 si hay que esperar |
+| `centrar(lim)` | Con pared enfrente a menos de *lim* mm: avanza o retrocede a `VEL_MIN` hasta que el frontal lea `D_FRENTE` + *k* × 180 (centro de la celda), máximo 1 s. Python lo pide tras cada avance con `CENTRA_F` = 250 (v1: 600). Devuelve 2 si hay que esperar |
+| `signo(s)` | v2: fija (*s* = 1 o −1) o consulta (*s* = 0) el signo del giroscopio según el montaje. Python lo guarda en `/app/datos/mpu.json` y lo manda al arrancar, para sostener el rumbo desde el primer avance |
 | `mover_t(mm)` | Avance de prueba por tiempo (sin medir con el frontal ni alargarse por saltos): calibra `msCelda` desde la web |
 | `set_ms(ms)` | Fija `msCelda` (200-2000) |
 | `alinear(lim)` | Con MPU: gira en su lugar hasta el rumbo deseado si se desvió 3° o más (`ALIN_MIN`) y no más de *lim* (45 antes de avanzar; 180 para terminar un giro fallido). Devuelve 2 si hay que esperar. Sin MPU devuelve 0 |
@@ -104,7 +108,7 @@ Linux llama funciones que expone el STM32 por el Bridge (RPC MessagePack, enruta
 | 0 | Recorrido del avance actual | mm |
 | 1 | Lo que falta del avance | mm |
 | 2 | Máscara de paredes y movimiento | bits |
-| 3 | Saltos: 1 izquierda, 2 frente, 4 derecha | bits |
+| 3 | Saltos: 1 izquierda, 2 frente, 4 derecha (en v2 un lateral cuenta cuando se acaba su pared, 8.1) | bits |
 | 5 / 6 / 7 | Distancia frente / izquierda / derecha (calibrada) | mm |
 | 8 | Desvío de rumbo | ° |
 | 9 / 10 / 11 | Lectura de cada ToF sin calibrar | mm |
@@ -112,6 +116,9 @@ Linux llama funciones que expone el STM32 por el Bridge (RPC MessagePack, enruta
 | 13 | Veces que el último giro se atoró (solo MPU) | cuenta |
 | 14 | Lo levantaron; se borra al leerlo (solo MPU) | 0/1 |
 | 15 | Golpe máximo del último avance (solo MPU) | mg |
+| 16 | Desvío de rumbo (barrido de `cuadrar`) | décimas de ° |
+| 17 | v2: laterales donde **empezó** una pared en el último avance (1 izquierda, 4 derecha) | bits |
+| 18 | v2: los 3 ToF en una llamada (10 bits cada uno), para la grabación | — |
 
 # 4. Conexiones y hardware
 
@@ -176,6 +183,8 @@ Tres sensores láser (izquierda, frente y derecha) miden en milímetros qué tan
 | Direcciones I²C | Los tres traen la misma (0x29), que además comparte el sensor de color. Al arrancar se mantienen apagados con XSHUT (A0–A2). Se encienden uno por uno y cada uno se reasigna a 0x30–0x32 antes de `init()` |
 | Lectura | Modo continuo con *timing budget* de 20 ms (≈ 50 Hz por sensor), no bloqueante |
 | Umbrales | Lateral con menos de 120 mm (`PARED`) = pared. Frontal con menos de 55 mm reales (`PARED_F`) = pared en su celda; con 120 mm o más (`FRENTE_LIBRE`) el frente cuenta como salida |
+| Pared de carril (v2) | Con el robot de 120 mm en un carril de 168 mm el lateral lee de 17 a 65 mm. En movimiento, una pared lateral **empieza** por debajo de 75 mm (`CARRIL_SI`) y **se acaba** por encima de 95 mm (`CARRIL_NO`), con 2 lecturas seguidas. Más lejos no es su pared: al pasar una abertura el cono del lateral ve la pared del pasillo perpendicular a 80–120 mm |
+| Alcance útil (v2) | Cada ToF solo distingue 0, 1 o "2 o más" celdas libres (`VE` = 2): más lejos, el cono de unos 25° ve paredes laterales y puntas y la distancia ya no dice nada del pasillo (en pista el frontal leyó 407 mm con la pared a 4 celdas) |
 | Lecturas mínimas | Python toma 3 lecturas de cada ToF y usa la menor (5 tras un cambio brusco). Una lectura mala no deja pasar al robot |
 | Calibración | Desde la web, un punto a 100 mm por sensor: solo desfase `real = crudo + b`. Con varios puntos el código ajusta `real = a × crudo + b` por mínimos cuadrados. Se aplica en el STM32 antes de cualquier decisión, para que el control de 10 ms, los saltos y el alto a 30 mm usen milímetros reales |
 
@@ -217,7 +226,7 @@ Valores de fábrica (`REFS` en `main.py`, igual a `refs[]` del sketch). Los cali
 # 7. Cámara (opcional)
 
 ::: corto
-**Hoy está apagada** (`USAR_CAM = False`): el robot decide solo con los ToF. Este capítulo describe lo que hace al encenderla. La cámara mira el piso por donde va a pasar. Es **monocromática**, y el piso negro con paredes blancas es justo lo que mejor distingue. Antes de cada avance toma **una foto**: revisa si hay blanco (pared) en el camino para ir más despacio y mide si el robot va chueco con el punto de fuga del pasillo. La cámara nunca manda sobre los láser: solo **asiste**. Sin cámara, el robot funciona igual.
+**En v2 está encendida pero no decide** (`USAR_CAM = True`; `CAM_LOC`, `CAM_RUMBO` y `CAM_LENTO` en `False`): se ve en la web y lo que deduce queda en la grabación de cada corrida (líneas `C`), para compararlo con el mapa antes de volver a confiar en ella. El robot decide solo con los ToF. En v1 estaba apagada (`USAR_CAM = False`). Las secciones 7.1 a 7.3 describen las técnicas de v1, que siguen en el código; la 7.4, la cámara como mapa del piso de v2. La cámara mira el piso por donde va a pasar. Es **monocromática**, y el piso negro con paredes blancas es justo lo que mejor distingue. Antes de cada avance toma **una foto**: revisa si hay blanco (pared) en el camino para ir más despacio y mide si el robot va chueco con el punto de fuga del pasillo. La cámara nunca manda sobre los láser: solo **asiste**. Sin cámara, el robot funciona igual.
 :::
 
 **Sensor.** innomaker U20CAM-9281M: OV9281 de 1 MP **monocromático** con **obturador global** (todos los píxeles se exponen al mismo tiempo), hasta 720p a 120 fps, lente M12 gran angular, UVC (Linux la ve sin driver). Se captura a 320 × 240 con OpenCV y V4L2. El obturador global evita la deformación por movimiento (*rolling shutter*), que tuerce las líneas rectas cuando el robot gira. Sin filtro de color (matriz de Bayer), cada píxel recibe toda la luz: más sensibilidad y menos ruido en la luminancia, que es lo único que se usa. Por la misma razón **no puede ver el amarillo**; la meta la confirma el TCS34725.
@@ -261,12 +270,31 @@ Son experimentales porque dependen de que la calibración por filas sea estable 
 ## 7.3 Montaje y web
 
 - **Montaje:** módulo (medida por confirmar; el CAD usa 32 × 32 mm) sobre un pedestal impreso, inclinado hacia abajo para ver el piso adelante del eje. La inclinación quedó la de la primera versión del soporte (la última del CAD no se imprimió); como todo se calibra con el robot real, no afecta. Se conecta por un hub USB-C con entrada de alimentación: con la Q alimentada por VIN, su USB-C no da 5 V al hub, así que el hub se alimenta por su puerto PD.
-- **Web:** la imagen a 160 × 120 (JPEG calidad 40) muestra el camino en rojo (blanco) o verde (negro), las bases de las paredes y el punto de fuga en azul, la línea de "derecho" en blanco y, en la experimental, la base de la pared por columna en amarillo. Abajo: porcentaje de blanco, umbral de Otsu, rumbo, distancias y aberturas. Un candado comparte la cámara entre el robot y el panel. Al arrancar la busca una vez; un hilo revisa cada 2 s si sigue conectada (OLED `SIN CAM`).
+- **Web:** la imagen a 160 × 120 (JPEG calidad 40) muestra el camino en rojo (blanco) o verde (negro), las bases de las paredes y el punto de fuga en azul, la línea de "derecho" en blanco y la base de la pared por columna en amarillo (v2: los puntos del piso de 7.4). Abajo: porcentaje de blanco, umbral de Otsu, rumbo, distancias y aberturas; en v2 además la inclinación. Un candado comparte la cámara entre el robot y el panel. Al arrancar la busca una vez; un hilo revisa cada 2 s si sigue conectada (OLED `SIN CAM`).
+
+## 7.4 La cámara como mapa del piso (v2)
+
+La cámara ve desde arriba y hacia adelante, así que da lo que los ToF no. En cada una de `CAM_COLS` = 61 columnas, el primer blanco desde abajo es la **base de la pared más cercana** en esa dirección. Con la altura del lente (`CAM_H` = 162 mm), su posición adelante del eje (`CAM_Y0` = 32 mm) y su inclinación (`CAM_INCL` = 40°, del CAD) ese pixel es un punto del piso en mm (`cam_piso`, `cam_puntos`). Para no tomar reflejos del piso brillante como pared, la base cuenta solo si el blanco sigue hacia arriba al menos `CAM_ALTO_MIN` = 14 filas (una pared se ve alta; un reflejo es una mancha baja). De esos puntos sale (`cam_ve`):
+
+| Dato | Para qué | Estado |
+|---|---|---|
+| Celdas libres al frente (0 a `VE_CAM` = 4) | Ubicarse más allá de los 250 mm del frontal | Apagado (`CAM_LOC = False`) tras la corrida del 13-nov: los reflejos del piso dieron paredes falsas |
+| Pared o abertura a cada lado de las 2 celdas de adelante | Ubicarse con lo que todavía no alcanzan los laterales | Apagado (`CAM_LOC = False`), por lo mismo |
+| Qué tan chueco va respecto a las paredes | Enderezar antes de avanzar | Apagado (`CAM_RUMBO`): en simulación no mejora; el rumbo por pared lateral del sketch ya lo hace |
+| Algo blanco dentro de su celda que el frontal no ve | Ir lento | Apagado (`CAM_LENTO`): en simulación nunca se dispara |
+
+Con `CAM_LOC` encendido, de cerca manda el ToF: la cámara solo pesa cuando el frontal dice "2 o más". Si la cámara falla o no está, todo sigue igual que sin ella. La inclinación real se calibra en la web ("Calibrar inclinación": robot derecho frente a una pared a 15–40 cm).
+
+**Simulación** (`Robot.cam_pts` en `uno_q_v2/sim/sim2d.py`: rayos sobre el piso con ruido de pixel, columnas sin dato, fotos malas y error de inclinación; `python3 camara.py` la prueba): celdas libres al frente correctas en 99 %; pared/abertura de las celdas de adelante 94 % correctas cuando opina (no opina 30 % de las veces); ángulo con 0.2° de error típico, disponible 1 de cada 3 veces. En corridas, sin diferencia medible en condiciones normales (98–100 % con y sin cámara); en la prueba de tontos, la salida arriba-derecha pasa de 94 % a 96–97 %.
+
+::: cuidado
+El modelo es de lente sin distorsión; un gran angular real curva las orillas. Que la cámara ayude a ubicarse **no está probado en pista**: en la corrida del 13-nov vio paredes falsas por reflejos y por eso compitió con `CAM_LOC = False`.
+:::
 
 # 8. Movimiento
 
 ::: corto
-El robot no tiene encoders: mide cuánto avanza con el láser de enfrente y para cuando esa distancia bajó 180 mm. Sin pared a la vista avanza por tiempo. Desde 130 mm frena en proporción y se detiene a 30 mm de la pared. Gira con el giroscopio del MPU-6050 (o por tiempo, si no responde) y el acelerómetro detecta choques y si lo levantan.
+El robot no tiene encoders: con pared enfrente a menos de 250 mm mide cuánto avanza con el láser de enfrente y para cuando esa distancia bajó 180 mm. Más lejos avanza por tiempo, y en v2 las **orillas de las paredes laterales** (donde se acaban o empiezan) le dicen dónde está el centro de la celda. Desde 130 mm frena en proporción y se detiene a 30 mm de la pared. Gira con el giroscopio del MPU-6050 (o por tiempo, si no responde) y el acelerómetro detecta choques y si lo levantan.
 :::
 
 **Actuación.** Dos micromotorreductores DC (≈ 12 × 11 mm de sección), ruedas de 45 mm, puente H L298N. PWM en ENA/ENB y sentido en IN1–IN4. El sentido de cada motor se invierte por software (`INV_IZQ`, `INV_DER`). Freno activo: ambas entradas en alto con EN = 255 durante 60 ms.
@@ -279,10 +307,13 @@ stateDiagram-v2
   Arranque --> PorDistancia: frontal menor que RANGO
   Arranque --> PorTiempo: frontal sin pared
   PorTiempo --> PorDistancia: aparece pared
-  PorDistancia --> Salto: ToF cambia 120 mm y se confirma
-  PorTiempo --> Salto: ToF cambia 120 mm y se confirma
-  Salto --> PorDistancia: frontal, recalcula lo que falta
-  Salto --> Alto: lateral, avanza TRAS_SALTO y para
+  PorDistancia --> Salto: frontal cambia 120 mm y se confirma
+  PorTiempo --> Salto: frontal cambia 120 mm y se confirma
+  Salto --> PorDistancia: recalcula lo que falta
+  PorTiempo --> Orilla: lateral cruza 75 o 95 mm (2 lecturas)
+  PorDistancia --> Orilla: lateral cruza 75 o 95 mm (2 lecturas)
+  Orilla --> Alto: se acaba la pared, avanza TRAS_SALTO y para
+  Orilla --> PorTiempo: empieza pared, ajusta lo que falta con TRAS_CIERRA
   PorDistancia --> Sospecha: golpe mayor a 1.5 g
   Sospecha --> PorDistancia: frontal bajó 10 mm
   Sospecha --> Choque: no avanzó en 250 ms
@@ -291,25 +322,28 @@ stateDiagram-v2
   PorTiempo --> Alto: pasa MS_CELDA por celda
   Alto --> [*]
 ```
-**Figura 4. Máquina de estados de un avance (sketch).** Qué mirar: todos los caminos terminan en `Alto` dentro del STM32, sin esperar a Python; en pasillo Python solo pide más milímetros (hasta 3 celdas).
+**Figura 4. Máquina de estados de un avance (sketch v2).** Qué mirar: todos los caminos terminan en `Alto` dentro del STM32, sin esperar a Python; en pasillo Python solo pide más milímetros (hasta 3 celdas). En v2 los laterales ya no usan el cambio brusco: usan las orillas de pared por umbral.
 :::
 
 ## 8.1 Avance (lazo a 100 Hz, *T* = 10 ms)
 
 | Paso | Qué hace |
 |---|---|
-| **Por distancia** | Al iniciar toma el frontal; si lee menos de 600 mm (`RANGO`) avanza hasta que haya bajado 180 mm (`CELDA`); si la pared está más cerca que eso, cuenta solo lo que cabe (antes reportaba 180 mm sin moverse y el mapa se recorría una celda). Si no ve nada a ese alcance avanza por tiempo (`MS_CELDA`) y, si a medio camino aparece una pared, sigue por distancia |
-| **Alto y retroceso** | Se detiene al leer 30 mm reales al frente (`D_FRENTE`): es la lectura con el eje justo al centro de la celda (84 − 54 mm, CAD). Si queda por debajo de 25 mm (`D_FRENTE − D_CERCA`) se hace para atrás hasta 30 mm. Si hay pared y la distancia ya no baja en 300 ms, también para. Desde 130 mm frena de forma proporcional (`FRENA_K`). Un avance nunca pasa de lo pedido + `TRAS_SALTO` (304 mm en una celda) |
+| **Por distancia** | Al iniciar toma el frontal; si lee menos de 250 mm (`RANGO`; v1: 600) avanza hasta que haya bajado 180 mm (`CELDA`); si la pared está más cerca que eso, cuenta solo lo que cabe (antes reportaba 180 mm sin moverse y el mapa se recorría una celda). Si no ve nada a ese alcance avanza por tiempo (`MS_CELDA`) y, si a medio camino aparece una pared, sigue por distancia |
+| **Alto y retroceso** | Se detiene al leer 30 mm reales al frente (`D_FRENTE`): es la lectura con el eje justo al centro de la celda (84 − 54 mm, CAD). Si queda por debajo de 25 mm (`D_FRENTE − D_CERCA`) se hace para atrás hasta 30 mm. Si hay pared y la distancia ya no baja en 300 ms, también para. Desde 130 mm frena de forma proporcional (`FRENA_K`). Un avance nunca pasa de lo pedido + `TRAS_SALTO` (265 mm en una celda) |
 | **Perfil de velocidad** | Rampa de +6 PWM por ciclo hasta `VEL_EXPLORA` (o `VEL_LENTO`), y desaceleración lineal en el último cuarto de celda, con piso en `VEL_MIN` |
-| **Cambios bruscos** | Si una lectura de un ToF cambia `SALTO` = 120 mm o más y la siguiente lo confirma: si se abre un lateral avanza `TRAS_SALTO` = 110 mm más (124 del CAD menos lo que tarda en confirmarse) y para en el centro de esa celda para escanearla (fase `ESCANEA`); si salta el frontal, recalcula lo que falta. Python lo lee con `odo(3)` |
+| **Cambios bruscos (frontal)** | Si el frontal cambia `SALTO` = 120 mm o más y la siguiente lectura lo confirma, recalcula lo que falta. En v1 también los laterales iban por salto brusco (`TRAS_SALTO` = 110 mm) |
+| **Orillas de pared (v2)** | Cada orilla de pared lateral está en una orilla de celda: sin encoders, las orillas son la regla y el tiempo solo dice cuántas celdas (`borde()`). Se detectan por umbral (`CARRIL_SI` = 75, `CARRIL_NO` = 95 mm, 2 lecturas). **Se acaba** una pared: avanza `TRAS_SALTO` = 85 mm (90 + 40 − 45) y para al centro de esa celda para escanearla (fase `ESCANEA`; Python lo lee con `odo(3)`). **Empieza** una pared: lo que falta se ajusta al centro de celda más cercano, `TRAS_CIERRA` = 115 mm (90 + 40 − 15) + *k* × 180 (`odo(17)`). En simulación `TRAS_SALTO` sirve de 75 a 95 (con 105 ya falla); `TRAS_CIERRA` da igual de 105 a 135 |
 | **Pasillo** | Si va de frente con pared a ambos lados, Python pide hasta `PASILLO` = 3 celdas de un tirón. Abrirse un lateral lo detiene en el centro de esa celda, así que las celdas intermedias se anotan con pared a los 2 lados. Hace ~9 % menos paradas en la simulación (30/30 laberintos) |
-| **Centrado en el carril** | Con pared a un lado (lateral < `PARED` = 120 mm) corrige *u = K꜀·e + K_d·ė*, saturado en ±40 PWM y aplicado en diferencial (*PWM_izq = v − u*, *PWM_der = v + u*). Con 2 paredes, *e = d_izq − d_der*; con una, *e = 2·(d − D_LADO)*, `D_LADO` = 41 mm (84 − 43, CAD). Sin paredes va derecho con el rumbo del MPU |
-| **Centrar con la pared** | Tras cada avance, si el frontal ve pared a menos de 600 mm (`CENTRA_F`), Python pide `centrar`: el robot avanza o retrocede a `VEL_MIN` hasta leer `D_FRENTE` + *k* × 180 mm, el centro de su celda (máximo 1 s). En simulación, sin esto llega 58 % contra 90 % |
-| **Deriva con paredes** | Con 2 paredes, centrado (\|e\| < 15 mm) y paralelo (*ė* < 15 mm/s) durante 300 ms, la mitad de lo que difiera el rumbo del MPU del deseado se toma como deriva y se corrige |
+| **Centrado en el carril** | Solo con paredes **de su carril** (lateral < `CARRIL_NO` = 95 mm; en v1, < `PARED` = 120) corrige *u = K꜀·e + K_d·ė*, saturado en ±40 PWM y aplicado en diferencial (*PWM_izq = v − u*, *PWM_der = v + u*). Con 2 paredes, *e = d_izq − d_der*; con una, *e = 2·(d − D_LADO)*, `D_LADO` = 41 mm (84 − 43, CAD). Sin paredes va derecho con el rumbo del MPU. En v1, al pasar una abertura el cono del lateral veía la pared del pasillo perpendicular a 80–120 mm y centrarse con eso jalaba el robot a la abertura hasta chocar |
+| **Centrar con la pared** | Tras cada avance, si el frontal ve pared a menos de 250 mm (`CENTRA_F`; v1: 600), Python pide `centrar`: el robot avanza o retrocede a `VEL_MIN` hasta leer `D_FRENTE` + *k* × 180 mm, el centro de su celda (máximo 1 s). En la simulación de v1, sin esto llegaba 58 % contra 90 % |
+| **Rumbo con una pared (v2)** | Basta **una** pared lateral (< 75 mm), sin detenerse: en 300 ms junto a la misma pared, si su lectura cambió *x* mm mientras avanzó *a* mm, el robot va chueco atan(*x*/*a*) respecto a ella. La diferencia con el giroscopio es deriva (o que lo pusieron chueco al salir) y se corrige 30 % por ventana, hasta 30° (antes 15°: en pista el rumbo deseado llegó a quedar 21° chueco). En v1 hacía falta ir centrado entre 2 paredes y corregía la mitad |
+| **Deriva en reposo (v2)** | Quieto más de 500 ms y casi sin giro, lo que mide el giroscopio es deriva (cambia con la temperatura): el sesgo la sigue despacio (1 % por lectura) |
+| **Ajuste entre motores (v2)** | Al terminar cada avance sin choque, si el desvío medio fue de 4° o más (`KI_MIN`), suma 0.5 PWM por grado (`KI_RUMBO`) a un ajuste fijo `iRumbo` (tope ±40 PWM) que se queda para los siguientes avances: un `AJUSTE_DER` que se calibra solo. En la segunda corrida en pista el robot se iba 5 a 15° a la izquierda en cada celda con la corrección al tope |
 
 ## 8.2 Giros y MPU-6050
 
-**Conexión.** Módulo GY-521 en el bus I²C (dirección 0x68, AD0 a GND), VCC a 3.3 V. Va atornillado **plano**: el eje Z queda vertical y es el que mide los giros. La orientación en el plano no importa: el signo lo aprende en el primer giro.
+**Conexión.** Módulo GY-521 en el bus I²C (dirección 0x68, AD0 a GND), VCC a 3.3 V. Va atornillado **plano**: el eje Z queda vertical y es el que mide los giros. La orientación en el plano no importa: el signo lo aprende en el primer giro. En v2 Python lo guarda en `/app/datos/mpu.json` y lo manda al arrancar (`signo`): en la primera corrida en pista el primer tramo iba sin rumbo porque el signo aún no se conocía (se desvió ~18° en 27 cm).
 
 **Configuración** (`mpuInit`): sale del modo de reposo (0x6B = 0), filtro digital de ~44 Hz (0x1A = 3), giroscopio a ±500 °/s (0x1B = 0x08, 65.5 LSB por °/s) y acelerómetro a ±2 g (0x1C = 0, 16384 LSB/g). Con el robot quieto promedia 200 lecturas del giroscopio Z para restar su **sesgo**; por eso hay que encenderlo sin moverlo.
 
@@ -324,7 +358,8 @@ stateDiagram-v2
 | **Giro atorado** | Si girando pasan 400 ms sin 2° de giro, una esquina está trabada: retrocede 200 ms y sigue (hasta 2 veces) | `ATORADO_MS` = 400 ms |
 | **Choque** | Ver 8.3 | `CHOQUE_G`, `CHOQUE_FUERTE`, `CONFIRMA_MS`, `RETRO_MS` |
 | **Levantado** | Si la aceleración vertical baja de 0.8 g durante 150 ms (inclinado o en el aire), apaga los motores y Python termina la corrida | `LEVANTA_G` = 0.8 g |
-| **Fusión con la cámara** | La cámara mide el ángulo real respecto al pasillo y `ajustar` mueve `ref`: corrige la deriva lenta del giroscopio | `ANG_MIN` = 4° |
+| **Cuadrarse** | Tras un giro chueco (más de 10°) o atorado, o al perderse, `cuadrar()` barre ±35° en pasos de 7° leyendo los ToF y deja el rumbo deseado perpendicular a la pared (unos 5 s; solo con MPU) | `BARRE` = 35°, `BARRE_PASO` = 7° |
+| **Fusión con la cámara** | v1 con cámara encendida: la cámara mide el ángulo real respecto al pasillo y `ajustar` mueve `ref`. En v2 está apagada (`CAM_RUMBO = False`): la corrige el rumbo por pared lateral | `ANG_MIN` = 4° |
 
 ## 8.3 Choque confirmado
 
