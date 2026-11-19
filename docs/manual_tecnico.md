@@ -382,7 +382,7 @@ Calibra con el "golpe" que muestra el log (`odo(15)`, en mg). `CHOQUE_G`: si det
 # 9. Cómo decide
 
 ::: corto
-El robot decide siempre quieto, en fases que se repiten: **mira**, **decide**, **gira** y **avanza**. Hoy trae el **mapa de la pista** y se ubica en él comparando lo que ven los ToF con cada lugar posible; con la ubicación segura va por el camino más corto al amarillo. Si no está seguro o la pista cambió, decide con la **brújula**: la salida libre que más apunta al centro. Hay una tercera estrategia (Trémaux con mapa) que se puede elegir con `ESTRATEGIA`.
+El robot decide siempre quieto, en fases que se repiten: **mira**, **decide**, **gira** y **avanza**. Trae el **mapa de la pista** y se ubica en él comparando el patrón pared/abertura que ven los ToF con cada lugar posible; con la ubicación segura va por la ruta **más segura** al amarillo (v2; en v1, la más corta). Si no está seguro o la pista cambió, decide con la **brújula**: la salida libre que más apunta al centro. Hay una tercera estrategia (Trémaux con mapa) que se puede elegir con `ESTRATEGIA`.
 :::
 
 ::: figura
@@ -427,7 +427,7 @@ stateDiagram-v2
 **Figura 7. La pista cargada en `main.py`.** Qué mirar: el amarillo (6, 6) está dentro de un cuarto con 2 entradas; el robot puede salir de cualquiera de las 4 esquinas.
 :::
 
-El robot trae el mapa de la pista (`PISTA_H`, `PISTA_V`, `PISTA_META` en `main.py`, sacado de las fotos; imagen en `docs/img/pista_mapa.png`). No sabe de qué esquina sale ni hacia dónde mira: empieza con 16 hipótesis (4 esquinas × 4 rumbos). En cada celda compara cuántas celdas libres ven los ToF a la izquierda, al frente y a la derecha (`(lectura − 41 o 30) / 180`) con las de cada hipótesis en el mapa, y las pesa (Bayes: igual 0.7; ver de menos 0.25, porque el cono de unos 25° del ToF ve puntas de pared antes; ver 1 de más 0.1; lo demás 0.02; una pared enfrente es estricta). Al avanzar mueve cada hipótesis *k* celdas, o *k* ± 1, porque la odometría no es exacta, sin atravesar paredes; si termina con pared enfrente, la lleva al final del pasillo. Así la odometría solo sugiere y las paredes deciden dónde está. Con la hipótesis principal en 60 % o más (`CONFIANZA`) va por el camino más corto del mapa al amarillo. Si los ToF dicen pared donde el mapa dice paso (2 veces), corrige el mapa y busca otro camino. Si lo que ve no cuadra con ninguna hipótesis 2 lecturas seguidas (`MALA`), se vuelve a ubicar en toda la pista; a la 5.ª vez (`PERDIDAS_MAX`) concluye que la pista no es la misma y sigue solo con la brújula. Sin certeza, también decide la brújula.
+El robot trae el mapa de la pista (`PISTA_H`, `PISTA_V`, `PISTA_META` en `main.py`, sacado de las fotos; imagen en `docs/img/pista_mapa.png`). No sabe de qué esquina sale ni hacia dónde mira: empieza con 16 hipótesis (4 esquinas × 4 rumbos). En cada celda compara cuántas celdas libres ven los ToF a la izquierda, al frente y a la derecha (`(lectura − 41 o 30) / 180`, `leidas()`) con las de cada hipótesis en el mapa, y las pesa (Bayes, `loc_observa()`: igual 0.7; ver de menos 0.25, porque el cono de unos 25° del ToF ve puntas de pared antes; ver 1 de más 0.1; lo demás 0.02). En v2 cada lectura se topa en `VE` = 2: solo cuenta el **patrón pared/abertura** de cerca (0, 1 o "2 o más" celdas libres), y el mapa se compara con el mismo tope. Al avanzar mueve cada hipótesis *k* celdas, o *k* ± 1, porque la odometría no es exacta, sin atravesar paredes; si termina con pared enfrente, la lleva al final del pasillo. Así la odometría solo sugiere y las paredes deciden dónde está. Con la hipótesis principal en 60 % o más (`CONFIANZA`) sigue la **ruta segura** (`ruta_segura()`, Dijkstra sobre el mapa): cada celda cuesta 1, más `COSTO_LADO` = 0.5 por cada lado sin pared (sin pared no se centra ni corrige el rumbo), más `COSTO_GIRO` = 1 por giro (cada giro es error de ángulo) y el doble por media vuelta. En esta pista sale casi igual a la más corta. Si lo que ve no cuadra con ninguna hipótesis 2 lecturas seguidas (`MALA`), se cuadra con las paredes y se vuelve a ubicar en toda la pista; a la 10.ª vez (`PERDIDAS_MAX`) concluye que la pista no es la misma y sigue solo con la brújula. Sin certeza, también decide la brújula, y también si la ruta pide dos medias vueltas seguidas habiendo otra salida libre (en la primera corrida en pista dio 5 seguidas). v2 ya no corrige el mapa cuando los ToF no cuadran (`CAMBIA_MAPA = False`): en pista "cambió" 2 paredes que no habían cambiado y se quedó con un mapa falso; la pista está verificada.
 
 
 ::: figura
@@ -436,7 +436,7 @@ flowchart LR
   A(["Arranque:<br/>16 hipótesis<br/>(4 esquinas × 4 rumbos)"]) --> B["Lee los 3 ToF:<br/>celdas libres<br/>izq / frente / der"]
   B --> C["Pesa cada hipótesis<br/>(Bayes)"]
   C --> D{"¿La mejor<br/>≥ 60 %?"}
-  D -- Sí --> E["Camino más corto<br/>del mapa al amarillo"]
+  D -- Sí --> E["Ruta segura<br/>del mapa al amarillo"]
   D -- No --> F["Brújula"]
   E --> G["Avanza k celdas"]
   F --> G
@@ -446,7 +446,9 @@ flowchart LR
 **Figura 8. Autolocalización (localización de Markov).** Qué mirar: la odometría solo propone *k* ± 1 celdas; lo que ven los ToF decide cuál hipótesis sobrevive.
 :::
 
-| Caso (200 corridas) | Pista (mapa cargado) | Brújula |
+Resultados de v1 (simulador de v1, antes de que el frontal viera las paredes laterales; los de v2 están en 9.5):
+
+| Caso (200 corridas, v1) | Pista (mapa cargado) | Brújula |
 |---|---|---|
 | Pista real | **98 %, 23 s** | 96 %, 39 s |
 | Odometría mala | **82 %** | 71 % |
@@ -509,10 +511,10 @@ Historia: antes se probó "frente primero, luego izquierda". En pista se atoraba
 La ruta corta de la siguiente corrida (`RAPIDO`) usa la meta guardada en coordenadas relativas a la salida. Si cambias de esquina de salida, borra el mapa (D2 más de 2 s) antes de correr.
 :::
 
-## 9.4 Simulación 2D: qué reglas sirven
+## 9.4 Simulación 2D de v1: qué reglas sirven
 
 ::: corto
-200 laberintos de 11 × 11 parecidos a la pista (isla central de 3 × 3 con 2 entradas, algunos bucles, salida en una esquina al azar). Con las reglas elegidas el robot llega al amarillo en 90 % de los laberintos (antes 26 %). Lo que más pesa es no perder la celda, no los umbrales de los ToF.
+Esta sección es la simulación con la que se eligieron las reglas base de v1, que v2 hereda. 200 laberintos de 11 × 11 parecidos a la pista (isla central de 3 × 3 con 2 entradas, algunos bucles, salida en una esquina al azar). Con las reglas elegidas el robot llega al amarillo en 90 % de los laberintos (antes 26 %). Lo que más pesa es no perder la celda, no los umbrales de los ToF.
 :::
 
 El simulador (`uno_q/sim/sim2d.py`) mueve un robot de 120 mm (esquinas R30) con la física de los motores, y simula los ToF en sus posiciones del CAD con ruido (3 %), fallas (1 %) y un cono estrecho. También simula el giroscopio con deriva, los golpes de vibración del acelerómetro sacados de los logs y los choques por contacto del cuerpo. Las decisiones son las funciones reales de `main.py`. La velocidad se calibró con lo medido en pista: 600 ms de avance = 154 mm, 250 ms de giro ≈ 70°. Las corridas tienen un límite de 8 min. Con 200 laberintos, diferencias menores a ±7 puntos son ruido.
@@ -537,6 +539,33 @@ El simulador (`uno_q/sim/sim2d.py`) mueve un robot de 120 mm (esquinas R30) con 
 **Peor:** `RETRO_MS` = 250 (no se despega: 60 choques por corrida), `KC` = 0.4-0.6, 5 lecturas con mediana.
 
 Para repetirla: `echo "KD=0.3" | NS=200 python3 uno_q/sim/corre.py`; cada línea es una variante (`-` = el código actual).
+
+## 9.5 Simulación de v2 en la pista real
+
+::: corto
+El simulador de v2 (`uno_q_v2/sim/sim2d.py`) hace que el frontal vea las paredes laterales (`ROZA`), como en el registro de pista. Con eso por fin reproduce la falla real de v1: v1 llega 34–81 % según la salida y v2 98–100 %.
+:::
+
+Pista real, 300 corridas por salida (v1: 150, en las mismas condiciones). La "prueba de tontos" suma vibración alta, ToF con el doble de ruido y 3 % de fallas, deriva × 3, 2 paredes cambiadas, y también sale viendo a una pared.
+
+| Salida (foto) | v1 | v2 | v2 prueba de tontos |
+|---|---|---|---|
+| Abajo-derecha (10,10) viendo izquierda | 76 % | 100 %, 19 s | 98 % |
+| Abajo-derecha (10,10) viendo arriba | 81 % | 99 %, 23 s | 97 % |
+| Abajo-izquierda (0,10) viendo arriba | 59 % | 99 %, 23 s | 97 % |
+| Arriba-izquierda (0,0) viendo derecha | 60 % | 99 %, 26 s | 98 % |
+| Arriba-izquierda (0,0) viendo abajo | 67 % | 100 %, 24 s | 95 % |
+| Arriba-derecha (10,0) viendo izquierda | 34 % | 98 %, 28 s | 92 % |
+
+**Ajuste entre motores** (`iRumbo`), con el motor izquierdo 20 % más débil: 77/86/96/71 % → 80/91/96/92 %; con motores parejos queda igual.
+
+**Cámara:** ver 7.4. **No simulado:** la recalibración de deriva en reposo y el costo en tiempo de las llamadas de grabación.
+
+Para repetirla: `cd uno_q_v2/sim && python3 partida.py 300 normal` (o `tontos`); v1 en las mismas condiciones: `MAIN=../../uno_q/python/main.py python3 partida.py 150 normal RANGO=600 CENTRA_F=600 BORDES=0 LAT_RUMBO=0 TRAS_SALTO=110`. Pruebas: `python3 repite.py --prueba`, `python3 barrido.py`.
+
+## 9.6 Grabación y repetición de corridas (v2)
+
+Cada corrida deja en `/app/datos/logs/` su texto y un `..._crudo.csv` (`graba()`): unas 20 lecturas por segundo (3 ToF, desvío del giroscopio, mm) y cada decisión, giro y avance; además lo que dedujo la cámara (líneas `C`) y la mejor hipótesis de ubicación (líneas `B`). Los tiempos se toman con `time.monotonic()`: en la primera corrida en pista el reloj de la placa saltó 525 s al tomar la hora de la red y el registro marcó 908 s en lugar de ~383 s. `python3 uno_q_v2/sim/repite.py archivo_crudo.csv` la reproduce contra el mapa: qué vio, dónde creía estar y qué decidió.
 
 # 10. Página web
 

@@ -6,24 +6,24 @@ author:
   - Manuel Harari López
   - Víctor Miguel Vázquez
   - Carlos Emiliano Escamilla Garibay
-date: 12 de noviembre de 2026
-version: Revisión B8 · documento 3.0
+date: 19 de noviembre de 2026
+version: Revisión B9 · documento 3.0
 ---
 
 # Cómo leer esta bitácora
 
 ::: corto
-La bitácora cuenta cómo se construyó el robot del 19 de octubre al 12 de noviembre de 2026: 52 etapas, de la primera versión con encoders a un robot que trae el mapa de la pista y se ubica solo, con reglas elegidas en un simulador. Hubo dos iteraciones sobre el mismo chasis: A (ATmega328p, respaldo) y B (Arduino UNO Q, la actual).
+La bitácora cuenta cómo se construyó el robot del 19 de octubre al 14 de noviembre de 2026: 59 etapas, de la primera versión con encoders a un robot que trae el mapa de la pista y se ubica solo, con reglas elegidas en un simulador, y a la v2 (`uno_q_v2/`), que confía en las paredes y no en los milímetros y obtuvo el 2.º lugar en la competencia (2:06.4). Hubo dos iteraciones sobre el mismo chasis: A (ATmega328p, respaldo) y B (Arduino UNO Q, la actual).
 :::
 
-Este documento cuenta cómo se construyó el robot de laberinto de Microcontroladores 2, del 19 de octubre al 11 de noviembre de 2026, a partir del historial de commits del repositorio, de los análisis de la última sesión de trabajo (11-nov), que no quedaron en commits, y de las respuestas del equipo sobre sus pruebas en pista. El robot recorre un laberinto de celdas de 18 cm, encuentra una marca amarilla (la meta), cuenta marcas de color en el piso y en una segunda corrida debe ir por el camino más corto que conoce.
+Este documento cuenta cómo se construyó el robot de laberinto de Microcontroladores 2, del 19 de octubre al 11 de noviembre de 2026, a partir del historial de commits del repositorio, de los análisis de la última sesión de trabajo (11-nov), que no quedaron en commits, y de las respuestas del equipo sobre sus pruebas en pista. Las etapas 53 a 59 (13 y 14-nov) salen de los commits, de `uno_q_v2/README.md` y de los registros de las corridas en pista. El robot recorre un laberinto de celdas de 18 cm, encuentra una marca amarilla (la meta), cuenta marcas de color en el piso y en una segunda corrida debe ir por el camino más corto que conoce.
 
 Hubo dos iteraciones sobre un mismo chasis impreso en 3D, de modo que el chasis acepta ambas placas:
 
 - **Iteración A: ATmega328p (Arduino Nano / UNO R3).** Todo el control corre en el microcontrolador, programado en C++ sin librerías de Arduino, con tres sensores de distancia VL53L0X (ToF) y un sensor de color TCS34725. No tiene cámara. Es el respaldo.
 - **Iteración B: Arduino UNO Q (versión actual).** Un STM32 con control de tiempo real y un Linux con Python y una cámara USB. Es la versión con la que se sigue trabajando.
 
-**Cómo leer la bitácora.** La sección "Línea de tiempo" resume todo en una tabla. "Etapas" detalla cada etapa con el mismo formato: qué cambió, el problema, la solución, las pruebas o evidencia, el razonamiento, el resultado y los commits. El equipo probó el robot en pista durante todo el desarrollo (laberinto de 2 m x 2 m con paredes de madera); sus respuestas del 11-nov están en "Pruebas en pista". Lo que falta es probar en pista la última versión (distancia, saltos, votos, máquina de estados, MPU) y se repite en pendientes.
+**Cómo leer la bitácora.** La sección "Línea de tiempo" resume todo en una tabla. "Etapas" detalla cada etapa con el mismo formato: qué cambió, el problema, la solución, las pruebas o evidencia, el razonamiento, el resultado y los commits. El equipo probó el robot en pista durante todo el desarrollo (laberinto de 2 m x 2 m con paredes de madera); sus respuestas del 11-nov están en "Pruebas en pista". La v2 ya corrió en pista (13-nov) y en la competencia; lo que sigue abierto (cámara con fotos reales, `cuadrar()`, el ajuste entre motores, colores) está en pendientes.
 
 ::: cuidado
 Una regla de honestidad atraviesa todo el documento: cuando un motivo o una prueba no está escrito en el commit, el diff, el código ni en las respuestas del equipo, se marca **(deducido)**. Los valores de calibración que aparecen en las primeras etapas son valores iniciales de partida, no resultados medidos, salvo donde se dice lo contrario.
@@ -32,7 +32,7 @@ Una regla de honestidad atraviesa todo el documento: cuando un motivo o una prue
 # Línea de tiempo
 
 ::: corto
-Una fila por etapa: fecha, cambio clave y por qué. La figura agrupa las 52 etapas en seis fases.
+Una fila por etapa: fecha, cambio clave y por qué. La figura agrupa las 59 etapas en siete fases.
 :::
 
 ::: figura
@@ -51,8 +51,10 @@ timeline
     Etapas 36 – 46 : Exploración completa : MPU completo : Un sketch y un Python : Choques confirmados y pasillos
   section 12 nov · Simulación y pista
     Etapas 47 – 52 : Hacia el centro : Simulador 2D : Brújula : Autolocalización en la pista
+  section 13 – 14 nov · v2 y competencia
+    Etapas 53 – 59 : Puntas de pared : v2 confía en las paredes : Cámara como mapa del piso : 2.º lugar en 2:06.4
 ```
-**Figura 1. Etapas del proyecto.** Qué mirar: casi la mitad de las etapas ocurre el 11-nov, cuando el robot pasa de reglas por tiempo a medir con los ToF y el MPU; el 12-nov el simulador decide las reglas y el robot aprende a ubicarse en la pista.
+**Figura 1. Etapas del proyecto.** Qué mirar: casi la mitad de las etapas ocurre el 11-nov, cuando el robot pasa de reglas por tiempo a medir con los ToF y el MPU; el 12-nov el simulador decide las reglas y el robot aprende a ubicarse en la pista; el 13-nov la v2 corre en pista y cada corrida grabada deja correcciones.
 :::
 
 
@@ -110,11 +112,18 @@ timeline
 | 12-nov | 50 | Brújula; calibrar el avance desde la web | Sin encoders la posición se desfasa |
 | 12-nov | 51 | La pista real en el simulador | Probar sobre el laberinto de las fotos |
 | 12-nov | 52 | Mapa cargado con autolocalización | Depender menos de la odometría y notar cambios |
+| 13-nov | 53 | El frontal ve puntas de pared; re-ubica en vez de rendirse; `cuadrar()`; logs a archivo | Primera corrida con el mapa: 5 min dando vueltas en una zona |
+| 13-nov | 54 | `uno_q_v2/`: confía en las paredes, no en los mm | Sin encoders los mm son una suposición; el centrado jalaba hacia las aberturas |
+| 13-nov | 55 | Cámara encendida solo para verla en la web (`CAM_ACTUA = False`) | Verla en pista sin que mueva al robot |
+| 13-nov | 56 | Cámara como mapa del piso para ubicarse; calibrar inclinación en la web | El frontal solo sirve hasta 250 mm |
+| 13-nov | 57 | v2 tras la primera corrida: reloj monótono, signo del giroscopio guardado, mapa fijo, filtro de reflejos | El registro mostró 908 s por ~383 s, rumbo perdido y mapa corrompido |
+| 13-nov | 58 | Ajuste entre motores que se aprende entre avances | Se iba 5 a 15° a la izquierda con la corrección al tope |
+| 14-nov | 59 | Video y animación de la corrida de competencia | 2.º lugar en 2:06.4 |
 
 # Etapas
 
 ::: corto
-Cada etapa sigue el mismo formato: qué cambió, el problema, la solución, las pruebas o evidencia, el razonamiento, el resultado y los commits. Las últimas etapas (36 a 52) vienen de las sesiones del 11 y 12-nov y de las respuestas del equipo.
+Cada etapa sigue el mismo formato: qué cambió, el problema, la solución, las pruebas o evidencia, el razonamiento, el resultado y los commits. Las etapas 36 a 52 vienen de las sesiones del 11 y 12-nov y de las respuestas del equipo; las 53 a 59, de los commits del 13 y 14-nov, del README de `uno_q_v2/` y de los registros de pista.
 :::
 
 ## Etapa 1. Primera versión: UNO Q con encoders (19-oct)
@@ -995,23 +1004,159 @@ Amarillo del tamaño real (unos 13.5 × 15 cm, 4 cm a la izquierda del centro de
 - `PERDIDAS_MAX` = 10 (antes 5; 13-nov): el mapa ya está verificado; si se pierde, se vuelve a ubicar en toda la pista en vez de rendirse.
 - 13-nov, `cuadrar()`: al perderse o tras un giro chueco/atorado, barre ±35° en su lugar (pasos de 7°) y deja el rumbo deseado perpendicular a la pared (vértice de la parábola de las lecturas del frontal, o de izq + der entre 2 paredes). El MPU-6050 solo mide giro; el frente absoluto lo dan las paredes. Sketch: `odo(16)` = desvío en décimas de grado (con enteros el ángulo del barrido se desfasaba 8°). Simulación (`uno_q/sim/barrido.py`, 1500 celdas al azar, chueco hasta ±25°): sirve en 39 % de las celdas (pared enfrente o a los 2 lados); error final mediana 1.4°, p90 4.9°. Sin probar en pista.
 - 13-nov: todo lo impreso se guarda en `/app/datos/logs/` (un archivo por arranque y uno por corrida, últimos 100). Web: tema oscuro y cronómetro grande. Un avance negativo ya no vacía la localización.
-- 13-nov, `uno_q_v2/`: versión aparte que confía en las paredes y no en los mm (orillas de pared por umbral, centrado solo con paredes del carril, frontal solo de cerca, rumbo con una pared, patrón pared/abertura, ruta segura, grabación cruda y `repite.py`). Hallazgo del simulador: al pasar una abertura, el cono del lateral ve la pared del pasillo perpendicular a 80–120 mm y el centrado jalaba el robot hacia la abertura. Con el frontal viendo las laterales (`ROZA`), v1 llega 34–81 % y v2 98–100 %. Detalle en `uno_q_v2/README.md`. Sin probar en pista.
-- 13-nov, cámara en `uno_q_v2/`: la base de la pared por columna se convierte en puntos del piso (altura e inclinación del lente) y de ahí salen celdas libres al frente, pared/abertura de las 2 celdas de adelante y ángulo. Cámara añadida al simulador (`cam_pts`, `sim/camara.py`). Medido: solo ayuda a ubicarse y poco (prueba de tontos, salida arriba-derecha 94 → 96–97 %); la corrección de rumbo por cámara no mejora y queda apagada. Sin probar con fotos reales.
-- 13-nov, primera corrida de la v2 en pista (llegó al amarillo): el log marcó 908 s pero fueron ~383 s (el reloj de la placa saltó 525 s al tomar la hora de la red; ahora `time.monotonic()`). Visto en el CSV: el primer tramo va sin rumbo porque el signo del giroscopio se aprendía en el primer giro (se desvió ~18° en 27 cm; ahora se guarda en `datos/mpu.json` y se manda al arrancar); el rumbo deseado llegó a quedar 21° chueco y la corrección por pared lateral solo actuaba hasta 15° (ahora 30°); 2 "cambios de pista" falsos corrompieron el mapa (`CAMBIA_MAPA = False`); 5 medias vueltas seguidas entre 2 paredes con los lados libres (ahora decide la brújula); 8 pérdidas y 9 choques. Cámara: reflejos del piso brillante como paredes falsas (`base_pared` exige blanco de 14 filas de alto; `CAM_LOC = False` y lo que ve la cámara queda en el CSV, líneas C y B).
-- 13-nov, segunda corrida (mismo código): 126.5 s. El CSV muestra que en casi cada avance el robot se va 5 a 15° a la izquierda con la corrección de rumbo al tope, y dos roces contra puntas de pared (el frontal cae a 5–20 mm y el rumbo salta 25°) que el MPU no marcó como choque. Sketch v2: al terminar cada avance, si el desvío medio fue ≥ 4°, suma 0.5 PWM por grado a un ajuste fijo entre motores (`iRumbo`, tope 40). Simulación con el motor izquierdo 20 % más débil: 77/86/96/71 % → 80/91/96/92 %; con motores parejos queda igual.
-- Competencia: 2.º lugar con la corrida de 2:06.4 (los colores no quedaron bien calibrados y eso restó puntos). Video y animación de esa corrida en `docs/video/corrida2.mp4` y `docs/corrida2.html`; el recorrido es una reconstrucción a partir del registro (`uno_q_v2/sim/reconstruye.py`).
 - Simulador: rayos laterales del cono a ±12°, pero una cara casi paralela al rayo (pared lateral) no regresa luz; solo las puntas.
 
-Con el log real: antes perdido en la celda 9; ahora sigue ubicado hasta la 13, donde los laterales salen al revés que el mapa (izq 320, der 56) y se re-ubica. El simulador no reproduce la falla (100 % en la pista con y sin el cambio), así que falta probar en pista.
+Con el log real: antes perdido en la celda 9; ahora sigue ubicado hasta la 13, donde los laterales salen al revés que el mapa (izq 320, der 56) y se re-ubica. El simulador no reproduce la falla (100 % en la pista con y sin el cambio), así que falta probar en pista. Lo que se hizo después en `uno_q_v2/` está en las etapas 54 a 59.
+
+**Commits.** 01bc97d, cd6b22a, f470c4d
+:::
+
+## Etapa 54. `uno_q_v2/`: confía en las paredes, no en los milímetros (13-nov)
+
+::: ficha
+**Qué cambió.** Se crea `uno_q_v2/`, copia de `uno_q/` que se carga como otra app de App Lab ("Laberinto v2"); `uno_q/` queda como estaba. La idea de fondo: sin encoders, los milímetros avanzados son una suposición; las paredes no.
+
+**Problema.** En la etapa 53 el frontal, con su cono de unos 25°, leyó 407 mm con la pared a 4 celdas. Además, el simulador mostró que al pasar una abertura el cono del lateral ve la pared del pasillo perpendicular a 80–120 mm, y centrarse con esa lectura jalaba el robot hacia la abertura hasta chocar.
+
+**Solución.**
+- Orillas de pared como regla (`borde()`): cada orilla de una pared lateral cae en una orilla de celda. Si la pared se acaba, para al centro de esa celda (`TRAS_SALTO` = 85 mm); si empieza, ajusta lo que falta al centro de celda más cercano (`TRAS_CIERRA`). El tiempo solo dice cuántas celdas.
+- Las orillas se detectan por umbral (pared de carril < 75 mm, se acaba > 95 mm, 2 lecturas) y no por un salto de 120 mm; el centrado solo usa paredes de su carril (< 95 mm).
+- Frontal solo de cerca: `RANGO` y `CENTRA_F` de 600 a 250 mm.
+- Rumbo con una sola pared lateral, sin detenerse: en 300 ms junto a la pared, lo que cambia su lectura entre lo que avanzó da el ángulo real; la diferencia con el giroscopio es deriva y se corrige 30 % por ventana. Quieto, vuelve a medir la deriva del giroscopio.
+- Ubicarse con el patrón pared/abertura: cada ToF solo distingue 0, 1 o "2 o más" celdas libres (`VE`).
+- Ruta más segura (`ruta_segura()`, Dijkstra): cada celda 1, + 0.5 por lado sin pared, + 1 por giro.
+- Grabación: cada corrida deja su texto y un `..._crudo.csv` en `/app/datos/logs/` (unas 20 lecturas por segundo y cada decisión, giro y avance); `sim/repite.py` la reproduce contra el mapa.
+- 486b45c (también en `uno_q/`): la WebUI no arrancaba porque uvicorn le pide `isatty`, `encoding` y demás a `sys.stdout`, que ahora es el registro a archivo; `Registro.__getattr__` se los pasa a la salida real.
+
+**Pruebas / evidencia.** Simulación sobre la pista real, 300 corridas por salida. El simulador v2 hace que el frontal vea las paredes laterales (`ROZA`), como en el registro de pista, y con eso reproduce la falla del código v1:
+
+| Salida (foto) | v1 | v2 | v2 prueba de tontos |
+|---|---|---|---|
+| Abajo-derecha (10,10) viendo izquierda | 76 % | 100 %, 19 s | 98 % |
+| Abajo-derecha (10,10) viendo arriba | 81 % | 99 %, 23 s | 97 % |
+| Abajo-izquierda (0,10) viendo arriba | 59 % | 99 %, 23 s | 97 % |
+| Arriba-izquierda (0,0) viendo derecha | 60 % | 99 %, 26 s | 98 % |
+| Arriba-izquierda (0,0) viendo abajo | 67 % | 100 %, 24 s | 95 % |
+| Arriba-derecha (10,0) viendo izquierda | 34 % | 98 %, 28 s | 92 % |
+
+`TRAS_SALTO` sirve en simulación de 75 a 95 mm; con 105 ya falla. Pruebas: `repite.py --prueba` y `barrido.py`.
+
+**Razonamiento.** Una orilla de pared es una referencia absoluta de posición; los milímetros por tiempo no. Y más allá de una celda la distancia del ToF no dice nada útil del pasillo, así que se reduce a 3 casos.
+
+**Resultado.** Versión aparte, sin probar en pista en este commit. No simulado: la recalibración de deriva en reposo y el costo en tiempo de las llamadas de grabación.
+
+**Commits.** a94a3db, 486b45c
+:::
+
+## Etapa 55. Cámara encendida solo para verla en la web (13-nov)
+
+::: ficha
+**Qué cambió.** En `uno_q_v2/python/main.py`, `USAR_CAM` pasa a `True` (la cámara se abre y se ve en la web) y aparece `CAM_ACTUA = False`: `mira()` no toma foto para decidir, así que la cámara no frena ni corrige el rumbo.
+
+**Problema.** El comentario del código: la corrección por cámara está "sin probar junto con el rumbo por pared" de la etapa 54.
+
+**Solución.** Separar ver de actuar: la imagen llega a la página, el robot no la usa.
+
+**Pruebas / evidencia.** Ninguna en el commit.
+
+**Razonamiento.** Revisar en pista lo que ve la cámara sin arriesgar la corrida (deducido).
+
+**Resultado.** La cámara queda como herramienta de observación.
+
+**Commits.** 76aa251
+:::
+
+## Etapa 56. La cámara como mapa del piso (13-nov)
+
+::: ficha
+**Qué cambió.** En cada columna de la imagen, el primer blanco desde abajo es la base de la pared más cercana en esa dirección; con la altura (162 mm) y la inclinación (40°) del lente ese pixel se convierte en un punto del piso en mm (`cam_piso`, `cam_puntos`). De esos puntos, `cam_ve` saca: celdas libres al frente (0 a 4, `VE_CAM`), pared o abertura a cada lado de las 2 celdas de adelante y qué tan chueco va. La web gana el botón **Calibrar inclinación** (`/api/cam_incl`: robot derecho frente a una pared a 15–40 cm, usa el frontal como regla) y muestra en amarillo la base de pared detectada por columna.
+
+**Problema.** Desde la etapa 54 el frontal solo sirve hasta 250 mm y los laterales solo ven su celda; para ubicarse más allá no había dato.
+
+**Solución.** Solo la ubicación queda activa (`CAM_LOC`) y la cámara pesa solo cuando el frontal dice "2 o más"; de cerca manda el ToF. Rumbo por cámara (`CAM_RUMBO`) y "algo blanco que el frontal no ve" (`CAM_LENTO`) quedan apagados. Si la cámara falla o no está, todo sigue igual.
+
+**Pruebas / evidencia.** Cámara añadida al simulador (`Robot.cam_pts` en `sim2d.py`, con ruido de pixel, columnas sin dato, fotos malas y error de inclinación; `sim/camara.py` la prueba también con imágenes dibujadas que pasan por el mismo código que la foto real). Lo que ve: celdas libres al frente correctas en 99 %; pared/abertura 94 % correctas cuando opina (no opina 30 % de las veces); ángulo con 0.2° de error típico, disponible 1 de cada 3 veces. En corridas: sin diferencia medible en condiciones normales (98–100 % con y sin cámara); en la prueba de tontos la salida arriba-derecha pasa de 94 % a 96–97 % y se pierde menos (0.7 → 0.5 veces por corrida); arrancando sin saber dónde está (`PERDIDO=1`) llega igual, 97–100 %. El rumbo por cámara no mejora y sube un poco los choques; `CAM_LENTO` nunca se dispara en simulación.
+
+**Razonamiento.** La cámara ve desde arriba y hacia adelante: da justo lo que los ToF no alcanzan. Pero solo se activa lo que el simulador mostró que ayuda.
+
+**Resultado.** Ayuda poco y solo a ubicarse. El modelo es de lente sin distorsión; un gran angular real curva las orillas. Sin probar con fotos reales de la pista. Tras la primera corrida en pista (etapa 57), `CAM_LOC` quedó en `False`: el piso negro brillante refleja la luz y la cámara ve paredes falsas; desde entonces la cámara solo mira y graba.
+
+**Commits.** 256adc8
+:::
+
+## Etapa 57. La v2 tras su primera corrida en pista (13-nov)
+
+::: ficha
+**Qué cambió.** Siete correcciones sacadas del texto y del CSV crudo de la primera corrida de la v2, que llegó al amarillo.
+
+**Problema.**
+- El registro marcó 908 s, pero fueron unos 383 s: el reloj de la placa saltó 525 s al tomar la hora de la red.
+- El primer tramo iba sin rumbo: el signo del giroscopio se aprendía en el primer giro de cada arranque, y el robot se desvió unos 18° en 27 cm.
+- El rumbo deseado llegó a quedar 21° chueco y la corrección por pared lateral solo actuaba hasta 15°.
+- 2 "cambios de pista" falsos (lecturas malas) corrompieron el mapa.
+- 5 medias vueltas seguidas entre 2 paredes con los lados libres: creía estar en otro lado.
+- 8 pérdidas y 9 choques. La cámara tomó reflejos del piso negro brillante como paredes.
+
+**Solución.**
+- `time.monotonic()` para medir la corrida (también en `uno_q/`).
+- RPC `signo` en el sketch: Python guarda el signo en `datos/mpu.json` y lo manda al arrancar; el rumbo se sostiene desde el primer avance.
+- Rumbo por pared lateral: acepta hasta `|d|` < 30° (antes 15°) y `|th|` < 25° (antes 20°).
+- `CAMBIA_MAPA = False`: la pista está verificada, el mapa ya no se corrige.
+- Si la ruta pide otra media vuelta justo después de una, y hay otra salida libre, decide la brújula (`ult_rel`).
+- `base_pared`: la base de una pared es un blanco que sigue al menos 14 filas hacia arriba (`CAM_ALTO_MIN`); una mancha baja es reflejo. `CAM_LOC = False`: la cámara sigue mirando y lo que ve queda en el CSV (línea C), junto con la mejor hipótesis de ubicación (línea B), para compararlo con el mapa antes de volver a confiar en ella.
+
+**Pruebas / evidencia.** La primera corrida en pista de la v2 y su CSV crudo. En el simulador solo cambia el límite del rumbo por pared.
+
+**Razonamiento.** Cada corrección responde a una línea concreta del registro; lo que no se pudo verificar (la cámara) se apaga y se sigue grabando.
+
+**Resultado.** Las correcciones no se volvieron a medir por separado; la siguiente corrida es la de la etapa 58.
+
+**Commits.** 52d0fc6
+:::
+
+## Etapa 58. Ajuste entre motores que se aprende solo (13-nov)
+
+::: ficha
+**Qué cambió.** Sketch v2: al terminar cada avance, si hubo más de 20 muestras, no hubo choque y el desvío medio fue de 4° o más (`KI_MIN`), suma 0.5 PWM por grado (`KI_RUMBO`) a un ajuste fijo entre motores (`iRumbo`, tope ±40) que se queda para los avances siguientes: un `AJUSTE_DER` que se calibra solo.
+
+**Problema.** Segunda corrida de la v2: 126.5 s. El CSV muestra que en casi cada avance el robot se va 5 a 15° a la izquierda con la corrección de rumbo al tope (un motor empuja menos), y 2 roces contra puntas de pared (el frontal cae a 5–20 mm y el rumbo salta 25°) que el MPU no marcó como choque.
+
+**Solución.** La parte fija del error entre motores se aprende entre avances; la corrección proporcional (`KG`) queda para lo que varía.
+
+**Pruebas / evidencia.** El simulador gana el mismo término (`KI_RUMBO`, `KI_MIN`, `ASIM_MED`). Con el motor izquierdo 20 % más débil, por salida: 77/86/96/71 % → 80/91/96/92 %; con motores parejos queda igual.
+
+**Razonamiento.** Si la corrección vive al tope, el error no es ruido sino un sesgo; un sesgo se corrige con un término que se acumula, como la parte integral de un PID (deducido).
+
+**Resultado.** Sin probar en pista: no hay corrida registrada después de este commit (deducido). Los roces contra puntas de pared quedan sin corrección.
+
+**Commits.** 7a1e4c5
+:::
+
+## Etapa 59. Competencia: 2.º lugar en 2:06.4; video y animación de la corrida (14-nov)
+
+::: ficha
+**Qué cambió.** Se agregan el video de la corrida de competencia (`docs/video/corrida2.mp4`, 37 s a 4x), una animación interactiva (`docs/corrida2.html`) y las herramientas para rehacerlos en `uno_q_v2/sim/`: `reconstruye.py`, `corrida_plantilla.html`, `graba_video.js` y el registro `corridas/corrida2.csv`.
+
+**Problema.** El robot no tiene encoders: no existe una trayectoria medida que mostrar.
+
+**Solución.** `reconstruye.py` busca el camino más probable sobre el mapa de la pista (Viterbi con el mismo modelo que la localización de `main.py`) que cuadra con lo que leyeron los ToF en cada decisión y con cada avance, que sale de una esquina y termina en el amarillo. El JSON resultante se incrusta en la plantilla, `graba_video.js` saca los cuadros y `ffmpeg` arma el video.
+
+**Pruebas / evidencia.** Resultado en competencia: 2.º lugar; la mejor corrida llegó al amarillo en 2:06.4. El CSV marca "AMARILLO: meta a los 126.4 s". Los colores no quedaron bien calibrados y eso restó puntos. Que esta corrida sea la segunda corrida de la etapa 58 (126.5 s) se deduce de los tiempos y del nombre del archivo (deducido).
+
+**Razonamiento.** La animación es una reconstrucción, no una medición, y así se dice en el README.
+
+**Resultado.** Queda el registro de la competencia y una forma de rehacerlo con cualquier CSV crudo.
+
+**Commits.** de8b631
 :::
 
 # Pruebas realizadas
 
 ::: corto
-Lo medido o probado, separado de lo deducido. El equipo probó en pista todo el desarrollo; la última versión (distancia, saltos, votos, máquina de estados, MPU) todavía no.
+Lo medido o probado, separado de lo deducido. El equipo probó en pista todo el desarrollo; la v2 corrió en pista el 13-nov y en la competencia (2.º lugar, 2:06.4).
 :::
 
-La tabla distingue lo medido o probado de lo que solo se deduce de la secuencia de commits (marcado **deducido**). Cuando el repositorio guarda la sucesión de valores pero no el resultado de cada intento, se dice. Las pruebas en pista del equipo están en su propia subsección; la última versión (distancia, saltos, votos, máquina de estados, MPU) aún no se ha probado en pista.
+La tabla distingue lo medido o probado de lo que solo se deduce de la secuencia de commits (marcado **deducido**). Cuando el repositorio guarda la sucesión de valores pero no el resultado de cada intento, se dice. Las pruebas en pista del equipo están en su propia subsección; la v2 corrió en pista el 13-nov (etapas 53 a 59); lo que vino después de esas corridas sigue sin probar.
 
 ## Pruebas en pista
 
@@ -1033,6 +1178,10 @@ Datos de la pista: laberinto de prueba de 2 m x 2 m en total, con paredes de mad
 | 12. Batería | Unas 3 horas con carga al 100 % en pruebas constantes | Ninguno; autonomía suficiente |
 | 13. Piezas | Ninguna se rompió | Arduino vertical con cinchos para conservar los 12 cm y que el OTG no salga del contorno |
 | 14. Chasis | Entre 20 y 50 iteraciones del chasis y sus piezas para verificar geometrías y tolerancias | Geometrías y tolerancias finales (hueco del motor 11.9 mm, soporte ToF, etc.) |
+| 15. Pista con el mapa cargado (13-nov) | Dio vueltas 5 min en una zona; el frontal ve puntas de pared | Observación más tolerante, re-ubicarse en vez de rendirse, `cuadrar()` (etapa 53) |
+| 16. Primera corrida de la v2 (13-nov) | Llegó al amarillo en unos 383 s; 8 pérdidas, 9 choques, reloj que saltó 525 s, mapa corrompido, reflejos en la cámara | Reloj monótono, signo del giroscopio guardado, mapa fijo, cámara en sombra (etapa 57) |
+| 17. Segunda corrida de la v2 (13-nov) | 126.5 s; se iba 5 a 15° a la izquierda en cada avance; 2 roces con puntas de pared | Ajuste entre motores aprendido (etapa 58) |
+| 18. Competencia | 2.º lugar, 2:06.4; los colores no quedaron bien calibrados y restaron puntos | Video y reconstrucción de la corrida (etapa 59) |
 
 ## Mediciones e iteraciones físicas
 
@@ -1101,7 +1250,7 @@ Datos de la pista: laberinto de prueba de 2 m x 2 m en total, con paredes de mad
 
 | Prueba | Cómo | Resultado | Qué se cambió por ella |
 |---|---|---|---|
-| Pendiente: probar en pista la última versión | Correr la pista con distancia, saltos, votos, máquina de estados y MPU | Aún no; hasta ahora solo hay pruebas automáticas con datos simulados | Por definir con los datos de la pista |
+| Pendiente: probar en pista lo posterior a la competencia | Correr la v2 con `cuadrar()`, el ajuste entre motores (`iRumbo`) y la cámara con fotos reales | Aún no; solo simulación | Por definir con los datos de la pista |
 
 # Decisiones de ingeniería
 
@@ -1199,25 +1348,31 @@ Lo que el equipo se lleva: calibrar desde la web, umbrales a la mitad de lectura
 - Probar en pista temprano evitó seguir afinando ideas que no servían: el avance y el giro por tiempo fallaban por la batería, y alinear con giros de 5 grados volvía al robot súper lento.
 - Un seguidor de pared solo es completo si siempre prefiere el lado de su mano; mezclar "frente primero" lo dejó atorado en una zona.
 - Una zona de color delgada se puede saltar: el sensor RGB pasa por un lado, así que las marcas deben ser grandes. Y un componente "tonto" (el adaptador OTG) puede resolver un problema de alimentación que parecía de diseño.
+- Grabar la corrida cruda es lo que más rinde en pista. El CSV de la v2 mostró un reloj que saltó 525 s, un giroscopio sin signo en el primer tramo y un motor más débil; ninguno se veía mirando al robot.
+- Un simulador solo sirve si reproduce la falla real. Hasta que el frontal del simulador vio las puntas de pared (`ROZA`), v1 y v2 parecían iguales; con eso v1 cayó a 34–81 % y v2 quedó en 98–100 %.
+- Sin encoders, las paredes son la referencia y los milímetros una suposición. La v2 usa las orillas de pared para saber dónde está y el tiempo solo para contar celdas.
+- Lo que no se calibra cuesta en la competencia: los colores mal calibrados restaron puntos en la corrida del 2.º lugar.
 - Quitar código también es una decisión de ingeniería. `alinear()` se retiró tras 15 minutos y la reescritura quitó unos 500 renglones de `main.py` sin perder capacidad, porque los ToF ya hacían ese trabajo.
 
 # Pendientes
 
 ::: corto
-Lo que falta antes de dar el robot por terminado: probar en pista la última versión y calibrar sensores, cámara y MPU con datos reales.
+Lo que sigue abierto tras la competencia: probar en pista lo que solo está simulado, la cámara con fotos reales y los colores.
 :::
 
-- Probar en pista la última versión: avance por distancia, cambios bruscos, mapa con votos, máquina de estados y MPU-6050.
+- ~~Probar en pista la última versión~~. Resuelto (13-nov): la v2 corrió en pista, llegó al amarillo y obtuvo el 2.º lugar en la competencia (2:06.4).
+- ~~Conseguir el MPU-6050~~. Resuelto: se usó en las corridas del 13-nov (giros, rumbo, choques). Sigue sin registro la calibración de `ADELANTO` y `KG`.
+- ~~Calibrar los 3 ToF en la pista~~. Resuelto (13-nov): frontal −81 mm, medido 2 veces contra la misma pared; avance 1077 ms por celda (etapa 53).
+- Probar en pista `cuadrar()` (barrido de ±35° contra las paredes): solo está simulado (etapa 53).
+- Probar en pista el ajuste entre motores aprendido (`iRumbo`): solo simulado (etapa 58).
+- Probar la cámara v2 con fotos reales de la pista: "Calibrar inclinación" y revisar que los puntos amarillos caigan en la base de las paredes. Hoy `CAM_LOC = False` por los reflejos del piso; antes de volver a usarla, comparar las líneas C del CSV con el mapa.
 - Verificar que las paredes de madera estén pintadas de blanco, porque la detección de la cámara toma blanco como pared.
-- Calibrar los 3 ToF en la pista desde la web (un punto a 100 mm por sensor: solo desfase; el equipo lo simplificó así en pista) y, con esas lecturas, revisar `PARED`, `PARED_F`, `D_FRENTE`, `D_LADO_MIN` y `FRENTE_LIBRE`. Va **antes** de calibrar la distancia por cámara, que usa el frontal como regla.
-- Calibrar la cámara en la pista desde la web (exposición, derecho, escala) y medir su placa para el CAD.
-- Probar la corrección de rumbo con la cámara real (con y sin MPU) y, después, la versión experimental (distancia por cámara y aberturas).
-- Conseguir el MPU-6050 (GY-521) y calibrar `ADELANTO` (si se pasa, subirlo; si le falta, bajarlo) y `KG`.
-- Calibrar `ZONA_PASO` y `BLANCO_MAX` hasta que en un pasillo libre el recuadro de la vista de cámara salga verde.
-- Calibrar `TRAS_SALTO` (124 mm, calculado del CAD) y `BORDE_AJ`, con el robot en la pista.
+- Calibrar `TRAS_SALTO` de la v2 (85 mm): dejar que pare en una abertura lateral y medir si queda adelante o atrás del centro de la celda. En la v1, `TRAS_SALTO` y `BORDE_AJ` siguen sin calibrar.
+- Calibrar bien los colores antes de la siguiente competencia: en la corrida del 2.º lugar restaron puntos.
 - Usar los colores leídos para corregir la posición en el mapa (hoy se anotan y se cuentan, pero no corrigen).
 - Dibujar el mapa en la web.
 - Hacer el test de alimentación sin PD (`docs/uno_q.md`, sección 12) y decidir si hace falta el módulo PD.
+- Cámara de la v1: calibrar `ZONA_PASO` y `BLANCO_MAX` y probar la corrección de rumbo y la versión experimental, si se vuelve a usar esa versión.
 
 # Glosario
 
