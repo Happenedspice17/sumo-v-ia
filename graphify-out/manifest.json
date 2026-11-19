@@ -1,494 +1,686 @@
 {
   "atmega328p/img/diagrama.py": {
-    "mtime": 1793195270.1118827,
-    "seen": 1793512601.3264554,
+    "mtime": 1795120325.3080964,
+    "seen": 1795120778.397967,
     "ast_hash": "ecf4e43bc513fa2a66b911b7eeeb97fb",
     "semantic_hash": ""
   },
   "atmega328p/laberinto/VL53L0X.cpp": {
-    "mtime": 1793194763.4911933,
-    "seen": 1793512601.3264644,
+    "mtime": 1795120325.3081799,
+    "seen": 1795120778.3979702,
     "ast_hash": "b66147bb2305e8539d0a94c891b2b670",
     "semantic_hash": ""
   },
   "atmega328p/laberinto/VL53L0X.h": {
-    "mtime": 1793194763.491157,
-    "seen": 1793512601.326468,
+    "mtime": 1795120325.3081799,
+    "seen": 1795120778.3979716,
     "ast_hash": "c66888136b692ca9f7e079d8f23e459f",
     "semantic_hash": ""
   },
   "atmega328p/laberinto/config.h": {
-    "mtime": 1793243114.0487742,
-    "seen": 1793512601.32647,
+    "mtime": 1795120325.3081799,
+    "seen": 1795120778.397973,
     "ast_hash": "ad7cfb7f253ba024e18c8cc88067d03c",
     "semantic_hash": ""
   },
   "atmega328p/laberinto/fuente.h": {
-    "mtime": 1793194718.659629,
-    "seen": 1793512601.3264716,
+    "mtime": 1795120325.3081799,
+    "seen": 1795120778.397974,
     "ast_hash": "95dfbf2c3c8d40bbf2a55a824dde5911",
     "semantic_hash": ""
   },
   "atmega328p/laberinto/main.cpp": {
-    "mtime": 1793194833.1914046,
-    "seen": 1793512601.326473,
+    "mtime": 1795120325.3081799,
+    "seen": 1795120778.397975,
     "ast_hash": "ff759384df12602ea7f072073add7237",
     "semantic_hash": ""
   },
   "atmega328p/laberinto/motores.cpp": {
-    "mtime": 1793194788.8514018,
-    "seen": 1793512601.3264744,
+    "mtime": 1795120325.3081799,
+    "seen": 1795120778.3979764,
     "ast_hash": "34e39eb7e9d73fd090b5a12879ac8cad",
     "semantic_hash": ""
   },
   "atmega328p/laberinto/motores.h": {
-    "mtime": 1793194782.9674015,
-    "seen": 1793512601.3264759,
+    "mtime": 1795120325.3081799,
+    "seen": 1795120778.397977,
     "ast_hash": "e4321f1e4f4d47484df18536e0cb2979",
     "semantic_hash": ""
   },
   "atmega328p/laberinto/oled.cpp": {
-    "mtime": 1793195949.889614,
-    "seen": 1793512601.3264773,
+    "mtime": 1795120325.3081799,
+    "seen": 1795120778.3979783,
     "ast_hash": "341eb574334e15bd2797315553f951a5",
     "semantic_hash": ""
   },
   "atmega328p/laberinto/oled.h": {
-    "mtime": 1793194767.6594007,
-    "seen": 1793512601.326479,
+    "mtime": 1795120325.3081799,
+    "seen": 1795120778.3979795,
     "ast_hash": "cdd5b916364b4605850fc1dd30063b63",
     "semantic_hash": ""
   },
   "atmega328p/laberinto/tcs.cpp": {
-    "mtime": 1793194781.4714015,
-    "seen": 1793512601.3264802,
+    "mtime": 1795120325.3081799,
+    "seen": 1795120778.3979805,
     "ast_hash": "e6e428b4382e5aff6c8c156ac3fa040d",
     "semantic_hash": ""
   },
   "atmega328p/laberinto/tcs.h": {
-    "mtime": 1793194777.8114011,
-    "seen": 1793512601.3264813,
+    "mtime": 1795120325.3081799,
+    "seen": 1795120778.3979816,
     "ast_hash": "a91b2b9e2818725f58c0db89294578bd",
     "semantic_hash": ""
   },
   "atmega328p/laberinto/tiempo.cpp": {
-    "mtime": 1793194732.7913985,
-    "seen": 1793512601.3264828,
+    "mtime": 1795120325.3081799,
+    "seen": 1795120778.3979828,
     "ast_hash": "f8cb90cfa008a7c35750e10c76255e04",
     "semantic_hash": ""
   },
   "atmega328p/laberinto/tiempo.h": {
-    "mtime": 1793194728.6913984,
-    "seen": 1793512601.3264837,
+    "mtime": 1795120325.3081799,
+    "seen": 1795120778.3979836,
     "ast_hash": "480ad28f386b66c9d6aa939eb499b806",
     "semantic_hash": ""
   },
   "atmega328p/laberinto/twi.cpp": {
-    "mtime": 1793194750.8713996,
-    "seen": 1793512601.326485,
+    "mtime": 1795120325.3081799,
+    "seen": 1795120778.3979847,
     "ast_hash": "72acbc45e539510f47afa4285b312084",
     "semantic_hash": ""
   },
   "atmega328p/laberinto/twi.h": {
-    "mtime": 1793194750.8728917,
-    "seen": 1793512601.3264863,
+    "mtime": 1795120325.3081799,
+    "seen": 1795120778.3979857,
     "ast_hash": "04a5f63b7f57ddb56e922c70c3e6a0ec",
     "semantic_hash": ""
   },
   "chasis/generar_pdf.py": {
-    "mtime": 1794020138.630814,
-    "seen": 1794080567.1385577,
+    "mtime": 1795120325.3095438,
+    "seen": 1795120778.3979867,
     "ast_hash": "9e882f09d0dd7d47fd614d51d1d701b1",
     "semantic_hash": ""
   },
   "chasis/renders.py": {
-    "mtime": 1794254224.2544074,
-    "seen": 1794254265.592837,
-    "ast_hash": "9d765b0b6d681cf708926827f1099f8f",
+    "mtime": 1795120325.3185284,
+    "seen": 1795120778.3979876,
+    "ast_hash": "b269b192eb3c468abc92da5493454b22",
     "semantic_hash": ""
   },
   "docs/generar_manuales.py": {
-    "mtime": 1794361604.199421,
-    "seen": 1794361624.8459525,
-    "ast_hash": "4ecf50e2ee649f577a87f7b99007d61f",
+    "mtime": 1795120325.3441885,
+    "seen": 1795120778.3979905,
+    "ast_hash": "4c0b7cf9f82536145c62057ec8099ea8",
     "semantic_hash": ""
   },
   "uno_q/app.yaml": {
-    "mtime": 1794160116.985581,
-    "seen": 1794160139.137493,
+    "mtime": 1795120325.411585,
+    "seen": 1795120778.3979952,
     "ast_hash": "681321a01c352331e3f25d3ba8b52b83",
     "semantic_hash": ""
   },
   "uno_q/python/main.py": {
-    "mtime": 1794366772.1448317,
-    "seen": 1794366785.315723,
-    "ast_hash": "cd71dc5106723c5719909d5644670c44",
+    "mtime": 1795120325.411585,
+    "seen": 1795120778.3979962,
+    "ast_hash": "63b876ee9fbca7a6d05bc7d402e1f6e2",
     "semantic_hash": ""
   },
   "uno_q/sketch/oled.h": {
-    "mtime": 1793253649.492748,
-    "seen": 1793512601.326494,
+    "mtime": 1795120325.4129734,
+    "seen": 1795120778.3980017,
     "ast_hash": "53d98f80e389965a2eeef41a0e0da17f",
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1793513065.32896,
-    "seen": 1794080567.1385825,
+    "mtime": 1795120325.3069234,
+    "seen": 1795120778.3980224,
     "ast_hash": "89ee2e5a58692ca48f6e573d24caa8bc",
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1793243513.248798,
-    "seen": 1793512601.3264968,
-    "ast_hash": "b2481be59836fe8d253e659ca2713682",
+    "mtime": 1795120805.5082235,
+    "seen": 1795120810.3540723,
+    "ast_hash": "2dd569006e453d8f995292c86b7b3377",
     "semantic_hash": ""
   },
   "atmega328p/README.md": {
-    "mtime": 1793243114.0487742,
-    "seen": 1793512601.3264978,
-    "ast_hash": "3909859f0f9d36f5b82b062b59c38cee",
+    "mtime": 1795120325.3069234,
+    "seen": 1795120778.398024,
+    "ast_hash": "44fff24b2ef9db72ef04f39c68cac98c",
     "semantic_hash": ""
   },
   "atmega328p/laberinto/LICENCIA_VL53L0X.txt": {
-    "mtime": 1793194763.499953,
-    "seen": 1793512601.3264987,
+    "mtime": 1795120325.3080964,
+    "seen": 1795120778.3980253,
     "ast_hash": "41dd677cee907656c5d2e97845b04405",
     "semantic_hash": ""
   },
   "docs/GUIA_PROGRAMACION.md": {
-    "mtime": 1794363164.702556,
-    "seen": 1794363166.0937014,
-    "ast_hash": "9602326bbe4aa53fa0650446477079bd",
+    "mtime": 1795120560.7289643,
+    "seen": 1795120778.3980262,
+    "ast_hash": "f2cc48fce15979ac237cf2309770e3f8",
     "semantic_hash": ""
   },
   "docs/uno_q.md": {
-    "mtime": 1794366126.733751,
-    "seen": 1794366128.2037034,
-    "ast_hash": "bc125bc287f4c5efccf2e14066f6734b",
+    "mtime": 1795120325.3945284,
+    "seen": 1795120778.398033,
+    "ast_hash": "3b836ba26be7e935abf37507313d50b9",
     "semantic_hash": ""
   },
   "uno_q/README.md": {
-    "mtime": 1794366783.7619011,
-    "seen": 1794366785.3157673,
-    "ast_hash": "b1141928b573dd9cc4ff1a4e639a2c4d",
+    "mtime": 1795120544.5980508,
+    "seen": 1795120778.3980336,
+    "ast_hash": "165070908b569cfd5bcc328d6fbc05c1",
     "semantic_hash": ""
   },
   "uno_q/python/requirements.txt": {
-    "mtime": 1793254383.256353,
-    "seen": 1793512601.3265057,
+    "mtime": 1795120325.411585,
+    "seen": 1795120778.3980358,
     "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
     "semantic_hash": ""
   },
   "chasis/chasis.pdf": {
-    "mtime": 1794020265.9169805,
-    "seen": 1794080567.1385963,
+    "mtime": 1795120325.3081799,
+    "seen": 1795120778.3980403,
     "ast_hash": "bb9302ff34ab361535a3544b1389a6f2",
     "semantic_hash": ""
   },
   "docs/manual_ensamble.pdf": {
-    "mtime": 1794361618.9814706,
-    "seen": 1794361624.8459926,
+    "mtime": 1795120325.3625283,
+    "seen": 1795120778.3980424,
     "ast_hash": "5903b829c3c013ec8d8bff8db95c56a7",
     "semantic_hash": ""
   },
-  "docs/manual_uso.pdf": {
-    "mtime": 1794361619.1974707,
-    "seen": 1794361624.8459935,
-    "ast_hash": "f44846d8510725d047d8d9fdcd1ba9ab",
-    "semantic_hash": ""
-  },
   "atmega328p/img/conexiones_nano.png": {
-    "mtime": 1793195271.4514306,
-    "seen": 1793512601.3265119,
+    "mtime": 1795120325.3071907,
+    "seen": 1795120778.3980472,
     "ast_hash": "57e58e403aa8d8d25527a28c415475d6",
     "semantic_hash": ""
   },
   "chasis/img/det_arnes.png": {
-    "mtime": 1794020239.1409788,
-    "seen": 1794080567.138604,
+    "mtime": 1795120325.3095438,
+    "seen": 1795120778.3980482,
     "ast_hash": "0618c79b95743b114255024b75438099",
     "semantic_hash": ""
   },
   "chasis/img/det_insertos.png": {
-    "mtime": 1794020243.234305,
-    "seen": 1794080567.1386054,
+    "mtime": 1795120325.3105745,
+    "seen": 1795120778.398049,
     "ast_hash": "79f687d41db07f23ef1006aca6386376",
     "semantic_hash": ""
   },
   "chasis/img/det_l298.png": {
-    "mtime": 1794020226.844978,
-    "seen": 1794080567.1386065,
+    "mtime": 1795120325.3105745,
+    "seen": 1795120778.39805,
     "ast_hash": "870b61c47f8fbd1499d8d4e39058d833",
     "semantic_hash": ""
   },
   "chasis/img/det_q_usb.png": {
-    "mtime": 1794254211.8184323,
-    "seen": 1794254265.592899,
+    "mtime": 1795120325.3105745,
+    "seen": 1795120778.398051,
     "ast_hash": "85475556165d37a57d20a625b863494d",
     "semantic_hash": ""
   },
   "chasis/img/det_shield.png": {
-    "mtime": 1794020264.6489804,
-    "seen": 1794080567.1386092,
+    "mtime": 1795120325.3105745,
+    "seen": 1795120778.3980517,
     "ast_hash": "a58af6eddde3c979913c73d2e878f0ae",
     "semantic_hash": ""
   },
   "chasis/img/detalle_oled.png": {
-    "mtime": 1793198960.1530178,
-    "seen": 1793512601.3265195,
+    "mtime": 1795120325.3105745,
+    "seen": 1795120778.3980527,
     "ast_hash": "08e13060497a9374c349cbbd88c56a03",
     "semantic_hash": ""
   },
   "chasis/img/fig_atras.png": {
-    "mtime": 1794020216.6689775,
-    "seen": 1794080567.138612,
+    "mtime": 1795120325.3105745,
+    "seen": 1795120778.398054,
     "ast_hash": "28df25967012f4f209d27def58254b54",
     "semantic_hash": ""
   },
   "chasis/img/fig_lado.png": {
-    "mtime": 1794020216.7129776,
-    "seen": 1794080567.1386132,
+    "mtime": 1795120325.3105745,
+    "seen": 1795120778.3980548,
     "ast_hash": "eba51332f0a71a11d5466996ca639ca8",
     "semantic_hash": ""
   },
   "chasis/img/iso.png": {
-    "mtime": 1794020216.2529776,
-    "seen": 1794080567.1386151,
+    "mtime": 1795120325.3105745,
+    "seen": 1795120778.398056,
     "ast_hash": "3e4b7df2610bd9aa47a85f04657820cc",
     "semantic_hash": ""
   },
   "chasis/img/paso1.png": {
-    "mtime": 1794020218.6049776,
-    "seen": 1794080567.1386166,
+    "mtime": 1795120325.3105745,
+    "seen": 1795120778.398057,
     "ast_hash": "b10632240bf46296f85d1399a961558d",
     "semantic_hash": ""
   },
   "chasis/img/paso10.png": {
-    "mtime": 1794020239.036979,
-    "seen": 1794080567.1386182,
+    "mtime": 1795120325.3105745,
+    "seen": 1795120778.3980577,
     "ast_hash": "48e044ccd00db89db05a2f993ba2dd4a",
     "semantic_hash": ""
   },
   "chasis/img/paso2.png": {
-    "mtime": 1794020224.004978,
-    "seen": 1794080567.1386206,
+    "mtime": 1795120325.3105745,
+    "seen": 1795120778.3980587,
     "ast_hash": "612b8f7050b009759feb6d54d326efef",
     "semantic_hash": ""
   },
   "chasis/img/paso3.png": {
-    "mtime": 1794020224.676978,
-    "seen": 1794080567.1386228,
+    "mtime": 1795120325.3105745,
+    "seen": 1795120778.3980598,
     "ast_hash": "dce58624738cec3639d00f1060bc85e9",
     "semantic_hash": ""
   },
   "chasis/img/paso4.png": {
-    "mtime": 1794020226.120978,
-    "seen": 1794080567.1386242,
+    "mtime": 1795120325.3105745,
+    "seen": 1795120778.3980608,
     "ast_hash": "a78f2cd370058d05b4e581151bea1f69",
     "semantic_hash": ""
   },
   "chasis/img/paso5.png": {
-    "mtime": 1794020232.3409784,
-    "seen": 1794080567.138626,
+    "mtime": 1795120325.3105745,
+    "seen": 1795120778.3980618,
     "ast_hash": "8f6822377d9486ef8737faac1bcead1f",
     "semantic_hash": ""
   },
   "chasis/img/paso6.png": {
-    "mtime": 1794020231.1569784,
-    "seen": 1794080567.1386275,
+    "mtime": 1795120325.3105745,
+    "seen": 1795120778.398063,
     "ast_hash": "159a1db94c07b8fcf371e3ca0c54674f",
     "semantic_hash": ""
   },
   "chasis/img/paso7.png": {
-    "mtime": 1794020236.926168,
-    "seen": 1794080567.1386292,
+    "mtime": 1795120325.3145285,
+    "seen": 1795120778.3980637,
     "ast_hash": "bf8a5feebc9df7db26fb75c1808c800b",
     "semantic_hash": ""
   },
   "chasis/img/paso8.png": {
-    "mtime": 1794020233.2569785,
-    "seen": 1794080567.1386304,
+    "mtime": 1795120325.3145285,
+    "seen": 1795120778.3980646,
     "ast_hash": "645b87921ffd06f5c3e15e2633da52d0",
     "semantic_hash": ""
   },
   "chasis/img/paso9.png": {
-    "mtime": 1794020239.984979,
-    "seen": 1794080567.1386318,
+    "mtime": 1795120325.3145285,
+    "seen": 1795120778.3980653,
     "ast_hash": "8928a80eb77f484d72476086cddb429a",
     "semantic_hash": ""
   },
   "chasis/img/placa_x2d.png": {
-    "mtime": 1794020262.9049804,
-    "seen": 1794080567.1386333,
+    "mtime": 1795120325.3145285,
+    "seen": 1795120778.3980665,
     "ast_hash": "9979f7051116290784e6946b250705a0",
     "semantic_hash": ""
   },
   "chasis/img/q_iso.png": {
-    "mtime": 1794020250.6689796,
-    "seen": 1794080567.1386347,
+    "mtime": 1795120325.3145285,
+    "seen": 1795120778.3980675,
     "ast_hash": "1f14ba9955a32b815168f5f5f9bdbaa5",
     "semantic_hash": ""
   },
   "chasis/img/q_lado.png": {
-    "mtime": 1794020250.7969797,
-    "seen": 1794080567.1386364,
+    "mtime": 1795120325.3145285,
+    "seen": 1795120778.3980684,
     "ast_hash": "be0b7aef9b9762391cb022d368b3cbb2",
     "semantic_hash": ""
   },
   "chasis/img/q_paso11.png": {
-    "mtime": 1794254230.5424333,
-    "seen": 1794254265.5929282,
+    "mtime": 1795120325.3145285,
+    "seen": 1795120778.3980691,
     "ast_hash": "3b45325924ff0bf7fedeb7c0620dff26",
     "semantic_hash": ""
   },
   "chasis/img/r3_atras.png": {
-    "mtime": 1794020245.1569793,
-    "seen": 1794080567.1386397,
+    "mtime": 1795120325.3185284,
+    "seen": 1795120778.3980703,
     "ast_hash": "4e6652412bac0217a9ebb58c20ccfcd7",
     "semantic_hash": ""
   },
   "chasis/img/r3_iso.png": {
-    "mtime": 1794020250.0809796,
-    "seen": 1794080567.1386414,
+    "mtime": 1795120325.3185284,
+    "seen": 1795120778.3980713,
     "ast_hash": "2faa0f88ebfd20b92a53db38c03ae01c",
     "semantic_hash": ""
   },
   "chasis/img/r3_paso10.png": {
-    "mtime": 1794020255.6409798,
-    "seen": 1794080567.138643,
+    "mtime": 1795120325.3185284,
+    "seen": 1795120778.3980722,
     "ast_hash": "e7ed11b48ef67da4cfb2fae54f82487a",
     "semantic_hash": ""
   },
   "chasis/img/r3_paso7.png": {
-    "mtime": 1794020253.1689796,
-    "seen": 1794080567.1386445,
+    "mtime": 1795120325.3185284,
+    "seen": 1795120778.3980732,
     "ast_hash": "85796c05c4f0e7ce2215a47fc80adcd4",
     "semantic_hash": ""
   },
   "chasis/img/r3_paso8.png": {
-    "mtime": 1794020255.7809799,
-    "seen": 1794080567.1386464,
+    "mtime": 1795120325.3185284,
+    "seen": 1795120778.3980742,
     "ast_hash": "657ea41c7bac940d99ed945da307dbfd",
     "semantic_hash": ""
   },
   "chasis/img/r3_paso9.png": {
-    "mtime": 1794020258.74898,
-    "seen": 1794080567.1386478,
+    "mtime": 1795120325.3185284,
+    "seen": 1795120778.3980749,
     "ast_hash": "7ba3af6d48682ae31a0eddd418f22f19",
     "semantic_hash": ""
   },
   ".claude/settings.json": {
-    "mtime": 1793512582.4894156,
-    "seen": 1794080567.1385093,
+    "mtime": 1795120325.3060038,
+    "seen": 1795120778.3979604,
     "ast_hash": "3b541b9935fcf0831355da956f897645",
     "semantic_hash": ""
   },
   "docs/diagrama_conexiones.py": {
-    "mtime": 1794025480.2693815,
-    "seen": 1794080567.138562,
-    "ast_hash": "3605ec466ba9d60bf33d5de1ee4e1394",
+    "mtime": 1795120325.3441885,
+    "seen": 1795120778.397989,
+    "ast_hash": "6d96523976e23de71078fc0ea79e0d88",
     "semantic_hash": ""
   },
   ".claude/CLAUDE.md": {
-    "mtime": 1793512582.4889107,
-    "seen": 1794080567.1385713,
+    "mtime": 1795120325.3053632,
+    "seen": 1795120778.3980153,
     "ast_hash": "9b31786b637be3c13978bec4c2330752",
     "semantic_hash": ""
   },
   ".claude/skills/ponytail-audit/SKILL.md": {
-    "mtime": 1793512969.1154783,
-    "seen": 1794080567.1385727,
+    "mtime": 1795120325.3063571,
+    "seen": 1795120778.3980162,
     "ast_hash": "4a8ec0358488fe552500e549503771b4",
     "semantic_hash": ""
   },
   ".claude/skills/ponytail-debt/SKILL.md": {
-    "mtime": 1793512969.1196258,
-    "seen": 1794080567.1385744,
+    "mtime": 1795120325.3063571,
+    "seen": 1795120778.3980172,
     "ast_hash": "f5ddc8835fd59d3df8eedef0e1228348",
     "semantic_hash": ""
   },
   ".claude/skills/ponytail-gain/SKILL.md": {
-    "mtime": 1793512969.124049,
-    "seen": 1794080567.1385758,
+    "mtime": 1795120325.3063571,
+    "seen": 1795120778.3980181,
     "ast_hash": "9f71b76a7b488bc15d89f76afc54e2ac",
     "semantic_hash": ""
   },
   ".claude/skills/ponytail-help/SKILL.md": {
-    "mtime": 1793512969.1281598,
-    "seen": 1794080567.1385772,
+    "mtime": 1795120325.3063571,
+    "seen": 1795120778.398019,
     "ast_hash": "d3d4e52b80e65a6972d1c20378356d63",
     "semantic_hash": ""
   },
   ".claude/skills/ponytail-review/SKILL.md": {
-    "mtime": 1793512969.1325579,
-    "seen": 1794080567.138579,
+    "mtime": 1795120325.3063571,
+    "seen": 1795120778.39802,
     "ast_hash": "9a06da6e1f26722dd3c34b50489a1c1e",
     "semantic_hash": ""
   },
   ".claude/skills/ponytail/SKILL.md": {
-    "mtime": 1793512969.111106,
-    "seen": 1794080567.1385806,
+    "mtime": 1795120325.3069234,
+    "seen": 1795120778.3980215,
     "ast_hash": "546be8ebd490e5b8d3b291c33442641a",
     "semantic_hash": ""
   },
   "docs/diagrama_conexiones.pdf": {
-    "mtime": 1794025481.5990877,
-    "seen": 1794080567.1385977,
-    "ast_hash": "5ed0f7b6384752f5cec6e2df638a810b",
+    "mtime": 1795120325.3441885,
+    "seen": 1795120778.398041,
+    "ast_hash": "cf318478fbb74d31a33d827288bf5807",
     "semantic_hash": ""
   },
   "docs/diagrama_conexiones.png": {
-    "mtime": 1794025481.2550879,
-    "seen": 1794080567.1386492,
-    "ast_hash": "e71c6b77cae6e0218837f1005776a670",
+    "mtime": 1795120325.3441885,
+    "seen": 1795120778.3980758,
+    "ast_hash": "1acb70784094b919781b438a453eff49",
     "semantic_hash": ""
   },
   "docs/manual_uso.md": {
-    "mtime": 1794361608.4896238,
-    "seen": 1794361624.8459826,
-    "ast_hash": "bd6dd39dec4825e4f2e18606ca061d8b",
+    "mtime": 1795120635.9391196,
+    "seen": 1795120778.3980308,
+    "ast_hash": "2979438736eb76ebb7703c095e4db831",
     "semantic_hash": ""
   },
   "docs/md_pdf.js": {
-    "mtime": 1794160081.868909,
-    "seen": 1794160139.1374888,
-    "ast_hash": "faa076a39e1c2b5f7648c201cacf4cfc",
+    "mtime": 1795120325.3625283,
+    "seen": 1795120778.3979914,
+    "ast_hash": "58ecfedbe1d085530d10d23f3af5a2f4",
     "semantic_hash": ""
   },
   "docs/md_pdf.sh": {
-    "mtime": 1794160081.868909,
-    "seen": 1794160139.1374915,
-    "ast_hash": "fbd8b75a2ced04c3b6a98a4ed2df1ba0",
+    "mtime": 1795120795.1945562,
+    "seen": 1795120810.3540354,
+    "ast_hash": "a8da0c4631f4acd802b204d69a0d0968",
     "semantic_hash": ""
   },
   "docs/manual_tecnico.md": {
-    "mtime": 1794366126.7307267,
-    "seen": 1794366128.203699,
-    "ast_hash": "7753e8c565a9d01f314f73716c178dc8",
-    "semantic_hash": ""
-  },
-  "docs/prompt_pdf.md": {
-    "mtime": 1794160081.871389,
-    "seen": 1794160139.1375506,
-    "ast_hash": "fa068548527652210b8e62913bbcfc32",
+    "mtime": 1795120747.011518,
+    "seen": 1795120778.3980298,
+    "ast_hash": "01e762d9b6484a37bedf614f6ebf5879",
     "semantic_hash": ""
   },
   "docs/pdf/manual_tecnico.pdf": {
-    "mtime": 1794327234.79209,
-    "seen": 1794327236.387317,
-    "ast_hash": "cf73455e92feeffd3850e9d41d73dad4",
+    "mtime": 1795120764.8945544,
+    "seen": 1795120778.3980455,
+    "ast_hash": "4c31c03f48102294e2d5750cb765b5ce",
     "semantic_hash": ""
   },
   "docs/pdf/manual_uso.pdf": {
-    "mtime": 1794327234.193586,
-    "seen": 1794327236.3873184,
-    "ast_hash": "c3b754b6eed07749cf709d91cca4d1ce",
+    "mtime": 1795120763.0305543,
+    "seen": 1795120778.3980463,
+    "ast_hash": "9e15112fcb8a7b3c22c92003a031d2af",
     "semantic_hash": ""
   },
   "uno_q/assets/index.html": {
-    "mtime": 1794348196.3141093,
-    "seen": 1794348199.9898884,
-    "ast_hash": "386dde9a75e303bcd706b8ba0a8953ee",
+    "mtime": 1795120325.411585,
+    "seen": 1795120778.3980346,
+    "ast_hash": "a199658b6ab3fa9149230f2dade1a332",
+    "semantic_hash": ""
+  },
+  "docs/package.json": {
+    "mtime": 1795120325.3625283,
+    "seen": 1795120778.3979943,
+    "ast_hash": "74a36c011d029c1fa582c6f958d76cf7",
+    "semantic_hash": ""
+  },
+  "uno_q/sim/barrido.py": {
+    "mtime": 1795120325.4129198,
+    "seen": 1795120778.3979976,
+    "ast_hash": "f8e1d8b3d6b63a90248fa8407781b416",
+    "semantic_hash": ""
+  },
+  "uno_q/sim/corre.py": {
+    "mtime": 1795120325.4129734,
+    "seen": 1795120778.3979986,
+    "ast_hash": "6232dae11ca37d57f54a3e9589d4887e",
+    "semantic_hash": ""
+  },
+  "uno_q/sim/partida.py": {
+    "mtime": 1795120325.4129734,
+    "seen": 1795120778.3979995,
+    "ast_hash": "93176236c3a7513323a5fc7ce39efd70",
+    "semantic_hash": ""
+  },
+  "uno_q/sim/sim2d.py": {
+    "mtime": 1795120325.4129734,
+    "seen": 1795120778.3980007,
+    "ast_hash": "45f7bd9ee314e59d9c5eb8723a7d2d94",
+    "semantic_hash": ""
+  },
+  "uno_q_v2/app.yaml": {
+    "mtime": 1795120325.4140167,
+    "seen": 1795120778.3980026,
+    "ast_hash": "0603566aa9f4dfa16d430f9a798ce8a4",
+    "semantic_hash": ""
+  },
+  "uno_q_v2/python/main.py": {
+    "mtime": 1795120325.4140167,
+    "seen": 1795120778.3980057,
+    "ast_hash": "a1cebe3f90dee89da2224a93da784fe7",
+    "semantic_hash": ""
+  },
+  "uno_q_v2/sim/barrido.py": {
+    "mtime": 1795120325.4145916,
+    "seen": 1795120778.3980067,
+    "ast_hash": "f8e1d8b3d6b63a90248fa8407781b416",
+    "semantic_hash": ""
+  },
+  "uno_q_v2/sim/camara.py": {
+    "mtime": 1795120325.4146643,
+    "seen": 1795120778.3980076,
+    "ast_hash": "e0ddbcdb8f9fe3fc9eb4edef8056b843",
+    "semantic_hash": ""
+  },
+  "uno_q_v2/sim/corre.py": {
+    "mtime": 1795120325.4146643,
+    "seen": 1795120778.3980083,
+    "ast_hash": "6232dae11ca37d57f54a3e9589d4887e",
+    "semantic_hash": ""
+  },
+  "uno_q_v2/sim/graba_video.js": {
+    "mtime": 1795120325.4146643,
+    "seen": 1795120778.3980093,
+    "ast_hash": "abe2b48eb5b20e03ded64707beac98b2",
+    "semantic_hash": ""
+  },
+  "uno_q_v2/sim/partida.py": {
+    "mtime": 1795120325.4146643,
+    "seen": 1795120778.39801,
+    "ast_hash": "6c7d130473c3e0a50abe5a13273dd856",
+    "semantic_hash": ""
+  },
+  "uno_q_v2/sim/reconstruye.py": {
+    "mtime": 1795120325.4146643,
+    "seen": 1795120778.398011,
+    "ast_hash": "0dfd4e6be2dd1142b570b42ed16fe619",
+    "semantic_hash": ""
+  },
+  "uno_q_v2/sim/repite.py": {
+    "mtime": 1795120325.4146643,
+    "seen": 1795120778.3980117,
+    "ast_hash": "149078ece3a853f792530e9ed802429a",
+    "semantic_hash": ""
+  },
+  "uno_q_v2/sim/sim2d.py": {
+    "mtime": 1795120325.4146643,
+    "seen": 1795120778.3980126,
+    "ast_hash": "065c3e02c7eeeea170b9d0757ece2c65",
+    "semantic_hash": ""
+  },
+  "uno_q_v2/sketch/oled.h": {
+    "mtime": 1795120325.4146643,
+    "seen": 1795120778.3980136,
+    "ast_hash": "53d98f80e389965a2eeef41a0e0da17f",
+    "semantic_hash": ""
+  },
+  "docs/corrida2.html": {
+    "mtime": 1795120325.3441885,
+    "seen": 1795120778.398027,
+    "ast_hash": "f47d384f9d73320d2d9c137934a09c38",
+    "semantic_hash": ""
+  },
+  "docs/historial_cambios.md": {
+    "mtime": 1795120793.394359,
+    "seen": 1795120810.3540788,
+    "ast_hash": "9a32664e58c7c345b634e7639c5b59bd",
+    "semantic_hash": ""
+  },
+  "docs/manual_jueces.md": {
+    "mtime": 1795120707.1391878,
+    "seen": 1795120778.3980289,
+    "ast_hash": "01ae7a5ab26594a592700f914dae5812",
+    "semantic_hash": ""
+  },
+  "docs/md_pdf.html": {
+    "mtime": 1795120325.3625283,
+    "seen": 1795120778.398032,
+    "ast_hash": "73737f92be238442dca0d68305499186",
+    "semantic_hash": ""
+  },
+  "uno_q_v2/README.md": {
+    "mtime": 1795120681.3251913,
+    "seen": 1795120778.3980367,
+    "ast_hash": "013754f29092aaf0a9f148f7069f59a9",
+    "semantic_hash": ""
+  },
+  "uno_q_v2/assets/index.html": {
+    "mtime": 1795120325.4140167,
+    "seen": 1795120778.3980374,
+    "ast_hash": "79e18ef0230e8b75f1a2fdf551b448ab",
+    "semantic_hash": ""
+  },
+  "uno_q_v2/python/requirements.txt": {
+    "mtime": 1795120325.4140167,
+    "seen": 1795120778.3980384,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "uno_q_v2/sim/corrida_plantilla.html": {
+    "mtime": 1795120325.4146643,
+    "seen": 1795120778.3980393,
+    "ast_hash": "79047457eccb6a34f8259254761bf39b",
+    "semantic_hash": ""
+  },
+  "docs/pdf/historial_cambios.pdf": {
+    "mtime": 1795120795.1505563,
+    "seen": 1795120810.354098,
+    "ast_hash": "d59dd1c66342f76be8b3f8a6abfbeba5",
+    "semantic_hash": ""
+  },
+  "docs/pdf/manual_jueces.pdf": {
+    "mtime": 1795120767.5505548,
+    "seen": 1795120778.398044,
+    "ast_hash": "a693ec58e1675ce38148804277c07da0",
+    "semantic_hash": ""
+  },
+  "docs/img/capturas/antes.png": {
+    "mtime": 1795120325.3480139,
+    "seen": 1795120778.398077,
+    "ast_hash": "56961d8e1fedd869627c0ce64b3aba37",
+    "semantic_hash": ""
+  },
+  "docs/img/capturas/despues.png": {
+    "mtime": 1795120325.3503463,
+    "seen": 1795120778.398078,
+    "ast_hash": "c70119b7a114c9b7e949a957268b8f0a",
+    "semantic_hash": ""
+  },
+  "docs/img/choque.svg": {
+    "mtime": 1795120325.3503463,
+    "seen": 1795120778.3980787,
+    "ast_hash": "890429af24391f4fe26057a4ca88b42c",
+    "semantic_hash": ""
+  },
+  "docs/img/pista_foto.jpg": {
+    "mtime": 1795120325.3505285,
+    "seen": 1795120778.3980794,
+    "ast_hash": "5c85e19f85ad0ef9a53e40a001949d26",
+    "semantic_hash": ""
+  },
+  "docs/img/pista_mapa.png": {
+    "mtime": 1795120325.3505285,
+    "seen": 1795120778.3980803,
+    "ast_hash": "aa2884722287de6254968060abb5ce2d",
+    "semantic_hash": ""
+  },
+  "docs/img/robot_tof.svg": {
+    "mtime": 1795120325.3505285,
+    "seen": 1795120778.3980813,
+    "ast_hash": "1833d7bf8444775506a46974d7356857",
+    "semantic_hash": ""
+  },
+  "docs/video/corrida2.mp4": {
+    "mtime": 1795120325.4025283,
+    "seen": 1795120778.398082,
+    "ast_hash": "6da67b545d375fce7432420ef89b4750",
+    "semantic_hash": ""
+  },
+  "docs/package-lock.json": {
+    "mtime": 1795120525.8105402,
+    "seen": 1795120778.398083,
+    "ast_hash": "e406da086205de2655a99d1a001abe97",
     "semantic_hash": ""
   }
 }

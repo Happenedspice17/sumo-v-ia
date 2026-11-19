@@ -52,7 +52,7 @@ timeline
   section 12 nov · Simulación y pista
     Etapas 47 – 52 : Hacia el centro : Simulador 2D : Brújula : Autolocalización en la pista
   section 13 – 14 nov · v2 y competencia
-    Etapas 53 – 59 : Puntas de pared : v2 confía en las paredes : Cámara como mapa del piso : 2.º lugar en 2:06.4
+    Etapas 53 – 59 : Puntas de pared : v2 confía en las paredes : Cámara como mapa del piso : 2.º lugar en 2 min 6.4 s
 ```
 **Figura 1. Etapas del proyecto.** Qué mirar: casi la mitad de las etapas ocurre el 11-nov, cuando el robot pasa de reglas por tiempo a medir con los ToF y el MPU; el 12-nov el simulador decide las reglas y el robot aprende a ubicarse en la pista; el 13-nov la v2 corre en pista y cada corrida grabada deja correcciones.
 :::
