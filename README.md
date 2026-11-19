@@ -10,12 +10,27 @@
 ![Sensores](https://img.shields.io/badge/sensores-3×%20VL53L0X%20·%20TCS34725%20·%20MPU--6050-orange)
 ![Chasis](https://img.shields.io/badge/chasis-OpenSCAD%20·%20impresión%203D-yellow)
 ![Licencia](https://img.shields.io/badge/licencia-MIT-lightgrey)
+![Competencia](https://img.shields.io/badge/competencia-2.º%20lugar%20·%202%3A06.4-gold)
 
 <img src="chasis/img/q_iso.png" alt="Render del robot con Arduino UNO Q" width="720">
 
 *Robot diferencial de 120 × 120 mm que sale desde cualquier esquina, se ubica solo comparando lo que ven sus láser con el mapa de la pista, se detiene en la meta amarilla y en la siguiente corrida recorre la ruta más corta conocida.*
 
 </div>
+
+---
+
+## 🏆 Resultado en competencia
+
+| | |
+|---|---|
+| **Lugar** | 🥈 **2.º lugar** |
+| **Mejor corrida** | Llegó al amarillo en **2:06.4** |
+| **Versión que compitió** | [`uno_q_v2/`](uno_q_v2/) (App `Laberinto v2`) |
+| **Video de la corrida** | [`docs/video/corrida2.mp4`](docs/video/corrida2.mp4) (37 s, a 4x) |
+| **Animación interactiva** | [`docs/corrida2.html`](docs/corrida2.html) (ábrela en el navegador) |
+
+El recorrido del video y de la animación es una **reconstrucción** a partir del registro de la corrida: el camino más probable sobre el mapa que cuadra con lo que leyeron los láser en cada decisión. El robot no tiene encoders, así que no hay una trayectoria medida. Detalles en [`uno_q_v2/README.md`](uno_q_v2/README.md).
 
 ---
 
@@ -31,7 +46,7 @@
 
 ## 📚 Documentación para evaluar el proyecto
 
-Los cuatro documentos finales están en [`docs/pdf/`](docs/pdf/). Se generan desde los `.md` de [`docs/`](docs/) y son la referencia vigente. Si otro archivo del repositorio no coincide con ellos, los PDF tienen prioridad.
+Los cuatro documentos finales están en [`docs/pdf/`](docs/pdf/). Se generan desde los `.md` de [`docs/`](docs/) y son la referencia vigente (**Revisión B9, 19 de noviembre de 2026**). Si otro archivo del repositorio no coincide con ellos, los PDF tienen prioridad.
 
 | Documento | Para quién | Contenido |
 |---|---|---|
@@ -160,16 +175,17 @@ Cada consulta web eran 5 a 9 llamadas RPC que competían con el robot por el Bri
 
 ## 📊 Resultados en pista
 
-Pruebas en un laberinto de **2 × 2 m** con paredes de madera pintadas de blanco (en simulación, la estrategia actual llega en 98 % de las corridas sobre la pista):
+Pruebas en un laberinto de **2 × 2 m** con paredes de madera pintadas de blanco (en simulación, la v2 llega en 98–100 % de las corridas sobre la pista según la esquina de salida):
 
 | Aspecto | Resultado | Acción |
 |---|---|---|
+| Competencia (v2) | 🥈 2.º lugar, mejor corrida 2:06.4 | [Video](docs/video/corrida2.mp4) · [animación](docs/corrida2.html) |
 | Sensor de color calibrado | ✅ Componente más confiable | Se usa como única fuente para la meta |
 | Meta amarilla | ✅ La encuentra y se estaciona | Marcas grandes funcionan mejor que líneas delgadas |
 | ToF | ✅ ±15 mm, sin lecturas espurias | Umbrales al punto medio + calibración lineal |
 | Giros por tiempo | ⚠️ ~70° en vez de 90° | MPU-6050 o ajuste de `MS_90` |
 | Avance por tiempo | ⚠️ Inconsistente con la batería | Avance por distancia |
-| Cámara para paredes | ❌ Choques por exceso de información | Relegada a asistencia blanco/negro; hoy apagada |
+| Cámara para paredes | ❌ Choques por exceso de información; en la v2 (13-nov) vio paredes falsas por reflejos del piso | Relegada a asistencia; en la v2 solo se ve en la web (`CAM_LOC = False`) |
 | Mano derecha vs. izquierda | Derecha llegó más lejos | Análisis: priorizar "de frente" rompe la garantía del seguidor de pared |
 | Autonomía | ~3 h de pruebas continuas | Batería 2S 18650 |
 
@@ -202,7 +218,8 @@ El chasis es **paramétrico en OpenSCAD**. Pasó por entre 20 y 50 iteraciones d
 
 | Carpeta | Contenido |
 |---|---|
-| [`uno_q/`](uno_q/) | **Versión actual.** `sketch/` (STM32 con MPU-6050), `python/` (máquina de estados, autolocalización, mapa, cámara, web; `EXPERIMENTAL = True` activa la distancia y las aberturas por cámara), `assets/` (página web) y `sim/` (simulador 2D) |
+| [`uno_q_v2/`](uno_q_v2/) | **Versión final, la que compitió** (App `Laberinto v2`). Misma estructura que `uno_q/`; se guía por las paredes en lugar de los milímetros, graba cada corrida y `sim/` incluye la reconstrucción de la corrida de competencia |
+| [`uno_q/`](uno_q/) | **v1.** `sketch/` (STM32 con MPU-6050), `python/` (máquina de estados, autolocalización, mapa, cámara, web; `EXPERIMENTAL = True` activa la distancia y las aberturas por cámara), `assets/` (página web) y `sim/` (simulador 2D) |
 | [`atmega328p/`](atmega328p/) | Iteración A, respaldo: firmware *bare-metal* en C++ para UNO R3 / Nano con flood-fill y mapa en EEPROM |
 | [`chasis/`](chasis/) | Modelo OpenSCAD, STL para imprimir, renders y planos (`chasis.pdf`) |
 | [`docs/`](docs/) | Manuales, bitácora, BOM, diagramas y scripts que generan los PDF |
@@ -212,11 +229,11 @@ El chasis es **paramétrico en OpenSCAD**. Pasó por entre 20 y 50 iteraciones d
 ## 🚀 Inicio rápido
 
 1. Arma el robot con el [manual de armado](docs/manual_ensamble.pdf) y el [diagrama de conexiones](docs/diagrama_conexiones.pdf).
-2. En **Arduino App Lab** crea una app:
+2. En **Arduino App Lab** crea una app llamada `Laberinto v2`:
 
-   Copia `sketch/`, `python/` y `assets/`. Para la versión experimental de la cámara cambia `EXPERIMENTAL = False` a `True` en `python/main.py`.
+   Copia `sketch/`, `python/` y `assets/` desde [`uno_q_v2/`](uno_q_v2/), la versión que compitió.
 
-   Los detalles están en [`uno_q/README.md`](uno_q/README.md).
+   Los detalles están en [`uno_q_v2/README.md`](uno_q_v2/README.md) y en la [guía de programación](docs/GUIA_PROGRAMACION.md). La v1 ([`uno_q/`](uno_q/README.md)) se carga igual desde su carpeta.
 3. Abre `http://<IP-de-la-placa>:7000` y **calibra colores, sensores de distancia y cámara desde el celular**.
 4. Pon el robot en cualquier esquina y da un toque corto al botón D2. Si cambias de esquina entre corridas, borra el mapa guardado.
 

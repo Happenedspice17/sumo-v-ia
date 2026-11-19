@@ -22,6 +22,7 @@ Un **repositorio** es una carpeta con todos los archivos del proyecto. Las carpe
 |---|---|---|
 | `atmega328p/laberinto/` | Firmware en C++ "bare-metal" (sin librerías de Arduino) | **Arduino UNO R3** (ATmega328P). Es el **respaldo oficial** |
 | `uno_q/` | App de App Lab: `sketch/sketch.ino` (microcontrolador), `python/main.py` (Linux, cámara) y `python/requirements.txt` | **Arduino UNO Q**. Es la **placa principal** (experimental) |
+| `uno_q_v2/` | Misma estructura, App `Laberinto v2`: la **versión final que compitió** (2.º lugar) | **Arduino UNO Q** |
 | `chasis/` | Piezas 3D y planos | Ninguna (es mecánica) |
 | `docs/` | Manuales y documentos técnicos (`uno_q.md`) | Ninguna |
 
@@ -504,6 +505,16 @@ Cómo hacerlo:
 6. Guarda con **Ctrl + S** en cada archivo.
 
 **Verifica:** el sketch empieza con `#include <Arduino_RouterBridge.h>` y `main.py` empieza con `from arduino.app_utils import *`.
+
+**Versión final (v2, la que compitió):** se carga igual, como **otra App** llamada `Laberinto v2`, copiando los archivos de `uno_q_v2\` en lugar de `uno_q\`:
+
+| Copia desde el repositorio | Pégalo en la App `Laberinto v2` |
+|---|---|
+| `uno_q_v2\sketch\sketch.ino` y `uno_q_v2\sketch\oled.h` | La carpeta `sketch/` |
+| `uno_q_v2\python\main.py` y `uno_q_v2\python\requirements.txt` | La carpeta `python/` |
+| `uno_q_v2\assets\index.html` | La carpeta `assets/` (página web) |
+
+La App `Laberinto` (v1) no se toca. Detalles en `uno_q_v2/README.md`.
 
 ### 4.7 Agregar las librerías del sketch
 

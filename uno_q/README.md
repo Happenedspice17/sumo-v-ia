@@ -1,5 +1,8 @@
 # 🤖 Iteración B – Arduino UNO Q (con cámara)
 
+> [!IMPORTANT]
+> Esta carpeta es la **v1**. La versión final, la que compitió (2.º lugar, mejor corrida 2:06.4), es [`uno_q_v2/`](../uno_q_v2/).
+
 **Robot de laberinto · Microcontroladores 2**
 Manuel Harari López · Víctor Miguel Vázquez · Carlos Emiliano Escamilla Garibay
 12 de noviembre de 2026 · Revisión B8
