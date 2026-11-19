@@ -34,7 +34,7 @@ El robot sale de **cualquier esquina** de un laberinto de 11 × 11 celdas y lleg
 **0** encoders: las orillas de pared marcan las celdas
 :::
 ::: cifra
-**53** etapas documentadas en la bitácora
+**59** etapas documentadas en la bitácora
 :::
 ::::
 

@@ -53,7 +53,7 @@ Los cuatro documentos finales están en [`docs/pdf/`](docs/pdf/). Se generan des
 | 🏅 [**Manual para jueces**](docs/pdf/manual_jueces.pdf) ([fuente](docs/manual_jueces.md)) | Evaluación | 10 páginas a color para imprimir a doble cara: lo que hace distinto a este robot |
 | 📘 [**Manual técnico**](docs/pdf/manual_tecnico.pdf) ([fuente](docs/manual_tecnico.md)) | Evaluación técnica | Arquitectura de dos procesadores, sensado, control, máquina de estados, autolocalización, simulador, parámetros y glosario |
 | 📗 [**Manual de uso**](docs/pdf/manual_uso.pdf) ([fuente](docs/manual_uso.md)) | Operación en pista | Encendido, salida desde cualquier esquina, calibración desde la web, ajuste del movimiento y solución de fallas |
-| 📙 [**Bitácora de diseño**](docs/pdf/historial_cambios.pdf) ([fuente](docs/historial_cambios.md)) | Proceso de ingeniería | 52 etapas desde la V1: problema, hipótesis, cambio, pruebas, decisiones y lecciones |
+| 📙 [**Bitácora de diseño**](docs/pdf/historial_cambios.pdf) ([fuente](docs/historial_cambios.md)) | Proceso de ingeniería | 59 etapas desde la V1: problema, hipótesis, cambio, pruebas, decisiones y lecciones |
 | 🛠️ [Manual de armado](docs/manual_ensamble.pdf) · [BOM](docs/bom.csv) · [cables](docs/cables.csv) | Construcción | Ensamble paso a paso, lista de materiales y arnés |
 | 🔌 [Diagrama de conexiones](docs/diagrama_conexiones.pdf) | Construcción | Alimentación, puente H, bus I²C y líneas XSHUT |
 | 🧭 [Documento técnico de la UNO Q](docs/uno_q.md) · [Guía de programación](docs/GUIA_PROGRAMACION.md) | Referencia | Justificación de la placa y cómo programar ambas iteraciones |
