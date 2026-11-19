@@ -1,6 +1,6 @@
 # Arduino UNO Q v2 (laberinto sin encoders)
 
-Copia de `uno_q/` con otra idea de fondo: **sin encoders, los milímetros avanzados son una suposición; las paredes no**. Se carga completa (sketch, `python/main.py`, `assets/index.html`) como otra app de App Lab ("Laberinto v2"). `uno_q/` queda como estaba. **Sin probar en pista.**
+Copia de `uno_q/` con otra idea de fondo: **sin encoders, los milímetros avanzados son una suposición; las paredes no**. Se carga completa (sketch, `python/main.py`, `assets/index.html`) como otra app de App Lab ("Laberinto v2"). `uno_q/` queda como estaba (v1). **Es la versión que compitió.** Probada en pista: tras la primera corrida (13-nov) se ajustó (reloj monótono, signo del giroscopio guardado, rumbo por pared hasta 30°, filtro de reflejos) y la segunda corrida, la de competencia, llegó en 2:06.4. Después de ella se agregó el ajuste entre motores que se aprende solo (el robot se iba a la izquierda); ese cambio solo está probado en simulación. Lo que sigue **sin probar en pista** es que la cámara ayude a ubicarse: en la corrida del 13-nov vio paredes falsas por reflejos del piso, así que quedó apagada (`CAM_LOC = False`, solo se ve en la web y queda en el registro).
 
 **Resultado en competencia: 2.º lugar.** La mejor corrida llegó al amarillo en 2:06.4.
 
@@ -40,8 +40,8 @@ La cámara ve desde arriba y hacia adelante, así que da lo que los ToF no: en c
 
 | Dato | Para qué | Estado |
 |---|---|---|
-| Celdas libres al frente (0 a 4) | Ubicarse más allá de los 250 mm del frontal | **Activo** (`CAM_LOC`) |
-| Pared o abertura a cada lado de las 2 celdas de adelante | Ubicarse con lo que todavía no alcanzan los laterales | **Activo** (`CAM_LOC`) |
+| Celdas libres al frente (0 a 4) | Ubicarse más allá de los 250 mm del frontal | Apagado (`CAM_LOC`) tras la corrida del 13-nov: reflejos del piso dieron paredes falsas |
+| Pared o abertura a cada lado de las 2 celdas de adelante | Ubicarse con lo que todavía no alcanzan los laterales | Apagado (`CAM_LOC`) tras la corrida del 13-nov: reflejos del piso dieron paredes falsas |
 | Qué tan chueco va respecto a las paredes | Enderezar antes de avanzar | Apagado (`CAM_RUMBO`): no mejora; el rumbo por pared lateral del sketch ya lo hace |
 | Algo blanco dentro de su celda que el frontal no ve | Ir lento | Apagado (`CAM_LENTO`): en simulación nunca se dispara |
 
