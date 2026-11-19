@@ -138,9 +138,9 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1795120805.5082235,
-    "seen": 1795120810.3540723,
-    "ast_hash": "2dd569006e453d8f995292c86b7b3377",
+    "mtime": 1795123540.745788,
+    "seen": 1795123543.5890443,
+    "ast_hash": "4ebb4c0b16a6bd39a0b945be80301846",
     "semantic_hash": ""
   },
   "atmega328p/README.md": {
@@ -675,6 +675,12 @@
     "mtime": 1795120325.4025283,
     "seen": 1795120778.398082,
     "ast_hash": "6da67b545d375fce7432420ef89b4750",
+    "semantic_hash": ""
+  },
+  "docs/pdf/documento_entrega_final.pdf": {
+    "mtime": 1795123536.4193783,
+    "seen": 1795123543.5890715,
+    "ast_hash": "ac1d032093ac948a55e1adf349d66c6e",
     "semantic_hash": ""
   },
   "docs/package-lock.json": {
