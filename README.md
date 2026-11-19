@@ -50,6 +50,7 @@ Los cuatro documentos finales están en [`docs/pdf/`](docs/pdf/). Se generan des
 
 | Documento | Para quién | Contenido |
 |---|---|---|
+| 📄 [**Documento de entrega final**](docs/pdf/documento_entrega_final.pdf) | Entrega | Resumen, arquitectura, entregables, uso, resultados y limitaciones |
 | 🏅 [**Manual para jueces**](docs/pdf/manual_jueces.pdf) ([fuente](docs/manual_jueces.md)) | Evaluación | 13 páginas a color para imprimir a doble cara: lo que hace distinto a este robot |
 | 📘 [**Manual técnico**](docs/pdf/manual_tecnico.pdf) ([fuente](docs/manual_tecnico.md)) | Evaluación técnica | Arquitectura de dos procesadores, sensado, control, máquina de estados, autolocalización, simulador, parámetros y glosario |
 | 📗 [**Manual de uso**](docs/pdf/manual_uso.pdf) ([fuente](docs/manual_uso.md)) | Operación en pista | Encendido, salida desde cualquier esquina, calibración desde la web, ajuste del movimiento y solución de fallas |

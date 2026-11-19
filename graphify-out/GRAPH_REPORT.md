@@ -1,7 +1,7 @@
 # Graph Report - sumo-v-ia  (2026-11-19)
 
 ## Corpus Check
-- 60 files · ~182,409 words
+- 60 files · ~186,597 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 25 file(s) not represented in the graph (top: .stl 12, (none) 4, .csv 3)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `c7210f87`
+- Built from commit: `c9e7d5f9`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -90,6 +90,8 @@
 10. `Robot` - 17 edges
 
 ## Surprising Connections (you probably didn't know these)
+- `🗂️ Estructura del repositorio` --references--> `pdf()`  [INFERRED]
+  README.md → chasis/generar_pdf.py
 - `4.7 Agregar las librerías del sketch` --references--> `VL53L0X`  [INFERRED]
   docs/GUIA_PROGRAMACION.md → atmega328p/laberinto/VL53L0X.h
 - `Cómo cargar la app (una vez)` --references--> `VL53L0X`  [INFERRED]
@@ -98,8 +100,6 @@
   uno_q/README.md → atmega328p/laberinto/VL53L0X.h
 - `💻 Programación (Arduino App Lab)` --references--> `VL53L0X`  [INFERRED]
   uno_q_v2/README.md → atmega328p/laberinto/VL53L0X.h
-- `3. Protocolo RPC (Bridge)` --references--> `arranque()`  [INFERRED]
-  docs/manual_tecnico.md → atmega328p/laberinto/twi.cpp
 
 ## Import Cycles
 - None detected.
@@ -311,7 +311,7 @@ Cohesion: 0.67
 Nodes (3): 7. Energía, Problema del USB-C con VIN, Ruta PD en el robot
 
 ## Knowledge Gaps
-- **94 isolated node(s):** `SYSRANGE_START`, `SYSTEM_THRESH_HIGH`, `SYSTEM_THRESH_LOW`, `SYSTEM_SEQUENCE_CONFIG`, `SYSTEM_RANGE_CONFIG` (+89 more)
+- **94 isolated node(s):** `ALGO_PART_TO_PART_RANGE_OFFSET_MM`, `ALGO_PHASECAL_CONFIG_TIMEOUT`, `ALGO_PHASECAL_LIM`, `CROSSTALK_COMPENSATION_PEAK_RATE_MCPS`, `DYNAMIC_SPAD_NUM_REQUESTED_REF_SPAD` (+89 more)
   These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 605 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **12 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
@@ -319,16 +319,16 @@ Nodes (3): 7. Energía, Problema del USB-C con VIN, Ruta PD en el robot
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `VL53L0X` connect `VL53L0X` to `regAddr`, `3. Parte A: UNO R3 con Microchip Studio`, `🤖 Iteración B – Arduino UNO Q (con cámara)`, `Iteración B – Arduino UNO Q (con cámara)`, `historial_cambios.md`, `manual_uso.md`?**
-  _High betweenness centrality (0.125) - this node is a cross-community bridge._
+  _High betweenness centrality (0.135) - this node is a cross-community bridge._
 - **Are the 5 inferred relationships involving `VL53L0X` (e.g. with `4.7 Agregar las librerías del sketch` and `Arquitectura según el grafo de conocimiento`) actually correct?**
   _`VL53L0X` has 5 INFERRED edges - model-reasoned connections that need verification._
-- **What connects `SYSRANGE_START`, `SYSTEM_THRESH_HIGH`, `SYSTEM_THRESH_LOW` to the rest of the system?**
+- **What connects `ALGO_PART_TO_PART_RANGE_OFFSET_MM`, `ALGO_PHASECAL_CONFIG_TIMEOUT`, `ALGO_PHASECAL_LIM` to the rest of the system?**
   _94 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `main.cpp` be split into smaller, more focused modules?**
   _Cohesion score 0.07108478341355054 - nodes in this community are weakly interconnected._
-- **Why does `Etapas` connect `Etapas` to `manual_tecnico.md`, `cam_puntos`, `historial_cambios.md`?**
-  _High betweenness centrality (0.105) - this node is a cross-community bridge._
+- **Why does `regAddr` connect `regAddr` to `VL53L0X`, `historial_cambios.md`?**
+  _High betweenness centrality (0.106) - this node is a cross-community bridge._
 - **Should `regAddr` be split into smaller, more focused modules?**
   _Cohesion score 0.03389830508474576 - nodes in this community are weakly interconnected._
-- **Why does `regAddr` connect `regAddr` to `VL53L0X`, `historial_cambios.md`?**
-  _High betweenness centrality (0.087) - this node is a cross-community bridge._
+- **Why does `Etapas` connect `Etapas` to `manual_tecnico.md`, `cam_puntos`, `historial_cambios.md`?**
+  _High betweenness centrality (0.082) - this node is a cross-community bridge._
